@@ -1,0 +1,353 @@
+[
+    {
+        "comment": "[rtk] 自动代理高频 bash 命令",
+        "tool": "bash",
+        "action": "rewrite",
+        "pattern": "^(git\\s+(status|log|diff)|cargo\\s+(test|build|clippy)|pytest)\\b",
+        "flags": "",
+        "reason": "rtk command rewrite：自动加 rtk 前缀压缩输出",
+        "enabled": true
+    },
+    {
+        "comment": "[Python] 编辑后必须格式检查 + 跑测试",
+        "hook": "tool_result",
+        "tool": "edit",
+        "action": "notify",
+        "conditions": [
+            {
+                "field": "path",
+                "pattern": "\\.py$",
+                "flags": ""
+            }
+        ],
+        "reason": "编辑了 Python 文件，必须：1) 运行 ruff check <file> 做格式检查；2) 跑覆盖该代码的单元测试（如无测试则先补充），修复所有测试问题确保通过。",
+        "enabled": true
+    },
+    {
+        "comment": "[Python][write] 写入后必须格式检查 + 跑测试",
+        "hook": "tool_result",
+        "tool": "write",
+        "action": "notify",
+        "conditions": [
+            {
+                "field": "path",
+                "pattern": "\\.py$",
+                "flags": ""
+            }
+        ],
+        "reason": "写入了 Python 文件，必须：1) 运行 ruff check <file> 做格式检查；2) 跑覆盖该代码的单元测试（如无测试则先补充），修复所有测试问题确保通过。",
+        "enabled": true
+    },
+    {
+        "comment": "[Rust] 编辑后必须格式检查 + 跑测试",
+        "hook": "tool_result",
+        "tool": "edit",
+        "action": "notify",
+        "conditions": [
+            {
+                "field": "path",
+                "pattern": "\\.rs$",
+                "flags": ""
+            }
+        ],
+        "reason": "编辑了 Rust 文件，必须：1) 运行 cargo clippy 做格式和 lint 检查；2) 跑覆盖该代码的单元测试（如无测试则先补充），修复所有测试问题确保通过。",
+        "enabled": true
+    },
+    {
+        "comment": "[Rust][write] 写入后必须格式检查 + 跑测试",
+        "hook": "tool_result",
+        "tool": "write",
+        "action": "notify",
+        "conditions": [
+            {
+                "field": "path",
+                "pattern": "\\.rs$",
+                "flags": ""
+            }
+        ],
+        "reason": "写入了 Rust 文件，必须：1) 运行 cargo clippy 做格式和 lint 检查；2) 跑覆盖该代码的单元测试（如无测试则先补充），修复所有测试问题确保通过。",
+        "enabled": true
+    },
+    {
+        "comment": "[TypeScript] 编辑后必须跑测试",
+        "hook": "tool_result",
+        "tool": "edit",
+        "action": "notify",
+        "conditions": [
+            {
+                "field": "path",
+                "pattern": "\\.ts$",
+                "flags": ""
+            }
+        ],
+        "reason": "编辑了 TypeScript 文件，必须跑覆盖该代码的单元测试（如无测试则先补充），修复所有测试问题确保通过。",
+        "enabled": true
+    },
+    {
+        "comment": "[TypeScript][write] 写入后必须跑测试",
+        "hook": "tool_result",
+        "tool": "write",
+        "action": "notify",
+        "conditions": [
+            {
+                "field": "path",
+                "pattern": "\\.ts$",
+                "flags": ""
+            }
+        ],
+        "reason": "写入了 TypeScript 文件，必须跑覆盖该代码的单元测试（如无测试则先补充），修复所有测试问题确保通过。",
+        "enabled": true
+    },
+    {
+        "comment": "[收尾] 编辑后提醒 commit + 记忆更新 + 总结",
+        "hook": "agent_end",
+        "action": "notify",
+        "check": "has_edits",
+        "reason": "检测到文件编辑，执行收尾工作：\n1️⃣ **Git commit**：如有未提交的 git 改动 → git add + git commit。如果在 worktree 中，commit 后尝试 merge 到 main，冲突则停。如果已提交则跳过。\n2️⃣ **更新记忆**：检查本轮是否有值得跨会话保留的知识（架构决策、踩坑教训、结论），如果有 → 用 memory_update 工具写入。用法：①先调 memory_index 看已有文件，判断重复/合并/新建；②调 memory_update(fileName, content, scope) 一步写入文件+更新索引。fileName 格式：topic--kw1,kw2,kw3.md（topic 英文短标识，kw 最多5个关键词）。scope：L1=跨项目通用，L2=项目级（默认）。单文件不超 200 行，超过必须拆主题。\n3️⃣ **会话总结**：输出本轮改动总结，每个独立改动一个章节（问题标题、根因、修复）",
+        "stopReason": [
+            "stop"
+        ],
+        "enabled": true
+    },
+    {
+        "comment": "[memory] git commit 后提醒更新记忆",
+        "hook": "tool_result",
+        "tool": "bash",
+        "pattern": "git\\s+commit",
+        "action": "steer",
+        "reason": "📝 刚执行了 git commit。检查本轮是否有值得跨会话保留的知识（架构决策、踩坑教训、结论），如果有 → 用 memory_update 工具写入。用法：①先调 memory_index 看已有文件，判断重复/合并/新建；②调 memory_update(fileName, content, scope) 一步写入文件+更新索引。fileName 格式：topic--kw1,kw2,kw3.md。scope：L1=跨项目通用，L2=项目级（默认）。单文件不超 200 行。如果没有新知识则忽略此提醒。",
+        "subagent": false,
+        "requireSuccess": true,
+        "enabled": true
+    },
+    {
+        "comment": "[arch] enforce-read-over-bash-cat：bash 中 cat|head/tail 读文件时强制用 read 工具",
+        "enabled": true,
+        "tool": "bash",
+        "pattern": "\\bcat\\b.*\\|\\s*(\\bhead\\b|\\btail\\b)",
+        "flags": "",
+        "action": "notify",
+        "reason": "bash cat|head/tail 读文件不如用 read 工具——read 支持 offset/limit 参数精确读取指定行范围，还保留 Tab 字符、自动标准化 CRLF，比管道拼接更可靠。",
+        "hook": "tool_call"
+    },
+    {
+        "comment": "[debug] 工具反复出错时提醒翻记忆",
+        "hook": "tool_result",
+        "action": "steer",
+        "state": {
+            "countKind": "errors",
+            "gte": 5
+        },
+        "reason": "🔍 **工具反复出错**：连续失败 2 次，翻看 .pi/memory/ 目录下的记忆文件，看是否已有踩坑记录。",
+        "enabled": true,
+        "subagent": false
+    },
+    {
+        "comment": "[dev] 编辑扩展代码时提醒参考规范",
+        "hook": "tool_result",
+        "tool": "edit",
+        "conditions": [
+            {
+                "field": "path",
+                "pattern": "extensions/.*\\.ts$"
+            }
+        ],
+        "action": "steer",
+        "reason": "📝 编辑了扩展代码。如果尚未阅读扩展开发规范，请先 read 根目录或项目目录下 extensions/README.md；如果已阅读且有新知识，更新到该文件。已阅读且无新知识则无视。",
+        "requireSuccess": true,
+        "subagent": false,
+        "enabled": true
+    },
+    {
+        "comment": "[dev] 写入扩展代码时提醒参考规范",
+        "hook": "tool_result",
+        "tool": "write",
+        "conditions": [
+            {
+                "field": "path",
+                "pattern": "extensions/.*\\.ts$"
+            }
+        ],
+        "action": "steer",
+        "reason": "📝 写入了扩展代码。如果尚未阅读扩展开发规范，请先 read 根目录或项目目录下 extensions/README.md；如果已阅读且有新知识，更新到该文件。已阅读且无新知识则无视。",
+        "requireSuccess": true,
+        "subagent": false,
+        "enabled": true
+    },
+    {
+        "comment": "[dev] 编辑扩展代码后提醒跑 typecheck",
+        "hook": "tool_result",
+        "tool": "edit",
+        "conditions": [
+            {
+                "field": "path",
+                "pattern": "extensions/.*\\.ts$"
+            }
+        ],
+        "action": "steer",
+        "reason": "📝 编辑了扩展 TypeScript 代码。请运行 `cd extensions && bash check.sh <扩展名> --typecheck` 确认无类型错误。如果已跑过则无视。",
+        "requireSuccess": true,
+        "subagent": false,
+        "enabled": true
+    },
+    {
+        "comment": "[dev] 写入扩展代码后提醒跑 typecheck",
+        "hook": "tool_result",
+        "tool": "write",
+        "conditions": [
+            {
+                "field": "path",
+                "pattern": "extensions/.*\\.ts$"
+            }
+        ],
+        "action": "steer",
+        "reason": "📝 写入了扩展 TypeScript 代码。请运行 `cd extensions && bash check.sh <扩展名> --typecheck` 确认无类型错误。如果已跑过则无视。",
+        "requireSuccess": true,
+        "subagent": false,
+        "enabled": true
+    },
+    {
+        "comment": "[TS] 禁止空格缩进 — TS 文件必须用 Tab",
+        "hook": "tool_call",
+        "tool": "edit",
+        "action": "notify",
+        "conditions": [
+            {
+                "field": "path",
+                "pattern": "\\.ts$"
+            },
+            {
+                "field": "text",
+                "pattern": "\\n  [\\S ]"
+            }
+        ],
+        "reason": "❌ TS 文件要求 Tab 缩进，不是空格。请用 Tab 缩进重写代码。",
+        "enabled": true
+    },
+    {
+        "comment": "[TS][write] 禁止空格缩进 — TS 文件必须用 Tab",
+        "hook": "tool_call",
+        "tool": "write",
+        "action": "notify",
+        "conditions": [
+            {
+                "field": "path",
+                "pattern": "\\.ts$"
+            },
+            {
+                "field": "text",
+                "pattern": "\\n  [\\S ]"
+            }
+        ],
+        "reason": "❌ TS 文件要求 Tab 缩进，不是空格。请用 Tab 缩进重写代码。",
+        "enabled": true
+    },
+    {
+        "comment": "[Python] 禁止 Tab 缩进 — Python 必须用 4 空格",
+        "hook": "tool_call",
+        "tool": "edit",
+        "action": "notify",
+        "conditions": [
+            {
+                "field": "path",
+                "pattern": "\\.py$"
+            },
+            {
+                "field": "text",
+                "pattern": "\\n\\t"
+            }
+        ],
+        "reason": "❌ Python 文件禁止 Tab 缩进，必须用 4 空格（PEP 8）。",
+        "enabled": true
+    },
+    {
+        "comment": "[Python][write] 禁止 Tab 缩进 — Python 必须用 4 空格",
+        "hook": "tool_call",
+        "tool": "write",
+        "action": "notify",
+        "conditions": [
+            {
+                "field": "path",
+                "pattern": "\\.py$"
+            },
+            {
+                "field": "text",
+                "pattern": "\\n\\t"
+            }
+        ],
+        "reason": "❌ Python 文件禁止 Tab 缩进，必须用 4 空格（PEP 8）。",
+        "enabled": true
+    },
+    {
+        "comment": "[Rust] 禁止 Tab 缩进 — Rust 必须用 4 空格",
+        "hook": "tool_call",
+        "tool": "edit",
+        "action": "notify",
+        "conditions": [
+            {
+                "field": "path",
+                "pattern": "\\.rs$"
+            },
+            {
+                "field": "text",
+                "pattern": "\\n\\t"
+            }
+        ],
+        "reason": "❌ Rust 文件禁止 Tab 缩进，必须用 4 空格（rustfmt）。",
+        "enabled": true
+    },
+    {
+        "comment": "[Rust][write] 禁止 Tab 缩进 — Rust 必须用 4 空格",
+        "hook": "tool_call",
+        "tool": "write",
+        "action": "notify",
+        "conditions": [
+            {
+                "field": "path",
+                "pattern": "\\.rs$"
+            },
+            {
+                "field": "text",
+                "pattern": "\\n\\t"
+            }
+        ],
+        "reason": "❌ Rust 文件禁止 Tab 缩进，必须用 4 空格（rustfmt）。",
+        "enabled": true
+    },
+    {
+        "comment": "[code-graph] grep 搜代码符号时推荐用 code-graph",
+        "hook": "tool_result",
+        "tool": "grep",
+        "action": "notify",
+        "pattern": ".",
+        "flags": "s",
+        "reason": "推荐用 code-graph 替代 grep 搜代码——code-graph 理解 AST 语义，能按符号名、调用链、引用关系精准定位，比 grep 逐行匹配快得多且不漏不误报。选工具方法：①模糊搜索 → semantic_code_search（默认首选）；②精确符号名 → get_ast_node；③引用追踪 → find_references；④调用链 → get_call_graph；⑤模块结构 → module_overview。grep 仅适合搜字面量字符串（TODO、配置值、错误消息）。如果当前搜索的就是字面量字符串则忽略此提醒。",
+        "requiresTools": ["code_graph_semantic_code_search"],
+        "enabled": true
+    },
+    {
+        "comment": "[code-graph] bash grep/rg 搜代码文件时推荐用 pi grep 或 code-graph",
+        "hook": "tool_result",
+        "tool": "bash",
+        "action": "notify",
+        "pattern": "\\b(grep|rg)\\b.*\\.(py|rs|ts|js|toml)(?=[\\s'\"|)]|$)",
+        "flags": "",
+        "reason": "💡 bash grep 搜代码文件不如用 pi 内置 grep 工具或 code-graph MCP 工具——code-graph 理解 AST 语义，能精准匹配符号名和调用关系。选工具：①模糊搜索 → semantic_code_search；②精确符号 → get_ast_node；③引用追踪 → find_references；④调用链 → get_call_graph。如果搜的是字面量字符串（TODO、配置值）则忽略。",
+        "enabled": true
+    },
+    {
+        "comment": "[通用] 脚本执行失败时提醒先 --help",
+        "hook": "tool_result",
+        "tool": "bash",
+        "action": "steer",
+        "pattern": "(python|uv run python) .+(scripts|tools|bin)/",
+        "state": {
+            "countKind": "errors",
+            "gte": 1
+        },
+        "reason": "💡 脚本执行失败。在盲目调参重试之前，先运行 `uv run python <脚本路径> --help` 查看用法说明和参数格式，避免反复试错浪费时间。",
+        "subagent": false,
+        "requireSuccess": false,
+        "enabled": true
+    }
+]

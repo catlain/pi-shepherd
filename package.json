@@ -1,0 +1,25 @@
+{
+  "name": "pi-shepherd",
+  "version": "0.1.0",
+  "description": "Line count guard and behavior rules extension for pi-coding-agent",
+  "main": "index.ts",
+  "scripts": {
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@pi-atelier/shared-utils": "github:catlain/pi-shared-utils",
+    "ignore": "^7.0.5"
+  },
+  "bundledDependencies": [
+    "@pi-atelier/shared-utils"
+  ],
+  "peerDependencies": {
+    "@earendil-works/pi-coding-agent": ">=0.9.0"
+  },
+  "peerDependenciesMeta": {
+    "@earendil-works/pi-coding-agent": {
+      "optional": true
+    }
+  }
+}
