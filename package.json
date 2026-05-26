@@ -11,9 +11,6 @@
     "@pi-atelier/shared-utils": "github:catlain/pi-shared-utils",
     "ignore": "^7.0.5"
   },
-  "bundledDependencies": [
-    "@pi-atelier/shared-utils"
-  ],
   "peerDependencies": {
     "@earendil-works/pi-coding-agent": ">=0.9.0"
   },
