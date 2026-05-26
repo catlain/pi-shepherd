@@ -9,7 +9,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@pi-atelier/shared-utils": "file:../pi-shared-utils",
+    "@pi-atelier/shared-utils": "github:catlain/pi-shared-utils",
     "ignore": "^7.0.5"
   },
   "peerDependencies": {
