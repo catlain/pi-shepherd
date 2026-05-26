@@ -6,9 +6,9 @@
  * - 子代理排除 / 中断跳过 / stopReason 过滤 / 重复触发防循环
  */
 
-import { describe, it, beforeEach } from "vitest";
 import assert from "node:assert/strict";
-import { pushWarning, hasWarnings, drainHints } from "@pi-atelier/shepherd";
+import { drainHints, hasWarnings, pushWarning } from "@pi-atelier/shepherd";
+import { beforeEach, describe, it } from "vitest";
 
 // ── 模拟 agent_end handler 的核心逻辑 ──
 
@@ -156,7 +156,11 @@ describe("agent_end 触发逻辑", () => {
 		it("中断时所有规则都不触发", () => {
 			state.aborted = true;
 			state.hasEdits = true;
-			const result = simulateAgentEnd(state, [RULE_HAS_EDITS, RULE_ALWAYS], "stop");
+			const result = simulateAgentEnd(
+				state,
+				[RULE_HAS_EDITS, RULE_ALWAYS],
+				"stop",
+			);
 			assert.deepEqual(result, []);
 		});
 	});
@@ -168,7 +172,11 @@ describe("agent_end 触发逻辑", () => {
 		it("子代理所有规则都不触发", () => {
 			state.isSubagent = true;
 			state.hasEdits = true;
-			const result = simulateAgentEnd(state, [RULE_HAS_EDITS, RULE_ALWAYS], "stop");
+			const result = simulateAgentEnd(
+				state,
+				[RULE_HAS_EDITS, RULE_ALWAYS],
+				"stop",
+			);
 			assert.deepEqual(result, []);
 		});
 	});
@@ -237,7 +245,7 @@ describe("agent_end 触发逻辑", () => {
 
 		it("仓库一直 dirty + 本轮有 edits → 触发（修复 !_wasDirty 的 bug）", () => {
 			state.isDirty = true;
-			state.wasDirty = true;  // 仓库一直脏
+			state.wasDirty = true; // 仓库一直脏
 			state.hasEdits = true;
 			const result = simulateAgentEnd(state, [RULE_GIT_UNCOMMITTED], "stop");
 			assert.deepEqual(result, ["[git] 本轮新增未提交改动"]);

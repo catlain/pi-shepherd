@@ -1,16 +1,38 @@
 /**
  * @pi-atelier/shepherd — barrel export
  */
+
+export { hasWarnings, notifySummary, pushWarning } from "./ephemeral";
 export {
-	loadRules, loadRulesFromFile, compileRules,
-	getMatchTargets, ruleMatches,
-	isInWorktree,
-	isSubagent, hasGitUncommittedChanges,
-	type Rule, type Condition,
-} from "./rules";
-export { StateTracker, type StateCondition, type ResettableRule } from "./state-tracker";
+	drainHints,
+	hasHints,
+	peekHints,
+	peekLabels,
+	pushHint,
+} from "./ephemeral-shared";
 export { checkLineCount } from "./line-count";
-export { pushWarning, notifySummary, hasWarnings } from "./ephemeral";
-export { peekHints, peekLabels, pushHint, hasHints, drainHints } from "./ephemeral-shared";
-export { registerToolCall, registerToolResult, type ToolState, getAvailableTools, toolsAvailable } from "./tool-hooks";
+export {
+	type Condition,
+	compileRules,
+	getMatchTargets,
+	hasGitUncommittedChanges,
+	isInWorktree,
+	isSubagent,
+	loadRules,
+	loadRulesFromFile,
+	type Rule,
+	ruleMatches,
+} from "./rules";
+export {
+	type ResettableRule,
+	type StateCondition,
+	StateTracker,
+} from "./state-tracker";
+export {
+	getAvailableTools,
+	registerToolCall,
+	registerToolResult,
+	type ToolState,
+	toolsAvailable,
+} from "./tool-hooks";
 export { checkWorktrees } from "./worktree-check";

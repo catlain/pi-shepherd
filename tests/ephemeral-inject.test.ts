@@ -2,16 +2,18 @@
  * Guard ephemeral — pushHint / drainHints 生命周期 — 单元测试
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
-import { pushWarning } from "@pi-atelier/shepherd";
 import {
-	pushHint,
+	drainHints,
 	hasHints,
 	peekHints,
-	drainHints,
+	pushHint,
+	pushWarning,
 } from "@pi-atelier/shepherd";
+import { beforeEach, describe, expect, it } from "vitest";
 
-function resetHints() { drainHints(); }
+function resetHints() {
+	drainHints();
+}
 
 // ── pushHint / peekHints / drainHints 基础 ────────────────
 

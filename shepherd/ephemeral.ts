@@ -29,6 +29,7 @@ export function notifySummary(text: string, labels?: string[]): string {
 // ── 内部：shepherd 前缀推入共享缓冲区 ──
 
 import { pushHint as _pushShared, hasHints } from "./ephemeral-shared.js";
+
 const SHEPHERD_PREFIX = "⚠️ shepherd: ";
 
 function pushShepherdHint(reason: string, label?: string): void {

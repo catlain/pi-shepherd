@@ -11,7 +11,9 @@
 		"declaration": true,
 		"sourceMap": true,
 		"paths": {
-			"@pi-atelier/shared-utils": ["./node_modules/@pi-atelier/shared-utils/src/index.ts"]
+			"@pi-atelier/shared-utils": [
+				"./node_modules/@pi-atelier/shared-utils/src/index.ts"
+			]
 		}
 	},
 	"include": ["index.ts", "shepherd/**/*.ts", "tests/**/*.ts"]

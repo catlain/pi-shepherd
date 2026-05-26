@@ -8,11 +8,11 @@
  * 4) 文件不存在不抛异常
  */
 
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
 import * as fs from "node:fs";
-import * as path from "node:path";
 import * as os from "node:os";
+import * as path from "node:path";
 import { checkLineCount, drainHints, peekHints } from "@pi-atelier/shepherd";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 // ── 测试辅助 ──────────────────────────────────────────────
 
@@ -23,13 +23,19 @@ function createTempFile(relativePath: string, lines: number): string {
 	const filePath = path.join(tmpDir, relativePath);
 	const dir = path.dirname(filePath);
 	fs.mkdirSync(dir, { recursive: true });
-	const content = Array.from({ length: lines }, (_, i) => `line ${i}`).join("\n");
+	const content = Array.from({ length: lines }, (_, i) => `line ${i}`).join(
+		"\n",
+	);
 	fs.writeFileSync(filePath, content, "utf-8");
 	return filePath;
 }
 
 function cleanup() {
-	try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch { /* ignore */ }
+	try {
+		fs.rmSync(tmpDir, { recursive: true, force: true });
+	} catch {
+		/* ignore */
+	}
 }
 
 /** 调用 checkLineCount 后 drain 出 hints 文本（string | null） */

@@ -6,7 +6,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import { isSubagent, isInWorktree } from "./rules.js";
+import { isInWorktree, isSubagent } from "./rules.js";
 
 interface UIContext {
 	notify?: (msg: string, level?: "error" | "info" | "warning") => void;
@@ -31,21 +31,32 @@ export function checkWorktrees(ctx: UIContext): void {
 
 	try {
 		const cwd = process.cwd();
-		const branches = git(["branch", "--list", "worktree/*", "--no-color"], { cwd });
+		const branches = git(["branch", "--list", "worktree/*", "--no-color"], {
+			cwd,
+		});
 		if (!branches) return;
 
-		const branchList = branches.split("\n").map(b => b.replace(/^\s*[+*]\s*/, "").trim()).filter(Boolean);
+		const branchList = branches
+			.split("\n")
+			.map((b) => b.replace(/^\s*[+*]\s*/, "").trim())
+			.filter(Boolean);
 		if (branchList.length === 0) return;
 
 		const merged: string[] = [];
 		const unmerged: string[] = [];
 
 		for (const branch of branchList) {
-			const logResult = git(["log", `main..${branch}`, "--oneline"], { cwd, timeout: 3000 });
+			const logResult = git(["log", `main..${branch}`, "--oneline"], {
+				cwd,
+				timeout: 3000,
+			});
 			if (logResult) {
 				unmerged.push(branch);
 			} else {
-				const verify = git(["rev-parse", "--verify", `${branch}^{commit}`], { cwd, timeout: 2000 });
+				const verify = git(["rev-parse", "--verify", `${branch}^{commit}`], {
+					cwd,
+					timeout: 2000,
+				});
 				if (verify) {
 					merged.push(branch);
 				}
@@ -59,32 +70,45 @@ export function checkWorktrees(ctx: UIContext): void {
 				const wtPath = join(cwd, ".worktrees", name);
 				try {
 					// 先尝试 git worktree remove
-					git(["worktree", "remove", join(".worktrees", name), "--force"], { cwd, timeout: 10000 });
+					git(["worktree", "remove", join(".worktrees", name), "--force"], {
+						cwd,
+						timeout: 10000,
+					});
 				} catch {
 					// fallback: 用 fs.rmSync 而非 shell rm -rf
 					if (existsSync(wtPath)) {
-						try { rmSync(wtPath, { recursive: true, force: true }); } catch { /* ignore */ }
+						try {
+							rmSync(wtPath, { recursive: true, force: true });
+						} catch {
+							/* ignore */
+						}
 					}
 				}
 				git(["branch", "-d", branch], { cwd, timeout: 3000 });
 			}
 			ctx.notify?.(
-				`🧹 shepherd: 自动清理了 ${merged.length} 个已合并 worktree: ${merged.map(b => b.replace('worktree/', '')).join(', ')}`,
+				`🧹 shepherd: 自动清理了 ${merged.length} 个已合并 worktree: ${merged.map((b) => b.replace("worktree/", "")).join(", ")}`,
 				"info",
 			);
 		}
 
 		if (unmerged.length > 0) {
-			const details = unmerged.map(b => {
+			const details = unmerged.map((b) => {
 				const name = b.replace(/^worktree\//, "");
 				const wtPath = join(cwd, ".worktrees", name);
 				let uncommitted = 0;
 				let aheadCount = 0;
 				if (existsSync(wtPath)) {
-					const statusLines = git(["-C", wtPath, "status", "--short"], { cwd, timeout: 3000 });
+					const statusLines = git(["-C", wtPath, "status", "--short"], {
+						cwd,
+						timeout: 3000,
+					});
 					if (statusLines) uncommitted = statusLines.split("\n").length;
 				}
-				const logLines = git(["log", `main..${b}`, "--oneline"], { cwd, timeout: 3000 });
+				const logLines = git(["log", `main..${b}`, "--oneline"], {
+					cwd,
+					timeout: 3000,
+				});
 				if (logLines) aheadCount = logLines.split("\n").length;
 				const parts: string[] = [];
 				if (aheadCount > 0) parts.push(`${aheadCount} 个未合并提交`);
@@ -95,8 +119,8 @@ export function checkWorktrees(ctx: UIContext): void {
 
 			ctx.notify?.(
 				`⚠️ shepherd: ${unmerged.length} 个未合并 worktree:\n` +
-				details.join("\n") +
-				"\n合并: /worktree-merge ｜ 删除: /worktree destroy <名称>",
+					details.join("\n") +
+					"\n合并: /worktree-merge ｜ 删除: /worktree destroy <名称>",
 				"warning",
 			);
 		}

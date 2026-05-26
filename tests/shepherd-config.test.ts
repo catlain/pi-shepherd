@@ -2,15 +2,16 @@
  * Shepherd 配置接入测试
  * 验证 getEffectiveConfig 对 shepherd section 的读取
  */
-import { describe, it, expect, beforeEach, afterEach } from "vitest";
-import { mkdirSync, writeFileSync, rmSync, existsSync } from "node:fs";
-import { join } from "node:path";
+
+import { existsSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
+import { join } from "node:path";
 import {
+	clearProjectSettingsCache,
 	getEffectiveConfig,
 	validateConfigSchema,
-	clearProjectSettingsCache,
 } from "@pi-atelier/shared-utils";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 const TEST_DIR = join(tmpdir(), "pi-shepherd-config-test");
 
@@ -50,7 +51,11 @@ describe("shepherd 配置接入", () => {
 	});
 
 	it("无项目配置时使用默认值", () => {
-		const { config } = getEffectiveConfig("shepherd", SHEPHERD_DEFAULTS, TEST_DIR);
+		const { config } = getEffectiveConfig(
+			"shepherd",
+			SHEPHERD_DEFAULTS,
+			TEST_DIR,
+		);
 		expect(config.enabled).toBe(true);
 		expect(config.projectRulesPattern).toBe("shepherd-rules-*.json");
 		expect(config.maxWarnings).toBe(5);
@@ -61,7 +66,11 @@ describe("shepherd 配置接入", () => {
 			shepherd: { enabled: false },
 		});
 
-		const { config, sources } = getEffectiveConfig("shepherd", SHEPHERD_DEFAULTS, TEST_DIR);
+		const { config, sources } = getEffectiveConfig(
+			"shepherd",
+			SHEPHERD_DEFAULTS,
+			TEST_DIR,
+		);
 		expect(config.enabled).toBe(false);
 		expect(sources.enabled).toBe("project");
 	});
@@ -71,7 +80,11 @@ describe("shepherd 配置接入", () => {
 			shepherd: { maxWarnings: 10 },
 		});
 
-		const { config } = getEffectiveConfig("shepherd", SHEPHERD_DEFAULTS, TEST_DIR);
+		const { config } = getEffectiveConfig(
+			"shepherd",
+			SHEPHERD_DEFAULTS,
+			TEST_DIR,
+		);
 		expect(config.maxWarnings).toBe(10);
 		expect(config.enabled).toBe(true);
 	});
@@ -81,7 +94,11 @@ describe("shepherd 配置接入", () => {
 			shepherd: { projectRulesPattern: "my-rules-*.json" },
 		});
 
-		const { config } = getEffectiveConfig("shepherd", SHEPHERD_DEFAULTS, TEST_DIR);
+		const { config } = getEffectiveConfig(
+			"shepherd",
+			SHEPHERD_DEFAULTS,
+			TEST_DIR,
+		);
 		expect(config.projectRulesPattern).toBe("my-rules-*.json");
 	});
 
@@ -90,7 +107,11 @@ describe("shepherd 配置接入", () => {
 			shepherd: { enabled: "yes" },
 		});
 
-		const errors = validateConfigSchema("shepherd", SHEPHERD_DEFAULTS, TEST_DIR);
+		const errors = validateConfigSchema(
+			"shepherd",
+			SHEPHERD_DEFAULTS,
+			TEST_DIR,
+		);
 		expect(errors.length).toBeGreaterThan(0);
 		expect(errors[0].key).toBe("enabled");
 		expect(errors[0].expectedType).toBe("boolean");
@@ -102,7 +123,11 @@ describe("shepherd 配置接入", () => {
 			shepherd: { maxWarnings: "10" },
 		});
 
-		const errors = validateConfigSchema("shepherd", SHEPHERD_DEFAULTS, TEST_DIR);
+		const errors = validateConfigSchema(
+			"shepherd",
+			SHEPHERD_DEFAULTS,
+			TEST_DIR,
+		);
 		expect(errors.length).toBeGreaterThan(0);
 		expect(errors[0].key).toBe("maxWarnings");
 	});

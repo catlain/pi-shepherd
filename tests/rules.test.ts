@@ -2,12 +2,12 @@
  * 全局规则测试：has_edits 检查 + rtk 可用性 + grep scope 过滤
  */
 
-import { describe, it } from "vitest";
 import assert from "node:assert/strict";
-import * as path from "node:path";
-import * as fs from "node:fs";
 import { execSync } from "node:child_process";
+import * as fs from "node:fs";
+import * as path from "node:path";
 import { getMatchTargets } from "@pi-atelier/shepherd";
+import { describe, it } from "vitest";
 
 const RULES_PATH = path.resolve(
 	path.dirname(new URL(import.meta.url).pathname.replace(/^\/([A-Z]:)/, "$1")),
@@ -25,19 +25,25 @@ function loadRules(): any[] {
 
 describe("grep scope filtering", () => {
 	it("in-scope path + code glob → non-empty targets", () => {
-		const event = { input: { path: process.cwd(), pattern: "myFunction", glob: "*.py" } };
+		const event = {
+			input: { path: process.cwd(), pattern: "myFunction", glob: "*.py" },
+		};
 		const result = getMatchTargets("grep", event);
 		assert.ok(Object.keys(result).length > 0);
 	});
 
 	it("any path + code glob → non-empty targets (path filtering removed)", () => {
-		const event = { input: { path: "/tmp/some/dir", pattern: "myFunction", glob: "*.py" } };
+		const event = {
+			input: { path: "/tmp/some/dir", pattern: "myFunction", glob: "*.py" },
+		};
 		const result = getMatchTargets("grep", event);
 		assert.ok(Object.keys(result).length > 0);
 	});
 
 	it("non-code glob (.md) → empty targets", () => {
-		const event = { input: { path: process.cwd(), pattern: "TODO", glob: "*.md" } };
+		const event = {
+			input: { path: process.cwd(), pattern: "TODO", glob: "*.md" },
+		};
 		const result = getMatchTargets("grep", event);
 		assert.ok(Object.keys(result).length === 0);
 	});
@@ -50,7 +56,9 @@ describe("grep scope filtering", () => {
 describe("has_edits check logic", () => {
 	it("should find agent_end rule with check=has_edits", () => {
 		const rules = loadRules();
-		const agentEndRule = rules.find((r: any) => r.hook === "agent_end" && r.check === "has_edits");
+		const agentEndRule = rules.find(
+			(r: any) => r.hook === "agent_end" && r.check === "has_edits",
+		);
 		assert.ok(agentEndRule);
 		assert.equal(agentEndRule.action, "notify");
 		assert.deepEqual(agentEndRule.stopReason, ["stop"]);

@@ -24,14 +24,21 @@ import { fileURLToPath } from "url";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const RULES_DIR = __dirname;
 
-import {
-	loadRules, isSubagent, hasGitUncommittedChanges,
-	StateTracker, checkWorktrees,
-	pushWarning, hasWarnings, notifySummary,
-	drainHints,
-	registerToolCall, registerToolResult, type ToolState,
-} from "./shepherd";
 import { getEffectiveConfig } from "@pi-atelier/shared-utils";
+import {
+	checkWorktrees,
+	drainHints,
+	hasGitUncommittedChanges,
+	hasWarnings,
+	isSubagent,
+	loadRules,
+	notifySummary,
+	pushWarning,
+	registerToolCall,
+	registerToolResult,
+	StateTracker,
+	type ToolState,
+} from "./shepherd";
 
 /** 本地 hints 缓冲区（收集 pi.events.emit("ephemeral:hint") 的数据） */
 const _localHints: { text: string; short?: string }[] = [];
@@ -47,15 +54,18 @@ const _toolState: ToolState = {
 };
 
 export default function shepherdExtension(pi: ExtensionAPI) {
-
 	// ── 读取配置（三层合并：defaults → 全局 settings → 项目 settings）──
 	const shepherdConfig = getEffectiveConfig<{
 		projectRulesPattern: string;
 		maxWarnings: number;
-	}>("shepherd", {
-		projectRulesPattern: "shepherd-rules-",
-		maxWarnings: 5,
-	}, process.cwd());
+	}>(
+		"shepherd",
+		{
+			projectRulesPattern: "shepherd-rules-",
+			maxWarnings: 5,
+		},
+		process.cwd(),
+	);
 
 	// ── 监听跨扩展 hints（通过 pi.events 绕过 jiti 多实例） ──
 	pi.events.on("ephemeral:hint", (data) => {
@@ -72,11 +82,18 @@ export default function shepherdExtension(pi: ExtensionAPI) {
 		}
 
 		// 通知摘要：short 优先，fallback 到 notifySummary 截断
-		const shortParts = _localHints.map(h => h.short).filter(Boolean) as string[];
-		const longParts = _localHints.map(h => h.short ? null : h.text).filter(Boolean) as string[];
+		const shortParts = _localHints
+			.map((h) => h.short)
+			.filter(Boolean) as string[];
+		const longParts = _localHints
+			.map((h) => (h.short ? null : h.text))
+			.filter(Boolean) as string[];
 		const notifyText = [...shortParts, ...longParts].join("\n\n");
 
-		const allHints = _localHints.splice(0).map(h => h.text).join("\n\n");
+		const allHints = _localHints
+			.splice(0)
+			.map((h) => h.text)
+			.join("\n\n");
 		let payload: any = event.payload;
 
 		if (allHints) {
@@ -105,21 +122,28 @@ export default function shepherdExtension(pi: ExtensionAPI) {
 		_toolState.cachedTools = null;
 		_agentEndFired.clear();
 		if (ctx.signal && !ctx.signal.aborted) {
-			ctx.signal.addEventListener("abort", () => { _aborted = true; });
+			ctx.signal.addEventListener("abort", () => {
+				_aborted = true;
+			});
 		}
 		_wasDirty = hasGitUncommittedChanges();
 	});
 
-	pi.on("input", async (_event) => { /* 占位：防止 shepherd steer 循环 */ });
+	pi.on("input", async (_event) => {
+		/* 占位：防止 shepherd steer 循环 */
+	});
 
 	// ── agent_end ──────────────────────────────────────────────
 	pi.on("agent_end", async (event, _ctx) => {
 		if (isSubagent() || _aborted) return;
-		const rules = loadRules(RULES_DIR, { projectRulesPattern: shepherdConfig.projectRulesPattern }).filter(r => r.hook === "agent_end");
+		const rules = loadRules(RULES_DIR, {
+			projectRulesPattern: shepherdConfig.projectRulesPattern,
+		}).filter((r) => r.hook === "agent_end");
 		if (rules.length === 0) return;
 
 		const lastAssistant = [...event.messages]
-			.reverse().find((m: any) => m.role === "assistant");
+			.reverse()
+			.find((m: any) => m.role === "assistant");
 		const stopReason: string | undefined = (lastAssistant as any)?.stopReason;
 
 		for (const rule of rules) {
@@ -153,14 +177,18 @@ export default function shepherdExtension(pi: ExtensionAPI) {
 						{ customType: "shepherd-agent-end", display: false, content: "" },
 						{ triggerTurn: true },
 					);
-				} catch { /* session 已替换 */ }
+				} catch {
+					/* session 已替换 */
+				}
 			}, 0);
 		}
 	});
 
 	// ── session_shutdown ───────────────────────────────────────
 	pi.on("session_shutdown", async (_event, ctx) => {
-		const rules = loadRules(RULES_DIR, { projectRulesPattern: shepherdConfig.projectRulesPattern }).filter(r => r.hook === "session_shutdown");
+		const rules = loadRules(RULES_DIR, {
+			projectRulesPattern: shepherdConfig.projectRulesPattern,
+		}).filter((r) => r.hook === "session_shutdown");
 		if (rules.length === 0) return;
 		for (const rule of rules) {
 			let shouldNotify = false;
@@ -176,7 +204,9 @@ export default function shepherdExtension(pi: ExtensionAPI) {
 	});
 
 	// ── tool_call + tool_result（提取到 tool-hooks.ts）────────
-	const _rulesOpts = { projectRulesPattern: shepherdConfig.projectRulesPattern };
+	const _rulesOpts = {
+		projectRulesPattern: shepherdConfig.projectRulesPattern,
+	};
 	registerToolCall(pi, _toolState, RULES_DIR, _rulesOpts);
 	registerToolResult(pi, _toolState, RULES_DIR, _rulesOpts);
 }

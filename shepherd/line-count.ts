@@ -3,8 +3,8 @@
  * edit/write 后自动检测文件行数，超阈值时注入 ephemeral 提醒
  */
 
-import * as path from "node:path";
 import * as fs from "node:fs";
+import * as path from "node:path";
 import { pushWarning } from "./ephemeral.js";
 
 // ── 代码文件阈值 ─────────────────────────────────────────────
@@ -26,9 +26,7 @@ function isMemoryFile(filePath: string): boolean {
 	return /\/memory\//.test(normalized);
 }
 
-export function checkLineCount(
-	filePath: string,
-): void {
+export function checkLineCount(filePath: string): void {
 	const ext = path.extname(filePath);
 
 	// 记忆文件检查
@@ -53,17 +51,17 @@ export function checkLineCount(
 	if (lines >= LINE_BAN) {
 		pushWarning(
 			`❌ 严禁: ${name} 已有 ${lines} 行（阈值 ${LINE_BAN} 行）。\n` +
-			`拆分建议：提取公共函数/工具类到独立文件，目标每个文件 ≤ 200 行。`,
+				`拆分建议：提取公共函数/工具类到独立文件，目标每个文件 ≤ 200 行。`,
 		);
 	} else if (lines >= LINE_MUST) {
 		pushWarning(
 			`🔴 必须拆分: ${name} 已有 ${lines} 行（阈值 ${LINE_MUST} 行）。\n` +
-			`拆分建议：提取公共函数/工具类到独立文件，目标每个文件 ≤ 200 行。`,
+				`拆分建议：提取公共函数/工具类到独立文件，目标每个文件 ≤ 200 行。`,
 		);
 	} else if (lines >= LINE_WARN) {
 		pushWarning(
 			`⚠️ 应主动检查: ${name} 已有 ${lines} 行（阈值 ${LINE_WARN} 行）。\n` +
-			`拆分建议：提取公共函数/工具类到独立文件，目标每个文件 ≤ 200 行。`,
+				`拆分建议：提取公共函数/工具类到独立文件，目标每个文件 ≤ 200 行。`,
 		);
 	}
 }
@@ -82,7 +80,7 @@ function checkMemoryFile(filePath: string): void {
 		const name = path.basename(filePath);
 		pushWarning(
 			`📝 记忆文件过长: ${name} 已有 ${lines} 行（上限 ${MEMORY_LINE_LIMIT} 行）。\n` +
-			`必须拆分：每个记忆文件一个主题，拆分后用 memory_update 或手动更新 MEMORY.md 索引。`,
+				`必须拆分：每个记忆文件一个主题，拆分后用 memory_update 或手动更新 MEMORY.md 索引。`,
 		);
 	}
 }

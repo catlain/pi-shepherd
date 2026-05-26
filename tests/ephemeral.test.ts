@@ -2,11 +2,19 @@
  * Shepherd ephemeral — pushWarning + notifySummary — 单元测试
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
-import { pushWarning, notifySummary, hasWarnings } from "@pi-atelier/shepherd";
-import { drainHints, peekHints, hasHints } from "@pi-atelier/shepherd";
+import {
+	drainHints,
+	hasHints,
+	hasWarnings,
+	notifySummary,
+	peekHints,
+	pushWarning,
+} from "@pi-atelier/shepherd";
+import { beforeEach, describe, expect, it } from "vitest";
 
-function resetHints() { drainHints(); }
+function resetHints() {
+	drainHints();
+}
 
 // ── pushWarning ───────────────────────────────────────────
 

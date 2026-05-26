@@ -2,9 +2,9 @@
  * Guard 核心逻辑测试：getMatchTargets + ruleMatches + rewrite 规则
  */
 
-import { describe, it } from "vitest";
 import assert from "node:assert/strict";
 import { getMatchTargets, ruleMatches } from "@pi-atelier/shepherd";
+import { describe, it } from "vitest";
 import { makeRule } from "./helpers.js";
 
 // ================================================================
@@ -24,9 +24,7 @@ describe("getMatchTargets", () => {
 		const event = {
 			input: {
 				path: "sizing/vol_target.py",
-				edits: [
-					{ oldText: "old code", newText: "from signals import foo" },
-				],
+				edits: [{ oldText: "old code", newText: "from signals import foo" }],
 			},
 		};
 		const result = getMatchTargets("edit", event);
@@ -61,7 +59,9 @@ describe("getMatchTargets", () => {
 
 	// grep 工具测试
 	it("should return non-empty targets for grep with code glob and in-scope path", () => {
-		const event = { input: { path: process.cwd(), pattern: "myFunction", glob: "*.ts" } };
+		const event = {
+			input: { path: process.cwd(), pattern: "myFunction", glob: "*.ts" },
+		};
 		const result = getMatchTargets("grep", event);
 		assert.ok(Object.keys(result).length > 0);
 		assert.equal(result.glob, "*.ts");
@@ -75,13 +75,17 @@ describe("getMatchTargets", () => {
 	});
 
 	it("should return empty targets for grep with non-code glob", () => {
-		const event = { input: { path: process.cwd(), pattern: "TODO", glob: "*.md" } };
+		const event = {
+			input: { path: process.cwd(), pattern: "TODO", glob: "*.md" },
+		};
 		const result = getMatchTargets("grep", event);
 		assert.ok(Object.keys(result).length === 0);
 	});
 
 	it("should return non-empty targets for grep with code glob regardless of path", () => {
-		const event = { input: { path: "/tmp/some/dir", pattern: "myFunction", glob: "*.ts" } };
+		const event = {
+			input: { path: "/tmp/some/dir", pattern: "myFunction", glob: "*.ts" },
+		};
 		const result = getMatchTargets("grep", event);
 		assert.ok(Object.keys(result).length > 0);
 	});
@@ -113,33 +117,72 @@ describe("ruleMatches", () => {
 	it("should match multi-condition AND (path + text)", () => {
 		const rule = makeRule({
 			conditions: [
-				{ field: "path", pattern: "sizing/.*\\.py$", flags: "", _compiled: /sizing\/.*\.py$/ },
-				{ field: "text", pattern: "from signals\\.|import signals", flags: "", _compiled: /from signals\.|import signals/ },
+				{
+					field: "path",
+					pattern: "sizing/.*\\.py$",
+					flags: "",
+					_compiled: /sizing\/.*\.py$/,
+				},
+				{
+					field: "text",
+					pattern: "from signals\\.|import signals",
+					flags: "",
+					_compiled: /from signals\.|import signals/,
+				},
 			],
 		});
-		const targets = { path: "sizing/vol_target.py", text: "from signals.cluster import compute" };
+		const targets = {
+			path: "sizing/vol_target.py",
+			text: "from signals.cluster import compute",
+		};
 		assert.ok(ruleMatches(rule, "edit", targets));
 	});
 
 	it("should NOT match multi-condition when text condition fails", () => {
 		const rule = makeRule({
 			conditions: [
-				{ field: "path", pattern: "sizing/.*\\.py$", flags: "", _compiled: /sizing\/.*\.py$/ },
-				{ field: "text", pattern: "from signals\\.|import signals", flags: "", _compiled: /from signals\.|import signals/ },
+				{
+					field: "path",
+					pattern: "sizing/.*\\.py$",
+					flags: "",
+					_compiled: /sizing\/.*\.py$/,
+				},
+				{
+					field: "text",
+					pattern: "from signals\\.|import signals",
+					flags: "",
+					_compiled: /from signals\.|import signals/,
+				},
 			],
 		});
-		const targets = { path: "sizing/vol_target.py", text: "from dataclasses import dataclass" };
+		const targets = {
+			path: "sizing/vol_target.py",
+			text: "from dataclasses import dataclass",
+		};
 		assert.ok(!ruleMatches(rule, "edit", targets));
 	});
 
 	it("should NOT match multi-condition when path condition fails", () => {
 		const rule = makeRule({
 			conditions: [
-				{ field: "path", pattern: "signals/.*\\.py$", flags: "", _compiled: /signals\/.*\.py$/ },
-				{ field: "text", pattern: "from sizing\\.|import sizing", flags: "", _compiled: /from sizing\.|import sizing/ },
+				{
+					field: "path",
+					pattern: "signals/.*\\.py$",
+					flags: "",
+					_compiled: /signals\/.*\.py$/,
+				},
+				{
+					field: "text",
+					pattern: "from sizing\\.|import sizing",
+					flags: "",
+					_compiled: /from sizing\.|import sizing/,
+				},
 			],
 		});
-		const targets = { path: "sizing/vol_target.py", text: "from sizing import compute" };
+		const targets = {
+			path: "sizing/vol_target.py",
+			text: "from sizing import compute",
+		};
 		assert.ok(!ruleMatches(rule, "edit", targets));
 	});
 
@@ -149,22 +192,38 @@ describe("ruleMatches", () => {
 	});
 
 	it("should return false when no pattern nor conditions are set", () => {
-		const rule = makeRule({ pattern: undefined, _compiled: undefined, conditions: undefined });
+		const rule = makeRule({
+			pattern: undefined,
+			_compiled: undefined,
+			conditions: undefined,
+		});
 		assert.ok(!ruleMatches(rule, "edit", { path: "foo.py", text: "bar" }));
 	});
 
 	it("should match bash command with single pattern", () => {
 		const rule = makeRule({ tool: "bash", _compiled: /git\s+status/ });
-		assert.ok(ruleMatches(rule, "bash", { command: "git status", path: "", text: "" }));
+		assert.ok(
+			ruleMatches(rule, "bash", { command: "git status", path: "", text: "" }),
+		);
 	});
 
 	it("should extract text from all edits combined", () => {
 		const rule = makeRule({
 			conditions: [
-				{ field: "text", pattern: "DynSizer", flags: "", _compiled: /DynSizer/ },
+				{
+					field: "text",
+					pattern: "DynSizer",
+					flags: "",
+					_compiled: /DynSizer/,
+				},
 			],
 		});
-		assert.ok(ruleMatches(rule, "edit", { path: "engine.rs", text: "use DynSizer from crate" }));
+		assert.ok(
+			ruleMatches(rule, "edit", {
+				path: "engine.rs",
+				text: "use DynSizer from crate",
+			}),
+		);
 	});
 });
 
@@ -177,26 +236,39 @@ describe("rewrite rules", () => {
 		const rule = makeRule({
 			tool: "bash",
 			action: "rewrite",
-			_compiled: /^(git\s+(status|log|diff)|cargo\s+(test|build|clippy)|pytest)\b/,
+			_compiled:
+				/^(git\s+(status|log|diff)|cargo\s+(test|build|clippy)|pytest)\b/,
 		});
-		assert.ok(ruleMatches(rule, "bash", { command: "git status", path: "", text: "" }));
+		assert.ok(
+			ruleMatches(rule, "bash", { command: "git status", path: "", text: "" }),
+		);
 	});
 
 	it("should NOT match short commands like ls", () => {
 		const rule = makeRule({
 			tool: "bash",
 			action: "rewrite",
-			_compiled: /^(git\s+(status|log|diff)|cargo\s+(test|build|clippy)|pytest)\b/,
+			_compiled:
+				/^(git\s+(status|log|diff)|cargo\s+(test|build|clippy)|pytest)\b/,
 		});
-		assert.ok(!ruleMatches(rule, "bash", { command: "ls -la", path: "", text: "" }));
+		assert.ok(
+			!ruleMatches(rule, "bash", { command: "ls -la", path: "", text: "" }),
+		);
 	});
 
 	it("should NOT match echo >> write commands", () => {
 		const rule = makeRule({
 			tool: "bash",
 			action: "rewrite",
-			_compiled: /^(git\s+(status|log|diff)|cargo\s+(test|build|clippy)|pytest)\b/,
+			_compiled:
+				/^(git\s+(status|log|diff)|cargo\s+(test|build|clippy)|pytest)\b/,
 		});
-		assert.ok(!ruleMatches(rule, "bash", { command: "echo 'test' >> file.txt", path: "", text: "" }));
+		assert.ok(
+			!ruleMatches(rule, "bash", {
+				command: "echo 'test' >> file.txt",
+				path: "",
+				text: "",
+			}),
+		);
 	});
 });

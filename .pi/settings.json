@@ -1,7 +1,5 @@
 {
-  "mcp": {
-    "enabled": [
-      "code-graph"
-    ]
-  }
+	"mcp": {
+		"enabled": ["code-graph-pi-shepherd"]
+	}
 }

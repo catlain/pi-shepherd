@@ -2,11 +2,11 @@
  * Guard 规则类型定义 + 规则加载/编译/匹配 + git 辅助函数
  */
 
+import { execSync } from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { execSync } from "node:child_process";
-import type { StateCondition, ResettableRule } from "./state-tracker.js";
 import { pushRuleError } from "./ephemeral.js";
+import type { ResettableRule, StateCondition } from "./state-tracker.js";
 
 // ── 类型定义 ──────────────────────────────────────────────────
 
@@ -20,7 +20,7 @@ export interface Condition {
 export interface Rule {
 	comment: string;
 	hook?: "tool_call" | "tool_result" | "agent_end" | "session_shutdown"; // 默认 "tool_call"
-	tool?: string;                       // 默认 "bash"
+	tool?: string; // 默认 "bash"
 	// 单条件模式（向后兼容）：pattern 匹配 command（bash）或 path（edit/write）
 	pattern?: string;
 	flags?: string;
@@ -59,9 +59,13 @@ export function hasGitUncommittedChanges(): boolean {
 			timeout: 5000,
 			stdio: ["pipe", "pipe", "pipe"],
 			cwd,
-		}).toString().trim();
+		})
+			.toString()
+			.trim();
 		// 只关注已跟踪文件的变更（M/A/D/R 等），忽略 untracked（?? 前缀）
-		const tracked = status.split("\n").filter(line => line && !line.startsWith("??"));
+		const tracked = status
+			.split("\n")
+			.filter((line) => line && !line.startsWith("??"));
 		return tracked.length > 0;
 	} catch {
 		return false;
@@ -74,11 +78,19 @@ export function isInWorktree(): boolean {
 		const cwd = process.cwd();
 		if (/\/\.worktrees\/[^/]+/.test(cwd)) return true;
 		const gitDir = execSync("git rev-parse --git-dir", {
-			timeout: 3000, stdio: ["pipe", "pipe", "pipe"], cwd,
-		}).toString().trim();
+			timeout: 3000,
+			stdio: ["pipe", "pipe", "pipe"],
+			cwd,
+		})
+			.toString()
+			.trim();
 		const commonDir = execSync("git rev-parse --git-common-dir", {
-			timeout: 3000, stdio: ["pipe", "pipe", "pipe"], cwd,
-		}).toString().trim();
+			timeout: 3000,
+			stdio: ["pipe", "pipe", "pipe"],
+			cwd,
+		})
+			.toString()
+			.trim();
 		return gitDir !== commonDir && gitDir !== ".git";
 	} catch {
 		return false;
@@ -86,7 +98,8 @@ export function isInWorktree(): boolean {
 }
 
 /** 当前是否在子代理环境中 */
-export const isSubagent = () => !!(process.env.PI_SUBAGENT_AGENT || process.env.PI_SUBAGENT_SESSION);
+export const isSubagent = () =>
+	!!(process.env.PI_SUBAGENT_AGENT || process.env.PI_SUBAGENT_SESSION);
 
 // ── 代码文件扩展名 ─────────────────────────────────────────
 
@@ -98,13 +111,19 @@ export const CODE_EXT_RE = /\.(py|rs|ts|js|toml|json)(\*|"|')?$/;
 // RULES_PATH 已移除——规则路径由 loadRules(rulesDir) 参数传入
 
 /** 从单个文件加载规则（不编译），处理文件不存在和 JSON 解析错误 */
-export function loadRulesFromFile(filePath: string): { rules: Rule[]; error?: string } {
+export function loadRulesFromFile(filePath: string): {
+	rules: Rule[];
+	error?: string;
+} {
 	try {
 		const raw = fs.readFileSync(filePath, "utf-8");
 		const parsed = JSON.parse(raw);
 		if (!Array.isArray(parsed)) {
 			const fileName = path.basename(filePath);
-			return { rules: [], error: `${fileName}: 顶层必须是 JSON 数组，当前是 ${typeof parsed}` };
+			return {
+				rules: [],
+				error: `${fileName}: 顶层必须是 JSON 数组，当前是 ${typeof parsed}`,
+			};
 		}
 		return { rules: parsed };
 	} catch (e: any) {
@@ -117,7 +136,7 @@ export function loadRulesFromFile(filePath: string): { rules: Rule[]; error?: st
 /** 编译规则：正则编译 + 默认值填充 */
 export function compileRules(rules: Rule[]): Rule[] {
 	// 过滤禁用规则
-	const active = rules.filter(r => r.enabled !== false);
+	const active = rules.filter((r) => r.enabled !== false);
 	for (const rule of active) {
 		// 多条件模式：编译每个 condition
 		if (rule.conditions && rule.conditions.length > 0) {
@@ -142,7 +161,10 @@ export interface LoadRulesOptions {
 	projectRulesPattern?: string;
 }
 
-export function loadRules(rulesDir?: string, options?: LoadRulesOptions): Rule[] {
+export function loadRules(
+	rulesDir?: string,
+	options?: LoadRulesOptions,
+): Rule[] {
 	const allRules: Rule[] = [];
 	const errors: string[] = [];
 	const prefix = options?.projectRulesPattern || "shepherd-rules-";
@@ -180,9 +202,13 @@ export function loadRules(rulesDir?: string, options?: LoadRulesOptions): Rule[]
  * @param phase 调用阶段："tool_call" 时 git commit 会被短路（避免 commit message 误触发 block 规则），
  *              "tool_result" 时不短路（允许 git commit 后的 steer/notify 规则触发）
  */
-export function getMatchTargets(tool: string, event: any, phase?: string): Record<string, string> {
+export function getMatchTargets(
+	tool: string,
+	event: any,
+	phase?: string,
+): Record<string, string> {
 	if (tool === "bash") {
-		let command = (event.input as any)?.command || "";
+		const command = (event.input as any)?.command || "";
 		// git commit 的 message 可能包含 sed -i / echo >> 等关键词，跳过匹配
 		// 注意：命令可能是 "cd xxx && git commit ..." 格式
 		// 但仅在 tool_call 阶段短路——tool_result 阶段需要匹配 git commit 后的 steer 规则
@@ -214,7 +240,9 @@ export function getMatchTargets(tool: string, event: any, phase?: string): Recor
 	if (tool === "edit") {
 		const edits = (event.input as any)?.edits;
 		if (Array.isArray(edits)) {
-			text = edits.flatMap((e: any) => [e.oldText || "", e.newText || ""]).join("\n");
+			text = edits
+				.flatMap((e: any) => [e.oldText || "", e.newText || ""])
+				.join("\n");
 		}
 	} else if (tool === "write") {
 		text = (event.input as any)?.content || "";
@@ -223,10 +251,14 @@ export function getMatchTargets(tool: string, event: any, phase?: string): Recor
 }
 
 /** 判断规则是否匹配事件 */
-export function ruleMatches(rule: Rule, tool: string, targets: Record<string, string>): boolean {
+export function ruleMatches(
+	rule: Rule,
+	tool: string,
+	targets: Record<string, string>,
+): boolean {
 	// 多条件 AND 模式
 	if (rule.conditions && rule.conditions.length > 0) {
-		return rule.conditions.every(cond => {
+		return rule.conditions.every((cond) => {
 			const target = targets[cond.field] || "";
 			return cond._compiled?.test(target) ?? false;
 		});

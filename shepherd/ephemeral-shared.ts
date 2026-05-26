@@ -6,9 +6,9 @@
  */
 
 export {
-	pushHint,
 	drainHints,
-	peekHints,
 	hasHints,
+	peekHints,
 	peekLabels,
+	pushHint,
 } from "@pi-atelier/shared-utils";
