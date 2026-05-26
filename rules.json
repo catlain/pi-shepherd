@@ -336,6 +336,16 @@
         "enabled": true
     },
     {
+        "comment": "[code-graph] 工具报索引错误时提醒重建索引",
+        "hook": "tool_result",
+        "action": "notify",
+        "pattern": "(还没索引|index|no.*found|0 nodes|empty index)",
+        "flags": "i",
+        "reason": "💡 code-graph 索引可能缺失或过期。运行 `code-graph incremental-index` 增量更新索引（几秒）。如果是全新项目或索引严重损坏，用 `code-graph reindex` 完全重建。索引更新后重新执行刚才的查询。",
+        "requiresTools": ["code_graph_semantic_code_search"],
+        "enabled": true
+    },
+    {
         "comment": "[通用] 脚本执行失败时提醒先 --help",
         "hook": "tool_result",
         "tool": "bash",
