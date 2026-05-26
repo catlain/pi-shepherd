@@ -31,16 +31,9 @@ import {
 	drainHints,
 	registerToolCall, registerToolResult, type ToolState,
 } from "./shepherd";
-import { writeFileSync, mkdirSync, readdirSync } from "fs";
-import { tmpdir } from "os";
-import { getSettingsValue } from "@pi-atelier/shared-utils";
 
 /** 本地 hints 缓冲区（收集 pi.events.emit("ephemeral:hint") 的数据） */
 const _localHints: { text: string; short?: string }[] = [];
-
-const DISTILL_DIR = join(tmpdir(), "pi-distill");
-const PAYLOAD_CACHE = join(DISTILL_DIR, "last-payload.json");
-const RECORDINGS_DIR = join(DISTILL_DIR, "recordings");
 
 /** 可变状态：跨 hook 共享 */
 let _aborted = false;
@@ -86,22 +79,6 @@ export default function shepherdExtension(pi: ExtensionAPI) {
 			});
 			ctx.ui.notify?.(notifySummary(notifyText), "warning");
 		}
-
-		// 保存 payload（注入 hint 后）
-		try {
-			mkdirSync(DISTILL_DIR, { recursive: true });
-			writeFileSync(PAYLOAD_CACHE, JSON.stringify(payload));
-			if (getSettingsValue("recording.enabled", false)) {
-				// 按会话 ID 分目录存储
-				const sessionId = ctx?.sessionManager?.getSessionId?.() ?? "unknown";
-				const sessionDir = join(RECORDINGS_DIR, sessionId);
-				mkdirSync(sessionDir, { recursive: true });
-				const files = readdirSync(sessionDir).filter(f => f.endsWith(".json"));
-				const nextIdx = files.length + 1;
-				const ts = new Date().toISOString().replace(/[:.]/g, "-").slice(0, 19);
-				writeFileSync(join(sessionDir, `req-${String(nextIdx).padStart(4, "0")}-${ts}.json`), JSON.stringify(payload), { mode: 0o600 });
-			}
-		} catch {}
 
 		return payload;
 	});
