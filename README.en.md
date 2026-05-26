@@ -1,4 +1,4 @@
-[English](README.en.md) | 程序中文文档
+[中文文档](README.md) | English
 
 # pi-shepherd
 
