@@ -81,13 +81,51 @@ pi-shepherd ships with default rules for common anti-patterns:
 
 ## Use Cases
 
-- **Enforce coding standards** — Block tools that don't follow project conventions
-- **Prevent context bloat** — Truncate large tool results before they enter context
-- **Ensure git discipline** — Force commits at session end
-- **Custom guardrails** — Write project-specific rules for your team
+| Scenario | Rule Type | Action |
+|----------|-----------|--------|
+| **Enforce coding standards** | `tool_call` | Block tools that don't follow conventions |
+| **Prevent context bloat** | `tool_result` | Truncate large results |
+| **Git discipline** | `agent_end` | Force commit at session end |
+| **Redirect to better tools** | `tool_call` | Block grep, suggest code-graph |
+| **Custom team rules** | All types | Project-specific guardrails |
 
-## Dependencies
+## Best Practices
 
+### ✅ Recommended
+- Start with built-in rules, then add project-specific ones
+- Use `warn` before `block` — give the agent a chance to learn
+- Keep rule patterns simple and specific — regex is evaluated on every tool call
+- Put project rules in `.pi/shepherd-rules/` for version control
+
+### ❌ Not Recommended
+- Don't use overly broad patterns — they'll match too many calls and slow things down
+- Don't create contradictory rules (block + allow the same pattern)
+- Don't rely on shepherd for security — it's a guide, not a sandbox
+
+## Limitations
+
+| Limitation | Detail |
+|------------|--------|
+| Regex only | Patterns use regex, not semantic understanding |
+| No async rules | Rules must evaluate synchronously |
+| Agent can bypass | Determined agents can ignore warnings |
+| No persistence | Rule state resets between sessions |
+
+## Architecture
+
+```
+pi-shepherd/
+├── index.ts          # Entry: register hooks + rules engine
+├── rules-engine.ts   # Pattern matching + action dispatch
+├── rules/            # Built-in rule definitions
+│   ├── grep.ts       # Redirect grep → code-graph
+│   ├── line-limit.ts # Warn on large outputs
+│   └── agent-end.ts  # Enforce git commit
+├── types.ts          # Rule type definitions
+└── package.json
+```
+
+**Dependencies**:
 - `@pi-atelier/shared-utils` (bundled) — settings management
 - `@earendil-works/pi-coding-agent` — ExtensionAPI (peer)
 
