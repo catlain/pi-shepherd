@@ -10,6 +10,7 @@ import {
 	isRtkAvailable,
 	isSubagent,
 	type Rule,
+	type LoadRulesOptions,
 } from "./rules.js";
 import { type ResettableRule, type StateTracker } from "./state-tracker.js";
 import { checkLineCount } from "./line-count.js";
@@ -37,13 +38,13 @@ export function toolsAvailable(rule: Rule, pi: ExtensionAPI, state: ToolState): 
 }
 
 /** 注册 tool_call hook */
-export function registerToolCall(pi: ExtensionAPI, state: ToolState, rulesDir?: string): void {
+export function registerToolCall(pi: ExtensionAPI, state: ToolState, rulesDir?: string, rulesOptions?: LoadRulesOptions): void {
 	pi.on("tool_call", async (event) => {
 		if (event.toolName === "edit" || event.toolName === "write") {
 			state.hasEdits = true;
 		}
 
-		const rules = loadRules(rulesDir).filter(r => r.hook === "tool_call" && r.tool === event.toolName);
+		const rules = loadRules(rulesDir, rulesOptions).filter(r => r.hook === "tool_call" && r.tool === event.toolName);
 		if (rules.length === 0) return;
 
 		const targets = getMatchTargets(event.toolName!, event, "tool_call");
@@ -74,7 +75,7 @@ export function registerToolCall(pi: ExtensionAPI, state: ToolState, rulesDir?: 
 }
 
 /** 注册 tool_result hook */
-export function registerToolResult(pi: ExtensionAPI, state: ToolState, rulesDir?: string): void {
+export function registerToolResult(pi: ExtensionAPI, state: ToolState, rulesDir?: string, rulesOptions?: LoadRulesOptions): void {
 	pi.on("tool_result", async (event, ctx) => {
 		// 行数检查（edit/write/memory_update 后）
 		if (event.toolName === "edit" || event.toolName === "write") {
@@ -97,7 +98,7 @@ export function registerToolResult(pi: ExtensionAPI, state: ToolState, rulesDir?
 			?.map((c: any) => c.text).join("") ?? "";
 		state.tracker.update(event.toolName, resultText.length, !!event.isError);
 
-		const allRules = loadRules(rulesDir);
+		const allRules = loadRules(rulesDir, rulesOptions);
 		const rules = allRules.filter(r => r.hook === "tool_result");
 
 		// resetOn 检查

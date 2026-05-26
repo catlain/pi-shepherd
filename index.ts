@@ -31,6 +31,7 @@ import {
 	drainHints,
 	registerToolCall, registerToolResult, type ToolState,
 } from "./shepherd";
+import { getEffectiveConfig } from "@pi-atelier/shared-utils";
 
 /** 本地 hints 缓冲区（收集 pi.events.emit("ephemeral:hint") 的数据） */
 const _localHints: { text: string; short?: string }[] = [];
@@ -46,6 +47,15 @@ const _toolState: ToolState = {
 };
 
 export default function shepherdExtension(pi: ExtensionAPI) {
+
+	// ── 读取配置（三层合并：defaults → 全局 settings → 项目 settings）──
+	const shepherdConfig = getEffectiveConfig<{
+		projectRulesPattern: string;
+		maxWarnings: number;
+	}>("shepherd", {
+		projectRulesPattern: "shepherd-rules-",
+		maxWarnings: 5,
+	}, process.cwd());
 
 	// ── 监听跨扩展 hints（通过 pi.events 绕过 jiti 多实例） ──
 	pi.events.on("ephemeral:hint", (data) => {
@@ -105,7 +115,7 @@ export default function shepherdExtension(pi: ExtensionAPI) {
 	// ── agent_end ──────────────────────────────────────────────
 	pi.on("agent_end", async (event, _ctx) => {
 		if (isSubagent() || _aborted) return;
-		const rules = loadRules(RULES_DIR).filter(r => r.hook === "agent_end");
+		const rules = loadRules(RULES_DIR, { projectRulesPattern: shepherdConfig.projectRulesPattern }).filter(r => r.hook === "agent_end");
 		if (rules.length === 0) return;
 
 		const lastAssistant = [...event.messages]
@@ -150,7 +160,7 @@ export default function shepherdExtension(pi: ExtensionAPI) {
 
 	// ── session_shutdown ───────────────────────────────────────
 	pi.on("session_shutdown", async (_event, ctx) => {
-		const rules = loadRules(RULES_DIR).filter(r => r.hook === "session_shutdown");
+		const rules = loadRules(RULES_DIR, { projectRulesPattern: shepherdConfig.projectRulesPattern }).filter(r => r.hook === "session_shutdown");
 		if (rules.length === 0) return;
 		for (const rule of rules) {
 			let shouldNotify = false;
@@ -166,6 +176,7 @@ export default function shepherdExtension(pi: ExtensionAPI) {
 	});
 
 	// ── tool_call + tool_result（提取到 tool-hooks.ts）────────
-	registerToolCall(pi, _toolState, RULES_DIR);
-	registerToolResult(pi, _toolState, RULES_DIR);
+	const _rulesOpts = { projectRulesPattern: shepherdConfig.projectRulesPattern };
+	registerToolCall(pi, _toolState, RULES_DIR, _rulesOpts);
+	registerToolResult(pi, _toolState, RULES_DIR, _rulesOpts);
 }

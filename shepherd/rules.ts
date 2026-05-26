@@ -137,9 +137,15 @@ export function compileRules(rules: Rule[]): Rule[] {
 }
 
 /** 加载所有规则并校验格式，返回编译后的规则列表 */
-export function loadRules(rulesDir?: string): Rule[] {
+export interface LoadRulesOptions {
+	/** 项目级规则文件前缀，默认 "shepherd-rules-" */
+	projectRulesPattern?: string;
+}
+
+export function loadRules(rulesDir?: string, options?: LoadRulesOptions): Rule[] {
 	const allRules: Rule[] = [];
 	const errors: string[] = [];
+	const prefix = options?.projectRulesPattern || "shepherd-rules-";
 
 	// 1. 全局规则：由消费者传入规则文件所在目录
 	if (rulesDir) {
@@ -148,11 +154,11 @@ export function loadRules(rulesDir?: string): Rule[] {
 		if (result.error) errors.push(result.error);
 	}
 
-	// 2. 项目级规则（<cwd>/.pi/extensions/shepherd-rules-*.json）
+	// 2. 项目级规则（<cwd>/.pi/extensions/{prefix}*.json）
 	const projectExtDir = path.join(process.cwd(), ".pi", "extensions");
 	if (fs.existsSync(projectExtDir)) {
 		for (const file of fs.readdirSync(projectExtDir).sort()) {
-			if (file.startsWith("shepherd-rules-") && file.endsWith(".json")) {
+			if (file.startsWith(prefix) && file.endsWith(".json")) {
 				const result = loadRulesFromFile(path.join(projectExtDir, file));
 				allRules.push(...result.rules);
 				if (result.error) errors.push(result.error);
