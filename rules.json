@@ -338,11 +338,15 @@
     {
         "comment": "[code-graph] 工具报索引错误时提醒重建索引",
         "hook": "tool_result",
+        "tool": "grep",
         "action": "notify",
-        "pattern": "(还没索引|index|no.*found|0 nodes|empty index)",
-        "flags": "i",
-        "reason": "💡 code-graph 索引可能缺失或过期。运行 `code-graph incremental-index` 增量更新索引（几秒）。如果是全新项目或索引严重损坏，用 `code-graph reindex` 完全重建。索引更新后重新执行刚才的查询。",
-        "requiresTools": ["code_graph_semantic_code_search"],
+        "conditions": [
+            {
+                "field": "path",
+                "pattern": "\\.(ts|js|py|rs)$"
+            }
+        ],
+        "reason": "💡 搜代码文件推荐用 code-graph。如果 code-graph 返回空结果，先跑 `code-graph incremental-index` 更新索引。用法参考 code-graph 技能：semantic_code_search（模糊搜索）、get_ast_node（精确符号）、get_call_graph（调用链）、module_overview（模块结构）。",
         "enabled": true
     },
     {
