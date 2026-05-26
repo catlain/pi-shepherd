@@ -32,5 +32,15 @@
   ],
   "devDependencies": {
     "vitest": "^4.1.7"
-  }
+  },
+  "files": [
+    "index.ts",
+    "shepherd/",
+    "rules.json",
+    "README.md",
+    "README.en.md",
+    "tsconfig.json",
+    "vitest.config.ts",
+    "package.json"
+  ]
 }
