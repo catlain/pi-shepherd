@@ -321,7 +321,7 @@
 		"action": "notify",
 		"pattern": ".",
 		"flags": "s",
-		"reason": "推荐用 code-graph 替代 grep 搜代码——code-graph 理解 AST 语义，能按符号名、调用链、引用关系精准定位，比 grep 逐行匹配快得多且不漏不误报。选工具方法：①模糊搜索 → semantic_code_search（默认首选）；②精确符号名 → get_ast_node；③引用追踪 → find_references；④调用链 → get_call_graph；⑤模块结构 → module_overview。grep 仅适合搜字面量字符串（TODO、配置值、错误消息）。如果当前搜索的就是字面量字符串则忽略此提醒。",
+		"reason": "推荐用 code-graph 替代 grep 搜代码——code-graph 理解 AST 语义，能按符号名、调用链、引用关系精准定位，比 grep 逐行匹配快得多且不漏不误报。选工具方法：①模糊搜索 → semantic_code_search（默认首选）；②精确符号名 → get_ast_node；③引用追踪 → find_references；④调用链 → get_call_graph；⑤模块结构 → module_overview。grep 仅适合搜字面量字符串（TODO、配置值、错误消息）。如果当前搜索的就是字面量字符串则忽略此提醒。如果目标目录没有被 code-graph 索引（搜索返回空结果），调用 setup_codegraph({ directory: \"目标目录路径\" }) 一键建索引。",
 		"requiresTools": [
 			"code_graph_semantic_code_search"
 		],
@@ -334,7 +334,7 @@
 		"action": "notify",
 		"pattern": "\\b(grep|rg)\\b.*\\.(py|rs|ts|js|toml)(?=[\\s'\"|)]|$)",
 		"flags": "",
-		"reason": "💡 bash grep 搜代码文件不如用 pi 内置 grep 工具或 code-graph MCP 工具——code-graph 理解 AST 语义，能精准匹配符号名和调用关系。选工具：①模糊搜索 → semantic_code_search；②精确符号 → get_ast_node；③引用追踪 → find_references；④调用链 → get_call_graph。如果搜的是字面量字符串（TODO、配置值）则忽略。",
+		"reason": "💡 bash grep 搜代码文件不如用 pi 内置 grep 工具或 code-graph MCP 工具——code-graph 理解 AST 语义，能精准匹配符号名和调用关系。选工具：①模糊搜索 → semantic_code_search；②精确符号 → get_ast_node；③引用追踪 → find_references；④调用链 → get_call_graph。如果搜的是字面量字符串（TODO、配置值）则忽略。如果目标目录没有被 code-graph 索引，调用 setup_codegraph({ directory: \"目标目录路径\" }) 一键建索引。",
 		"enabled": true
 	},
 	{
@@ -348,7 +348,7 @@
 				"pattern": "\\.(ts|js|py|rs)$"
 			}
 		],
-		"reason": "💡 搜代码文件推荐用 code-graph。如果 code-graph 返回空结果，先跑 `code-graph incremental-index` 更新索引。用法参考 code-graph 技能：semantic_code_search（模糊搜索）、get_ast_node（精确符号）、get_call_graph（调用链）、module_overview（模块结构）。",
+		"reason": "💡 搜代码文件推荐用 code-graph。如果 code-graph 返回空结果，可能是目标目录没有被索引。调用 setup_codegraph({ directory: \"目标目录路径\" }) 一键建索引（软链接+增量索引，当前会话即刻可搜）。用法参考 code-graph 技能：semantic_code_search（模糊搜索）、get_ast_node（精确符号）、get_call_graph（调用链）、module_overview（模块结构）。",
 		"enabled": true
 	},
 	{
