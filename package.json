@@ -23,6 +23,14 @@
     }
   },
   "pi": {
-    "extensions": ["."]
+    "extensions": [
+      "."
+    ]
+  },
+  "bundleDependencies": [
+    "@pi-atelier/shared-utils"
+  ],
+  "devDependencies": {
+    "vitest": "^4.1.7"
   }
 }

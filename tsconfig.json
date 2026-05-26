@@ -1,6 +1,18 @@
 {
-	"extends": "../../tsconfig.base.json",
 	"compilerOptions": {
+		"target": "ES2022",
+		"module": "ESNext",
+		"moduleResolution": "bundler",
+		"esModuleInterop": true,
+		"strict": false,
+		"skipLibCheck": true,
+		"outDir": "dist",
+		"rootDir": ".",
+		"declaration": true,
+		"sourceMap": true,
+		"paths": {
+			"@pi-atelier/shared-utils": ["./node_modules/@pi-atelier/shared-utils/src/index.ts"]
+		}
 	},
-	"include": ["index.ts", "lib/**/*.ts"]
+	"include": ["index.ts", "shepherd/**/*.ts", "tests/**/*.ts"]
 }
