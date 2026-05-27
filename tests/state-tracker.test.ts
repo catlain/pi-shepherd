@@ -167,14 +167,12 @@ describe("StateTracker", () => {
 			// 确认有计数
 			expect(tracker.getStats(["tool_a", "tool_b"]).count).toBe(2);
 
-			// 触发重置
+			// 触发重置：reset_tool 匹配 resetOn，删除 rule.state.tools 里所有工具计数
 			tracker.resetIf("reset_tool", [makeResettableRule()]);
 
-			// 计数仍在（没有匹配 reset_tool 的 state.tools 中的工具被删除）
-			// wait, reset_tool is in resetOn, so when toolName === "reset_tool", it should reset
-			// But the rule's state.tools is ["tool_a", "tool_b"] - those get deleted
-			expect(tracker.getStats(["tool_a"]).count).toBe(1); // tool_a was not affected by resetIf
-			// Actually let me re-think the logic...
+			// tool_a 和 tool_b 的计数被清除
+			expect(tracker.getStats(["tool_a"]).count).toBe(0);
+			expect(tracker.getStats(["tool_b"]).count).toBe(0);
 		});
 
 		it("重置触发状态 _triggered", () => {
