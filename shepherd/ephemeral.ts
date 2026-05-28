@@ -6,10 +6,15 @@
  * 提示只对当前请求生效，不写入 session 历史。
  */
 
+/** 替换 ${ENV_VAR} 格式的环境变量 */
+function expandEnvVars(text: string): string {
+	return text.replace(/\$\{(\w+)\}/g, (_match, name: string) => process.env[name] ?? `\${${name}}`);
+}
+
 /** 推入一条 shepherd 提示（自动加 ⚠️ shepherd: 前缀） */
 export function pushWarning(reason: string, label?: string): void {
 	// shepherd 前缀用于通知气泡识别，注入时由 injectHints 统一处理
-	pushShepherdHint(reason, label);
+	pushShepherdHint(expandEnvVars(reason), label);
 }
 
 /** 生成通知气泡用的摘要（优先用规则名列表，fallback 截断 reason） */

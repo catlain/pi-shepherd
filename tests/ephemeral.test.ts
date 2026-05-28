@@ -55,6 +55,27 @@ describe("pushWarning", () => {
 		drainHints();
 		expect(hasWarnings()).toBe(false);
 	});
+
+	it("替换 ${PI_SESSION_ID} 环境变量", () => {
+		process.env.PI_SESSION_ID = "test-session-123";
+		pushWarning("session:${PI_SESSION_ID}");
+		const hint = drainHints();
+		expect(hint).toContain("test-session-123");
+		expect(hint).not.toContain("${PI_SESSION_ID}");
+		delete process.env.PI_SESSION_ID;
+	});
+
+	it("未定义的环境变量保留原始占位符", () => {
+		pushWarning("value:${NONEXISTENT_VAR_12345}");
+		const hint = drainHints();
+		expect(hint).toContain("${NONEXISTENT_VAR_12345}");
+	});
+
+	it("不包含 \${} 的文本原样通过", () => {
+		pushWarning("plain text no vars");
+		const hint = drainHints();
+		expect(hint).toContain("plain text no vars");
+	});
 });
 
 // ── notifySummary ─────────────────────────────────────────
