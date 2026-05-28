@@ -393,5 +393,33 @@
 		"subagent": false,
 		"requireSuccess": false,
 		"enabled": true
+	},
+	{
+		"comment": "[roadmap] 禁止直接编辑 roadmap JSON — 必须用 roadmap 工具",
+		"hook": "tool_call",
+		"tool": "edit",
+		"action": "block",
+		"conditions": [
+			{
+				"field": "path",
+				"pattern": "\\.roadmap\\.json$|\\broadmap/roadmap\\.json$"
+			}
+		],
+		"reason": "⛔ 禁止直接编辑 roadmap JSON！请用 roadmap 工具操作（自动处理时间戳/ID分配/状态级联/归档/doing同步）：\n查看：roadmap_list（列表）、roadmap_show（详情）、roadmap_next（待办）\n创建：roadmap_plan（完整JSON创建/更新）、roadmap_create + roadmap_add_epic/story/task（逐步构建）\n修改：roadmap_update(roadmapId, item_id, {status/title/description/priority}) — 更新单个项\n完成：roadmap_done(roadmapId, taskId) — 标记完成并级联更新\n归档：roadmap_archive(roadmapId) — 归档已完成项\n直接改 JSON 会绕过这些机制导致数据不一致。",
+		"enabled": true
+	},
+	{
+		"comment": "[roadmap] 禁止直接写入 roadmap JSON — 必须用 roadmap 工具",
+		"hook": "tool_call",
+		"tool": "write",
+		"action": "block",
+		"conditions": [
+			{
+				"field": "path",
+				"pattern": "\\.roadmap\\.json$|\\broadmap/roadmap\\.json$"
+			}
+		],
+		"reason": "⛔ 禁止直接写入 roadmap JSON！请用 roadmap 工具操作（自动处理时间戳/ID分配/状态级联/归档/doing同步）：\n查看：roadmap_list（列表）、roadmap_show（详情）、roadmap_next（待办）\n创建：roadmap_plan（完整JSON创建/更新）、roadmap_create + roadmap_add_epic/story/task（逐步构建）\n修改：roadmap_update(roadmapId, item_id, {status/title/description/priority}) — 更新单个项\n完成：roadmap_done(roadmapId, taskId) — 标记完成并级联更新\n归档：roadmap_archive(roadmapId) — 归档已完成项\n直接改 JSON 会绕过这些机制导致数据不一致。",
+		"enabled": true
 	}
 ]
