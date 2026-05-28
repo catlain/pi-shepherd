@@ -12,6 +12,7 @@ export {
 } from "./ephemeral-shared";
 export { checkLineCount } from "./line-count";
 export {
+	CODE_EXT_RE,
 	type Condition,
 	compileRules,
 	getMatchTargets,
