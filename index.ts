@@ -18,8 +18,6 @@
  */
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { rmSync } from "node:fs";
-import { tmpdir } from "node:os";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 
@@ -115,12 +113,6 @@ export default function shepherdExtension(pi: ExtensionAPI) {
 
 	// ── session_start ──────────────────────────────────────────
 	pi.on("session_start", async (_event, ctx) => {
-		// 清 jiti 编译缓存，确保扩展代码变更在 reload 后生效
-		// 背景：jiti 基于文件 hash 缓存编译结果到 /tmp/jiti/，
-		// 但 /reload 时可能不会重新编译所有依赖模块
-		try {
-			rmSync(join(tmpdir(), "jiti"), { recursive: true, force: true });
-		} catch { /* 忽略清理失败 */ }
 		checkWorktrees(ctx.ui);
 	});
 
