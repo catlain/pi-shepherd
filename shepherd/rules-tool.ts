@@ -84,6 +84,8 @@ export function registerRulesEditorTool(pi: ExtensionAPI, rulesFilePath: string)
 						? `✅ 规则已删除: ${(result.deleted as any)?.comment || ""}`
 						: `❌ ${result.error}`;
 				}
+				default:
+					return `❌ 未知操作: ${(params as any).action}`;
 			}
 		},
 	});
