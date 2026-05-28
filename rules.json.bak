@@ -445,15 +445,5 @@
 			"match": "\\.gd$"
 		},
 		"action": "notify"
-	},
-	{
-		"action": "notify",
-		"comment": "[GDScript][write] 写入 .gd 文件后提醒写/跑 GUT 测试",
-		"reason": "跟 edit 规则配对。新建 .gd 文件时提醒创建对应的测试文件。",
-		"trigger": {
-			"event": "tool_result",
-			"match": "\\.gd$",
-			"tool": "write"
-		}
 	}
 ]
