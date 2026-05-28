@@ -21,6 +21,19 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { dirname, join } from "path";
 import { fileURLToPath } from "url";
 
+/** pi payload 消息结构的最小类型 */
+interface PayloadMessage {
+	role: string;
+	content?: unknown;
+	[key: string]: unknown;
+}
+
+/** pi provider payload 的最小类型 */
+interface ProviderPayload {
+	messages?: PayloadMessage[];
+	[key: string]: unknown;
+}
+
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const RULES_DIR = __dirname;
 
@@ -95,7 +108,7 @@ export default function shepherdExtension(pi: ExtensionAPI) {
 			.splice(0)
 			.map((h) => h.text)
 			.join("\n\n");
-		let payload: any = event.payload;
+		let payload = event.payload as ProviderPayload;
 
 		if (allHints) {
 			const text = allHints;
@@ -144,12 +157,12 @@ export default function shepherdExtension(pi: ExtensionAPI) {
 
 		const lastAssistant = [...event.messages]
 			.reverse()
-			.find((m: any) => m.role === "assistant");
-		const stopReason: string | undefined = (lastAssistant as any)?.stopReason;
+			.find((m: PayloadMessage) => m.role === "assistant");
+		const stopReason: string | undefined = (lastAssistant as PayloadMessage | undefined)?.stopReason as string | undefined;
 
 		for (const rule of rules) {
 			const allowedReasons = rule.stopReason ?? ["stop"];
-			if (!allowedReasons.includes(stopReason as any)) continue;
+			if (!allowedReasons.includes(stopReason ?? "")) continue;
 			if (_agentEndFired.has(rule.comment)) continue;
 
 			let shouldNotify = false;

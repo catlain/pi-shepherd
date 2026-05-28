@@ -55,7 +55,7 @@ function readFile(filePath: string): FileData {
 			return { rules: [], error: `顶层必须是 JSON 数组，当前是 ${typeof parsed}` };
 		}
 		return { rules: parsed };
-	} catch (e: any) {
+	} catch (e: unknown) {
 		return { rules: [], error: `JSON 解析失败: ${e.message}` };
 	}
 }

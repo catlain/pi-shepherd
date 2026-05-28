@@ -28,14 +28,14 @@ export function validateRule(rule: Record<string, unknown>): ValidationResult {
 	}
 	if (rule.pattern) {
 		try { new RegExp(rule.pattern as string, (rule.flags as string) || ""); }
-		catch (e: any) { errors.push(`pattern 正则编译失败: ${e.message}`); }
+		catch (e: unknown) { errors.push(`pattern 正则编译失败: ${e.message}`); }
 	}
 	if (Array.isArray(rule.conditions)) {
 		for (let i = 0; i < rule.conditions.length; i++) {
 			const cond = rule.conditions[i] as Record<string, unknown>;
 			if (cond.pattern) {
 				try { new RegExp(cond.pattern as string, (cond.flags as string) || ""); }
-				catch (e: any) { errors.push(`conditions[${i}].pattern 正则编译失败: ${e.message}`); }
+				catch (e: unknown) { errors.push(`conditions[${i}].pattern 正则编译失败: ${e.message}`); }
 			}
 		}
 	}

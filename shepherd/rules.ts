@@ -7,6 +7,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { pushRuleError } from "./ephemeral.js";
 import type { ResettableRule, StateCondition } from "./state-tracker.js";
+import type { ToolEvent } from "./tool-event-types.js";
 
 // ── 类型定义 ──────────────────────────────────────────────────
 
@@ -126,7 +127,7 @@ export function loadRulesFromFile(filePath: string): {
 			};
 		}
 		return { rules: parsed };
-	} catch (e: any) {
+	} catch (e: unknown) {
 		if (e.code === "ENOENT") return { rules: [] };
 		const fileName = path.basename(filePath);
 		return { rules: [], error: `${fileName}: JSON 解析失败 — ${e.message}` };
@@ -204,7 +205,7 @@ export function loadRules(
  */
 export function getMatchTargets(
 	tool: string,
-	event: any,
+	event: ToolEvent,
 	phase?: string,
 ): Record<string, string> {
 	if (tool === "bash") {
@@ -241,7 +242,7 @@ export function getMatchTargets(
 		const edits = (event.input as any)?.edits;
 		if (Array.isArray(edits)) {
 			text = edits
-				.flatMap((e: any) => [e.oldText || "", e.newText || ""])
+				.flatMap((e: { oldText?: string; newText?: string }) => [e.oldText || "", e.newText || ""])
 				.join("\n");
 		}
 	} else if (tool === "write") {
