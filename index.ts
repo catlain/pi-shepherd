@@ -41,6 +41,7 @@ import {
 	StateTracker,
 	type ToolState,
 } from "./shepherd";
+import { registerRulesEditorTool } from "./shepherd/rules-tool";
 
 /** 本地 hints 缓冲区（收集 pi.events.emit("ephemeral:hint") 的数据） */
 const _localHints: { text: string; short?: string }[] = [];
@@ -217,4 +218,7 @@ export default function shepherdExtension(pi: ExtensionAPI) {
 	};
 	registerToolCall(pi, _toolState, RULES_DIR, _rulesOpts);
 	registerToolResult(pi, _toolState, RULES_DIR, _rulesOpts);
+
+	// ── shepherd_rules 工具：规则文件安全编辑 ───────────────────
+	registerRulesEditorTool(pi, join(RULES_DIR, "rules.json"));
 }
