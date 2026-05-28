@@ -41,7 +41,7 @@ describe("rules-tool 集成测试", () => {
 		fs.rmSync(tmpDir, { recursive: true, force: true });
 	});
 
-	async function callExecute(params: any): Promise<string> {
+	async function callExecute(params: any): Promise<any> {
 		const { pi, getTool } = createMockPi();
 		registerRulesEditorTool(pi, rulesPath);
 		const tool = getTool();
@@ -49,11 +49,19 @@ describe("rules-tool 集成测试", () => {
 		return tool.execute("call-1", params);
 	}
 
+	/** 从 { content: [{ text }] } 格式中提取文本 */
+	function extractText(result: any): string {
+		if (typeof result === "string") return result;
+		return result.content?.[0]?.text ?? "";
+	}
+
 	// ── list ────────────────────────────────────────────
 
 	it("list: 空文件返回提示", async () => {
 		const result = await callExecute({ action: "list" });
-		expect(result).toBe("暂无规则。");
+		expect(extractText(result)).toBe("暂无规则。");
+		expect(result.content).toBeDefined();
+		expect(result.content[0].type).toBe("text");
 	});
 
 	it("list: 列出多条规则", async () => {
@@ -62,16 +70,17 @@ describe("rules-tool 集成测试", () => {
 			{ comment: "规则B", reason: "r", action: "notify", enabled: false },
 		]));
 		const result = await callExecute({ action: "list" });
-		expect(result).toContain("[0] 规则A — block on write");
-		expect(result).toContain("[1] 规则B (disabled) — notify");
+		const text = extractText(result);
+		expect(text).toContain("[0] 规则A — block on write");
+		expect(text).toContain("[1] 规则B (disabled) — notify");
 	});
 
 	// ── add ─────────────────────────────────────────────
 
 	it("add: 缺少 rule 参数拒绝", async () => {
 		const result = await callExecute({ action: "add" });
-		expect(result).toContain("❌");
-		expect(result).toContain("rule 参数");
+		expect(extractText(result)).toContain("❌");
+		expect(extractText(result)).toContain("rule 参数");
 	});
 
 	it("add: 正常添加并返回编号", async () => {
@@ -79,7 +88,7 @@ describe("rules-tool 集成测试", () => {
 			action: "add",
 			rule: { comment: "新规则", reason: "安全" },
 		});
-		expect(result).toBe("✅ 规则已添加 [0]");
+		expect(extractText(result)).toBe("✅ 规则已添加 [0]");
 		const written = JSON.parse(fs.readFileSync(rulesPath, "utf-8"));
 		expect(written).toHaveLength(1);
 		expect(written[0].comment).toBe("新规则");
@@ -90,22 +99,22 @@ describe("rules-tool 集成测试", () => {
 			action: "add",
 			rule: { comment: "只有comment" },
 		});
-		expect(result).toContain("❌");
-		expect(result).toContain("reason");
+		expect(extractText(result)).toContain("❌");
+		expect(extractText(result)).toContain("reason");
 	});
 
 	// ── update ──────────────────────────────────────────
 
 	it("update: 缺少 index 参数拒绝", async () => {
 		const result = await callExecute({ action: "update", changes: {} });
-		expect(result).toContain("❌");
-		expect(result).toContain("index");
+		expect(extractText(result)).toContain("❌");
+		expect(extractText(result)).toContain("index");
 	});
 
 	it("update: 缺少 changes 参数拒绝", async () => {
 		const result = await callExecute({ action: "update", index: 0 });
-		expect(result).toContain("❌");
-		expect(result).toContain("changes");
+		expect(extractText(result)).toContain("❌");
+		expect(extractText(result)).toContain("changes");
 	});
 
 	it("update: 正常更新", async () => {
@@ -117,7 +126,7 @@ describe("rules-tool 集成测试", () => {
 			index: 0,
 			changes: { action: "notify" },
 		});
-		expect(result).toBe("✅ 规则 [0] 已更新");
+		expect(extractText(result)).toBe("✅ 规则 [0] 已更新");
 		const written = JSON.parse(fs.readFileSync(rulesPath, "utf-8"));
 		expect(written[0].action).toBe("notify");
 		expect(written[0].comment).toBe("旧"); // 未改的字段保留
@@ -127,8 +136,8 @@ describe("rules-tool 集成测试", () => {
 
 	it("delete: 缺少 index 参数拒绝", async () => {
 		const result = await callExecute({ action: "delete" });
-		expect(result).toContain("❌");
-		expect(result).toContain("index");
+		expect(extractText(result)).toContain("❌");
+		expect(extractText(result)).toContain("index");
 	});
 
 	it("delete: 正常删除并返回名称", async () => {
@@ -137,7 +146,7 @@ describe("rules-tool 集成测试", () => {
 			{ comment: "规则2", reason: "r" },
 		]));
 		const result = await callExecute({ action: "delete", index: 0 });
-		expect(result).toBe("✅ 规则已删除: 规则1");
+		expect(extractText(result)).toBe("✅ 规则已删除: 规则1");
 		const written = JSON.parse(fs.readFileSync(rulesPath, "utf-8"));
 		expect(written).toHaveLength(1);
 		expect(written[0].comment).toBe("规则2");
@@ -146,8 +155,8 @@ describe("rules-tool 集成测试", () => {
 	it("delete: 编号越界拒绝", async () => {
 		fs.writeFileSync(rulesPath, JSON.stringify([{ comment: "X", reason: "r" }]));
 		const result = await callExecute({ action: "delete", index: 5 });
-		expect(result).toContain("❌");
-		expect(result).toContain("越界");
+		expect(extractText(result)).toContain("❌");
+		expect(extractText(result)).toContain("越界");
 	});
 
 	// ── 参数校验 ─────────────────────────────────────────

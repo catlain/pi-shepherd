@@ -7,6 +7,11 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { addRule, deleteRule, listRules, updateRule } from "./rules-editor";
 
+/** 构造 pi 工具 execute 的标准返回格式 */
+function textResult(text: string) {
+	return { content: [{ type: "text" as const, text }] };
+}
+
 export function registerRulesEditorTool(pi: ExtensionAPI, rulesFilePath: string) {
 	pi.registerTool({
 		name: "shepherd_rules",
@@ -49,43 +54,45 @@ export function registerRulesEditorTool(pi: ExtensionAPI, rulesFilePath: string)
 			switch (params.action) {
 				case "list": {
 					const result = listRules(rulesFilePath);
-					if (result.error) return `❌ ${result.error}`;
-					if (result.count === 0) return "暂无规则。";
-					return result.rules
-						.map(
-							(r) =>
-								`[${r.index}] ${r.comment}` +
-								(r.enabled === false ? " (disabled)" : "") +
-								(r.action ? ` — ${r.action}` : "") +
-								(r.tool ? ` on ${r.tool}` : "") +
-								(r.hook ? ` @ ${r.hook}` : ""),
+					if (result.error) return textResult(`❌ ${result.error}`);
+					if (result.count === 0) return textResult("暂无规则。");
+					return textResult(
+						result.rules
+							.map(
+								(r) =>
+									`[${r.index}] ${r.comment}` +
+									(r.enabled === false ? " (disabled)" : "") +
+									(r.action ? ` — ${r.action}` : "") +
+									(r.tool ? ` on ${r.tool}` : "") +
+									(r.hook ? ` @ ${r.hook}` : ""),
 						)
-						.join("\n");
+							.join("\n"),
+					);
 				}
 				case "add": {
-					if (!params.rule) return "❌ add 需要 rule 参数";
+					if (!params.rule) return textResult("❌ add 需要 rule 参数");
 					const result = addRule(rulesFilePath, params.rule);
 					return result.success
-						? `✅ 规则已添加 [${result.index}]`
-						: `❌ ${result.error}`;
+						? textResult(`✅ 规则已添加 [${result.index}]`)
+						: textResult(`❌ ${result.error}`);
 				}
 				case "update": {
-					if (params.index === undefined) return "❌ update 需要 index 参数";
-					if (!params.changes) return "❌ update 需要 changes 参数";
+					if (params.index === undefined) return textResult("❌ update 需要 index 参数");
+					if (!params.changes) return textResult("❌ update 需要 changes 参数");
 					const result = updateRule(rulesFilePath, params.index, params.changes);
 					return result.success
-						? `✅ 规则 [${params.index}] 已更新`
-						: `❌ ${result.error}`;
+						? textResult(`✅ 规则 [${params.index}] 已更新`)
+						: textResult(`❌ ${result.error}`);
 				}
 				case "delete": {
-					if (params.index === undefined) return "❌ delete 需要 index 参数";
+					if (params.index === undefined) return textResult("❌ delete 需要 index 参数");
 					const result = deleteRule(rulesFilePath, params.index);
 					return result.success
-						? `✅ 规则已删除: ${(result.deleted as any)?.comment || ""}`
-						: `❌ ${result.error}`;
+						? textResult(`✅ 规则已删除: ${(result.deleted as any)?.comment || ""}`)
+						: textResult(`❌ ${result.error}`);
 				}
 				default:
-					return `❌ 未知操作: ${(params as any).action}`;
+					return textResult(`❌ 未知操作: ${(params as any).action}`);
 			}
 		},
 	});
