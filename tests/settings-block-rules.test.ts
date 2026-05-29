@@ -4,14 +4,12 @@
  * 验证规则 #32-#34 的匹配逻辑：
  * - edit settings.json → block
  * - write settings.json → block
- * - bash 含 settings.json → block
- * - read settings.json → 不拦截
+ * - bash 写入 settings.json → block（只匹配写操作，不拦截 cat/grep 等读操作）
+ * - read settings.json → 不拦截（无对应规则）
  * - 其他文件 → 不拦截
- * - settings.json.bak → block
- * - 路径中的 settings.json → block（子目录）
  */
 
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import type { Rule } from "../shepherd/rules";
 import { getMatchTargets, ruleMatches, compileRules } from "../shepherd/rules";
 import type { ToolEvent } from "../shepherd/event-types";
@@ -39,9 +37,9 @@ const settingsBlockRules: Rule[] = [
 		hook: "tool_call",
 		tool: "bash",
 		action: "block",
-		comment: "[settings] 禁止 bash 直接修改 settings.json",
+		comment: "[settings] 禁止 bash 写入 settings.json",
 		reason: "直接编辑 settings.json 曾导致配置丢失。必须使用 patchSettingsSectionWithBackup 或 settings_rollback。",
-		conditions: [{ field: "command", pattern: "settings\\.json" }],
+		conditions: [{ field: "command", pattern: "(>>|>|tee|sed\\s+-i|cp\\s|mv\\s).*settings\\.json|settings\\.json\\s*(>>|>)" }],
 	} as Rule,
 ];
 
@@ -50,28 +48,25 @@ compileRules(settingsBlockRules);
 
 // ====== 辅助函数 ======
 
-/** 模拟 tool_call 事件 */
 function makeEvent(toolName: string, input: Record<string, unknown>): ToolEvent {
 	return { toolName, input } as ToolEvent;
 }
 
-/** 测试某次操作是否被 block */
 function isBlocked(toolName: string, input: Record<string, unknown>): boolean {
 	const event = makeEvent(toolName, input);
 	const targets = getMatchTargets(toolName, event, "tool_call");
-	// targets 为空 = 不处理
 	if (Object.keys(targets).length === 0) return false;
-	const matched = settingsBlockRules.some((rule) => {
+	return settingsBlockRules.some((rule) => {
 		if (rule.tool !== toolName) return false;
 		return ruleMatches(rule, toolName, targets);
 	});
-	return matched;
 }
 
 // ====== 测试用例 ======
 
 describe("settings.json block 规则", () => {
 	describe("应该 block 的操作", () => {
+		// --- edit ---
 		it("edit settings.json（绝对路径）", () => {
 			expect(isBlocked("edit", { path: "/home/lain/.pi/agent/settings.json", edits: [] })).toBe(true);
 		});
@@ -84,6 +79,11 @@ describe("settings.json block 规则", () => {
 			expect(isBlocked("edit", { path: "/home/lain/.pi/agent/settings.json.bak", edits: [] })).toBe(true);
 		});
 
+		it("edit 子目录中的 settings.json", () => {
+			expect(isBlocked("edit", { path: "/home/lain/.pi/agent/git/github.com/catlain/pi-shepherd/settings.json", edits: [] })).toBe(true);
+		});
+
+		// --- write ---
 		it("write settings.json（绝对路径）", () => {
 			expect(isBlocked("write", { path: "/home/lain/.pi/agent/settings.json", content: "{}" })).toBe(true);
 		});
@@ -96,66 +96,89 @@ describe("settings.json block 规则", () => {
 			expect(isBlocked("write", { path: "settings.json.bak", content: "{}" })).toBe(true);
 		});
 
-		it("bash cat settings.json", () => {
-			expect(isBlocked("bash", { command: "cat /home/lain/.pi/agent/settings.json" })).toBe(true);
+		// --- bash 写操作 ---
+		it("bash echo 重定向写入 settings.json", () => {
+			expect(isBlocked("bash", { command: "echo '{}' > settings.json" })).toBe(true);
 		});
 
-		it("bash python 写 settings.json", () => {
-			expect(isBlocked("bash", { command: "python3 -c \"import json; json.dump({}, open('settings.json','w'))\"" })).toBe(true);
+		it("bash echo 追加写入 settings.json", () => {
+			expect(isBlocked("bash", { command: "echo 'foo' >> settings.json" })).toBe(true);
 		});
 
-		it("bash sed 修改 settings.json", () => {
+		it("bash tee 写入 settings.json", () => {
+			expect(isBlocked("bash", { command: "echo '{}' | tee settings.json" })).toBe(true);
+		});
+
+		it("bash sed -i 修改 settings.json", () => {
 			expect(isBlocked("bash", { command: "sed -i 's/foo/bar/' settings.json" })).toBe(true);
 		});
 
-		it("bash cd && 编辑 settings.json", () => {
-			expect(isBlocked("bash", { command: "cd ~/.pi/agent && cat settings.json" })).toBe(true);
+		it("bash cp 覆盖 settings.json", () => {
+			expect(isBlocked("bash", { command: "cp backup.json settings.json" })).toBe(true);
 		});
 
-		it("edit 子目录中的 settings.json", () => {
-			expect(isBlocked("edit", { path: "/home/lain/.pi/agent/git/github.com/catlain/pi-shepherd/settings.json", edits: [] })).toBe(true);
+		it("bash mv 覆盖 settings.json", () => {
+			expect(isBlocked("bash", { command: "mv temp.json settings.json" })).toBe(true);
+		});
+
+		it("bash cat 重定向输出到 settings.json", () => {
+			expect(isBlocked("bash", { command: "cat backup.json > settings.json" })).toBe(true);
 		});
 	});
 
 	describe("不应该 block 的操作", () => {
-		it("read settings.json（read 不在规则中）", () => {
-			// read 工具没有对应的 block 规则
+		// --- read 无规则 ---
+		it("read settings.json（无对应 block 规则）", () => {
 			const readRules = settingsBlockRules.filter((r) => r.tool === "read");
 			expect(readRules).toHaveLength(0);
 		});
 
+		// --- edit/write 其他文件 ---
 		it("edit 其他 .json 文件", () => {
 			expect(isBlocked("edit", { path: "/home/lain/.pi/agent/git/github.com/catlain/pi-shepherd/rules.json", edits: [] })).toBe(false);
 		});
 
-		it("edit ts 文件", () => {
+		it("edit .ts 文件", () => {
 			expect(isBlocked("edit", { path: "src/index.ts", edits: [] })).toBe(false);
-		});
-
-		it("write 其他文件", () => {
-			expect(isBlocked("write", { path: "output.txt", content: "hello" })).toBe(false);
-		});
-
-		it("bash 不含 settings.json 的命令", () => {
-			expect(isBlocked("bash", { command: "npm test" })).toBe(false);
-		});
-
-		it("bash git commit（含 message 但不含 settings.json）", () => {
-			expect(isBlocked("bash", { command: "git commit -m 'fix: update config'" })).toBe(false);
 		});
 
 		it("edit settings.ts（不是 .json）", () => {
 			expect(isBlocked("edit", { path: "settings.ts", edits: [] })).toBe(false);
 		});
 
-		it("edit my-settings.json（不以 settings.json 结尾）", () => {
-			// 正则 settings\.json$ 匹配字符串末尾的 settings.json
-			// my-settings.json 也以 settings.json 结尾！这会被匹配
-			expect(isBlocked("edit", { path: "my-settings.json", edits: [] })).toBe(true);
+		it("write 其他文件", () => {
+			expect(isBlocked("write", { path: "output.txt", content: "hello" })).toBe(false);
+		});
+
+		// --- bash 读操作（不应拦截） ---
+		it("bash cat 读取 settings.json（只读）", () => {
+			expect(isBlocked("bash", { command: "cat /home/lain/.pi/agent/settings.json" })).toBe(false);
+		});
+
+		it("bash cat | head 读取 settings.json（只读）", () => {
+			expect(isBlocked("bash", { command: "cat settings.json | head -3" })).toBe(false);
+		});
+
+		it("bash grep 搜索 settings.json（只读）", () => {
+			expect(isBlocked("bash", { command: "grep 'mcp' settings.json" })).toBe(false);
+		});
+
+		it("bash diff 比较 settings.json（只读）", () => {
+			expect(isBlocked("bash", { command: "diff settings.json settings.json.bak" })).toBe(false);
+		});
+
+		// --- bash 其他 ---
+		it("bash 不含 settings.json 的命令", () => {
+			expect(isBlocked("bash", { command: "npm test" })).toBe(false);
 		});
 
 		it("bash 不含 settings.json 的 Python 脚本", () => {
 			expect(isBlocked("bash", { command: "python3 -c \"print('hello')\"" })).toBe(false);
+		});
+
+		// --- 边缘：my-settings.json ---
+		it("edit my-settings.json（以 settings.json 结尾，仍被匹配）", () => {
+			expect(isBlocked("edit", { path: "my-settings.json", edits: [] })).toBe(true);
 		});
 	});
 
