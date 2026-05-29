@@ -98,11 +98,11 @@
 		"enabled": true
 	},
 	{
-		"comment": "[收尾] 编辑后提醒 commit + 记忆更新 + 总结",
+		"comment": "收尾规则 — agent_end 时提醒 commit + 记忆 + 总结，commit 必须带 session ID",
 		"hook": "agent_end",
 		"action": "notify",
 		"check": "has_edits",
-		"reason": "检测到文件编辑，执行收尾工作：\n1️⃣ **Git commit**：如有未提交的 git 改动 → git add + git commit。commit message 末尾必须加 `session:${PI_SESSION_ID}`。如果在 worktree 中，commit 后尝试 merge 到 main，冲突则停。如果已提交则跳过。\n2️⃣ **更新记忆**：检查本轮是否有值得跨会话保留的知识（架构决策、踩坑教训、结论），如果有 → 用 memory_update 工具写入。用法：①先调 memory_index 看已有文件，判断重复/合并/新建；②调 memory_update(fileName, content, scope) 一步写入文件+更新索引。fileName 格式：topic--kw1,kw2,kw3.md（topic 英文短标识，kw 最多5个关键词）。scope：L1=跨项目通用，L2=项目级（默认）。单文件不超 200 行，超过必须拆主题。\n3️⃣ **会话总结**：输出本轮改动总结，每个独立改动一个章节（问题标题、根因、修复）",
+		"reason": "⚠️  shepherd: 检测到文件编辑，执行收尾工作：\n1️⃣ **Git commit**：如有未提交的 git 改动 → git add + git commit。**⚠️ commit message 末尾必须加 `session:${PI_SESSION_ID}`** — 这是硬性要求，不是建议。session ID 用于会话分析和 roadmap 追踪，缺少会导致无法追溯。格式示例：`feat: xxx session:019e71c9-b340-7fae-a330-98d837e72099`\n2️⃣ **记忆更新**：如有值得记住的知识 → memory_update\n3️⃣ **会话总结**：简要总结本次会话做了什么",
 		"stopReason": [
 			"stop"
 		],
@@ -494,7 +494,7 @@
 		],
 		"hook": "tool_call",
 		"message": "⛔ 禁止通过 bash 修改 settings.json！使用 patchSettingsSectionWithBackup() 安全修改，或 settings_rollback 回滚。",
-		"reason": "禁止 bash 直接修改 settings.json — 必须用 patchSettingsSectionWithBackup 或 settings_rollback",
+		"reason": "禁止通过 bash 直接写入 settings.json（如 echo > / python 写入），但允许 git 操作（status/diff/reset/checkout/restore/add/rm/log）",
 		"tool": "bash"
 	},
 	{
@@ -505,5 +505,42 @@
 		"condition": "bash command contains 'git commit' and exit code is 0",
 		"action": "notify",
 		"message": "commit 成功。检查是否有远程仓库（git remote），有的话立即 git push 同步到远程。"
+	},
+	{
+		"comment": "UI 布局改动提醒",
+		"reason": "编辑 GameScene.gd 或 UI 相关代码时，先查 debug_summary().ui_layout 确认位置，改完用 debug_toggle_borders() 验证无重叠",
+		"pattern": "GameScene\\.gd",
+		"type": "notify",
+		"action": "notify"
+	},
+	{
+		"comment": "[bridge] find_nodes 禁止用不存在的参数(search/name)",
+		"hook": "tool_call",
+		"tool": "godot_game_query",
+		"action": "block",
+		"conditions": [
+			{
+				"field": "text",
+				"pattern": "find_nodes"
+			},
+			{
+				"field": "text",
+				"pattern": "\"(search|name)\"\\s*:"
+			}
+		],
+		"reason": "find_nodes 的合法参数只有 pattern(通配符如*Button*)/type(Godot类名)/group/limit。不存在search/name参数! 传错参数会被Bridge忽略,导致匹配全部节点返回巨大结果(7k+ tokens)。正确用法: {\"pattern\":\"*GameScene*\",\"type\":\"Button\",\"limit\":10}"
+	},
+	{
+		"action": "block",
+		"comment": "[bridge] get_tree 禁用——用 find_nodes 或 debug_summary 替代",
+		"conditions": [
+			{
+				"field": "text",
+				"pattern": "\"method\"\\s*:\\s*\"get_tree\""
+			}
+		],
+		"hook": "tool_call",
+		"reason": "get_tree在游戏运行时返回完整场景树(47k+ tokens),极其浪费! 替代方案: 1)找特定节点->find_nodes(pattern/type/group/limit); 2)查游戏状态->call_method调debug_summary(); 3)查特定节点属性->get_node_properties。如确实需要场景树概览仅限初始化阶段使用一次。",
+		"tool": "godot_game_query"
 	}
 ]

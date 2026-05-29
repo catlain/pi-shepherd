@@ -489,12 +489,12 @@
 		"conditions": [
 			{
 				"field": "command",
-				"pattern": "settings\\.json"
+				"pattern": "^(?!.*\\b(git|grep|find|ls|cat|head|tail|diff|test|python3.*json\\.load)\\b).*settings\\.json"
 			}
 		],
 		"hook": "tool_call",
 		"message": "⛔ 禁止通过 bash 修改 settings.json！使用 patchSettingsSectionWithBackup() 安全修改，或 settings_rollback 回滚。",
-		"reason": "禁止 bash 直接修改 settings.json — 必须用 patchSettingsSectionWithBackup 或 settings_rollback",
+		"reason": "禁止通过 bash 直接写入 settings.json（如 echo > / sed -i / python 写入），但允许 git 操作（status/diff/reset/checkout/restore/add/rm/log）和只读命令（grep/find/ls/cat/head/tail/diff/test/python3 解析读取）",
 		"tool": "bash"
 	},
 	{
@@ -505,5 +505,42 @@
 		"condition": "bash command contains 'git commit' and exit code is 0",
 		"action": "notify",
 		"message": "commit 成功。检查是否有远程仓库（git remote），有的话立即 git push 同步到远程。"
+	},
+	{
+		"comment": "UI 布局改动提醒",
+		"reason": "编辑 GameScene.gd 或 UI 相关代码时，先查 debug_summary().ui_layout 确认位置，改完用 debug_toggle_borders() 验证无重叠",
+		"pattern": "GameScene\\.gd",
+		"type": "notify",
+		"action": "notify"
+	},
+	{
+		"comment": "[bridge] find_nodes 禁止用不存在的参数(search/name)",
+		"hook": "tool_call",
+		"tool": "godot_game_query",
+		"action": "block",
+		"conditions": [
+			{
+				"field": "text",
+				"pattern": "find_nodes"
+			},
+			{
+				"field": "text",
+				"pattern": "\"(search|name)\"\\s*:"
+			}
+		],
+		"reason": "find_nodes 的合法参数只有 pattern(通配符如*Button*)/type(Godot类名)/group/limit。不存在search/name参数! 传错参数会被Bridge忽略,导致匹配全部节点返回巨大结果(7k+ tokens)。正确用法: {\"pattern\":\"*GameScene*\",\"type\":\"Button\",\"limit\":10}"
+	},
+	{
+		"action": "block",
+		"comment": "[bridge] get_tree 禁用——用 find_nodes 或 debug_summary 替代",
+		"conditions": [
+			{
+				"field": "text",
+				"pattern": "\"method\"\\s*:\\s*\"get_tree\""
+			}
+		],
+		"hook": "tool_call",
+		"reason": "get_tree在游戏运行时返回完整场景树(47k+ tokens),极其浪费! 替代方案: 1)找特定节点->find_nodes(pattern/type/group/limit); 2)查游戏状态->call_method调debug_summary(); 3)查特定节点属性->get_node_properties。如确实需要场景树概览仅限初始化阶段使用一次。",
+		"tool": "godot_game_query"
 	}
 ]
