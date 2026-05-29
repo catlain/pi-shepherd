@@ -423,17 +423,17 @@
 		"enabled": true
 	},
 	{
-		"comment": "[roadmap] 禁止通过 bash 脚本直接修改 roadmap JSON — 必须用 roadmap 工具",
+		"comment": "[roadmap] 禁止通过 bash/python 脚本直接读写 roadmap JSON — 必须用 roadmap 工具",
 		"hook": "tool_call",
 		"tool": "bash",
 		"action": "block",
 		"conditions": [
 			{
 				"field": "command",
-				"pattern": "(roadmap\\.json|\\.roadmap\\.json).*(open\\(|json\\.load|json\\.dump|write|sed|awk|jq)"
+				"pattern": "(roadmap\\.json|\\.roadmap\\.json)[\\s\\S]*(open\\(|json\\.load|json\\.dump|write|sed|awk|jq|cat.*roadmap)"
 			}
 		],
-		"reason": "⛔ 禁止通过 bash/python 脚本直接修改 roadmap JSON！请用 roadmap 工具操作（自动处理时间戳/ID分配/状态级联/归档/doing同步）：\n查看：roadmap_list（列表）、roadmap_show（详情）、roadmap_next（待办）\n创建：roadmap_plan（完整JSON创建/更新）、roadmap_create + roadmap_add_epic/story/task（逐步构建）\n修改：roadmap_update(roadmapId, item_id, {status/title/description/priority}) — 更新单个项\n完成：roadmap_done(roadmapId, taskId) — 标记完成并级联更新\n归档：roadmap_archive(roadmapId) — 归档已完成项\n直接改 JSON 会绕过这些机制导致数据不一致。",
+		"reason": "⛔ 禁止通过 bash/python 脚本直接读写 roadmap JSON！请用 roadmap 工具操作（自动处理时间戳/ID分配/状态级联/归档/doing同步）：\n查看：roadmap_list（列表）、roadmap_show（详情）、roadmap_next（待办）\n创建：roadmap_plan（完整JSON创建/更新）、roadmap_create + roadmap_add_epic/story/task（逐步构建）\n修改：roadmap_update(roadmapId, item_id, {status/title/description/priority}) — 更新单个项\n完成：roadmap_done(roadmapId, taskId) — 标记完成并级联更新\n归档：roadmap_archive(roadmapId) — 归档已完成项\n直接碰底层 JSON 会绕过这些机制导致数据不一致。",
 		"enabled": true
 	},
 	{
@@ -495,7 +495,16 @@
 		],
 		"hook": "tool_call",
 		"message": "⛔ 禁止通过 bash 修改 settings.json！使用 patchSettingsSectionWithBackup() 安全修改，或 settings_rollback 回滚。",
-		"reason": "直接编辑 settings.json 曾导致配置丢失（119 行变 3 行）。必须使用 patchSettingsSectionWithBackup 或 settings_rollback。",
+		"reason": "禁止 bash 直接修改 settings.json — 必须用 patchSettingsSectionWithBackup 或 settings_rollback",
 		"tool": "bash"
+	},
+	{
+		"comment": "[git] commit 成功后提醒 push",
+		"reason": "项目已有远程仓库 origin，commit 后应同步推送避免本地积压",
+		"trigger": "bash",
+		"event": "tool_result",
+		"condition": "bash command contains 'git commit' and exit code is 0",
+		"action": "notify",
+		"message": "commit 成功，记得 git push 到远程"
 	}
 ]
