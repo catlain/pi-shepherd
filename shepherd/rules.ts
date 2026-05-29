@@ -247,6 +247,12 @@ export function getMatchTargets(
 		}
 	} else if (tool === "write") {
 		text = (event.input as any)?.content || "";
+	} else {
+		// 其他工具：把所有参数序列化为 text，供 conditions 的 text field 匹配
+		const input = event.input as any;
+		if (input && typeof input === "object") {
+			text = JSON.stringify(input);
+		}
 	}
 	return { path: pathVal, text, command: "", glob: "" };
 }
