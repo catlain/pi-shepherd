@@ -225,5 +225,5 @@ export default function shepherdExtension(pi: ExtensionAPI) {
 	registerToolResult(pi, _toolState, RULES_DIR, _rulesOpts);
 
 	// ── shepherd_rules 工具：规则文件安全编辑 ───────────────────
-	registerRulesEditorTool(pi, join(RULES_DIR, "rules.json"));
+	registerRulesEditorTool(pi, RULES_DIR, process.cwd());
 }

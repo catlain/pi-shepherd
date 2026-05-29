@@ -43,8 +43,8 @@ describe("addRule", () => {
 	});
 
 	it("追加到已有规则末尾", () => {
-		writeRules([{ comment: "existing", reason: "test" }]);
-		const result = addRule(rulesPath, { comment: "new", reason: "safety" });
+		writeRules([{ comment: "existing", reason: "test", tool: "bash" }]);
+		const result = addRule(rulesPath, { comment: "new", reason: "safety", tool: "write" });
 		expect(result.success).toBe(true);
 		expect(result.index).toBe(1);
 		expect(readRulesFile()).toHaveLength(2);

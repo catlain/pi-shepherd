@@ -37,6 +37,8 @@ export interface WriteResult {
 	error?: string;
 	index?: number;
 	deleted?: { comment: string; [key: string]: unknown };
+	overwritten?: boolean;
+	warning?: string;
 }
 
 // ── 文件操作辅助 ──────────────────────────────────────────
@@ -77,6 +79,48 @@ function safeWrite(filePath: string, rules: Record<string, unknown>[]): WriteRes
 	}
 }
 
+// ── 去重签名 ─────────────────────────────────────────────
+
+/** 规范化 conditions 数组：按 field+pattern 排序，取关键属性 */
+function normalizeConditions(
+	conditions: Array<Record<string, unknown>>,
+): string {
+	const normalized = conditions
+		.map((c) => ({ f: c.field || "", p: c.pattern || "" }))
+		.sort((a, b) => (a.f + a.p).localeCompare(b.f + b.p));
+	return JSON.stringify(normalized);
+}
+
+/** 生成规则去重签名 key */
+export function dedupKey(rule: Record<string, unknown>): string {
+	const tool = (rule.tool as string) || "";
+	const hook = (rule.hook as string) || "";
+	const action = (rule.action as string) || "";
+	let trigger: string;
+	if (Array.isArray(rule.conditions) && rule.conditions.length > 0) {
+		trigger = normalizeConditions(rule.conditions as Array<Record<string, unknown>>);
+	} else if (rule.pattern) {
+		trigger = rule.pattern as string;
+	} else if (rule.check) {
+		trigger = rule.check as string;
+	} else {
+		trigger = "";
+	}
+	return `${tool}|${hook}|${trigger}|${action}`;
+}
+
+/** 在规则数组中查找签名相同的规则，返回 index 或 null */
+export function findDuplicateBySignature(
+	rules: Record<string, unknown>[],
+	newRule: Record<string, unknown>,
+): number | null {
+	const newKey = dedupKey(newRule);
+	for (let i = 0; i < rules.length; i++) {
+		if (dedupKey(rules[i]) === newKey) return i;
+	}
+	return null;
+}
+
 // ── 公开 API ─────────────────────────────────────────────
 
 export function listRules(filePath: string): ListResult {
@@ -101,6 +145,15 @@ export function addRule(filePath: string, rule: Record<string, unknown>): WriteR
 	if (error) return { success: false, error };
 	const validation = validateRule(rule);
 	if (!validation.valid) return { success: false, error: validation.errors.join("; ") };
+	// 去重检测：签名相同则覆盖
+	const dupIdx = findDuplicateBySignature(rules, rule);
+	if (dupIdx !== null) {
+		rules[dupIdx] = rule;
+		const writeResult = safeWrite(filePath, rules);
+		return writeResult.success
+			? { success: true, index: dupIdx, overwritten: true }
+			: writeResult;
+	}
 	rules.push(rule);
 	const writeResult = safeWrite(filePath, rules);
 	return writeResult.success ? { success: true, index: rules.length - 1 } : writeResult;

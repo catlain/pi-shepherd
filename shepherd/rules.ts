@@ -177,11 +177,11 @@ export function loadRules(
 		if (result.error) errors.push(result.error);
 	}
 
-	// 2. 项目级规则（<cwd>/.pi/extensions/{prefix}*.json）
+	// 2. 项目级规则（<cwd>/.pi/extensions/{prefix}*.json 或 shepherd-rules.json）
 	const projectExtDir = path.join(process.cwd(), ".pi", "extensions");
 	if (fs.existsSync(projectExtDir)) {
 		for (const file of fs.readdirSync(projectExtDir).sort()) {
-			if (file.startsWith(prefix) && file.endsWith(".json")) {
+			if (file.endsWith(".json") && (file.startsWith(prefix) || file === "shepherd-rules.json")) {
 				const result = loadRulesFromFile(path.join(projectExtDir, file));
 				allRules.push(...result.rules);
 				if (result.error) errors.push(result.error);

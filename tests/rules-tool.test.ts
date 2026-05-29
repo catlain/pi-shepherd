@@ -30,10 +30,12 @@ function createMockPi() {
 
 describe("rules-tool 集成测试", () => {
 	let tmpDir: string;
+	let rulesDir: string;
 	let rulesPath: string;
 
 	beforeEach(() => {
 		tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "shepherd-tool-"));
+		rulesDir = tmpDir; // 全局规则目录就是 tmpDir
 		rulesPath = path.join(tmpDir, "rules.json");
 	});
 
@@ -43,7 +45,8 @@ describe("rules-tool 集成测试", () => {
 
 	async function callExecute(params: any): Promise<any> {
 		const { pi, getTool } = createMockPi();
-		registerRulesEditorTool(pi, rulesPath);
+		// 传入 rulesDir（目录），cwd 设为 tmpDir（项目级也为空，不影响测试）
+		registerRulesEditorTool(pi, rulesDir, tmpDir);
 		const tool = getTool();
 		expect(tool.name).toBe("shepherd_rules");
 		return tool.execute("call-1", params);
@@ -59,7 +62,7 @@ describe("rules-tool 集成测试", () => {
 
 	it("list: 空文件返回提示", async () => {
 		const result = await callExecute({ action: "list" });
-		expect(extractText(result)).toBe("暂无规则。");
+		expect(extractText(result)).toBe("暂无规则（全局和项目级均为空）。");
 		expect(result.content).toBeDefined();
 		expect(result.content[0].type).toBe("text");
 	});
@@ -71,8 +74,8 @@ describe("rules-tool 集成测试", () => {
 		]));
 		const result = await callExecute({ action: "list" });
 		const text = extractText(result);
-		expect(text).toContain("[0] 规则A — block on write");
-		expect(text).toContain("[1] 规则B (disabled) — notify");
+		expect(text).toContain("[global:0] 规则A — block on write");
+		expect(text).toContain("[global:1] 规则B (disabled) — notify");
 	});
 
 	// ── add ─────────────────────────────────────────────
@@ -88,7 +91,7 @@ describe("rules-tool 集成测试", () => {
 			action: "add",
 			rule: { comment: "新规则", reason: "安全" },
 		});
-		expect(extractText(result)).toBe("✅ 规则已添加 [0]");
+		expect(extractText(result)).toBe("✅ 全局规则已添加 [global:0]");
 		const written = JSON.parse(fs.readFileSync(rulesPath, "utf-8"));
 		expect(written).toHaveLength(1);
 		expect(written[0].comment).toBe("新规则");
@@ -126,7 +129,7 @@ describe("rules-tool 集成测试", () => {
 			index: 0,
 			changes: { action: "notify" },
 		});
-		expect(extractText(result)).toBe("✅ 规则 [0] 已更新");
+		expect(extractText(result)).toBe("✅ 全局规则 [global:0] 已更新");
 		const written = JSON.parse(fs.readFileSync(rulesPath, "utf-8"));
 		expect(written[0].action).toBe("notify");
 		expect(written[0].comment).toBe("旧"); // 未改的字段保留
@@ -146,7 +149,7 @@ describe("rules-tool 集成测试", () => {
 			{ comment: "规则2", reason: "r" },
 		]));
 		const result = await callExecute({ action: "delete", index: 0 });
-		expect(extractText(result)).toBe("✅ 规则已删除: 规则1");
+		expect(extractText(result)).toBe("✅ 全局规则已删除: 规则1");
 		const written = JSON.parse(fs.readFileSync(rulesPath, "utf-8"));
 		expect(written).toHaveLength(1);
 		expect(written[0].comment).toBe("规则2");

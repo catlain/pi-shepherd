@@ -134,7 +134,8 @@ describe("shepherdExtension 注册 & config", () => {
 		const rulesTool = vi.mocked(rulesToolMod);
 		expect(rulesTool.registerRulesEditorTool).toHaveBeenCalledWith(
 			pi,
-			expect.stringContaining("rules.json"),
+			expect.any(String), // rulesDir
+			expect.any(String), // cwd
 		);
 	});
 
