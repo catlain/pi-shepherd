@@ -2,6 +2,8 @@
 
 # pi-shepherd
 
+[Source Code](https://github.com/catlain/pi-shepherd) | [npm](https://www.npmjs.com/package/pi-shepherd)
+
 Line count guard and behavior rules extension for [pi-coding-agent](https://github.com/earendil-works/pi-coding-agent) — rule-driven hooks for tool calls, agent end, and session events.
 
 ## What It Does
