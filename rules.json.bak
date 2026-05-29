@@ -445,5 +445,43 @@
 			"match": "\\.gd$"
 		},
 		"action": "notify"
+	},
+	{
+		"action": "notify",
+		"comment": "[GDScript][write] 写入 .gd 文件后提醒写/跑 GUT 测试",
+		"reason": "跟 edit 规则配对。新建 .gd 文件时提醒创建对应的测试文件。",
+		"trigger": {
+			"event": "tool_result",
+			"match": "\\.gd$",
+			"tool": "write"
+		}
+	},
+	{
+		"comment": "[settings] 禁止 edit settings.json — 必须用 patchSettingsSectionWithBackup 或 settings_rollback",
+		"reason": "直接编辑 settings.json 曾导致配置丢失（119 行变 3 行）。必须使用 patchSettingsSectionWithBackup 或 settings_rollback。",
+		"tool": "edit",
+		"hook": "tool_call",
+		"action": "block",
+		"message": "⛔ 禁止直接 edit settings.json！使用 patchSettingsSectionWithBackup() 安全修改，或 settings_rollback 回滚。",
+		"conditions": [
+			{
+				"field": "path",
+				"pattern": "settings\\.json$|settings\\.json\\.bak"
+			}
+		]
+	},
+	{
+		"action": "block",
+		"comment": "[settings] 禁止 write settings.json — 必须用 patchSettingsSectionWithBackup 或 settings_rollback",
+		"conditions": [
+			{
+				"field": "path",
+				"pattern": "settings\\.json$|settings\\.json\\.bak"
+			}
+		],
+		"hook": "tool_call",
+		"message": "⛔ 禁止直接 write settings.json！使用 patchSettingsSectionWithBackup() 安全修改，或 settings_rollback 回滚。",
+		"reason": "直接编辑 settings.json 曾导致配置丢失（119 行变 3 行）。必须使用 patchSettingsSectionWithBackup 或 settings_rollback。",
+		"tool": "write"
 	}
 ]
