@@ -455,5 +455,33 @@
 			"match": "\\.gd$",
 			"tool": "write"
 		}
+	},
+	{
+		"comment": "[settings] 禁止直接编辑 settings.json — 必须用 patchSettingsSectionWithBackup 或 settings_rollback 工具",
+		"reason": "直接编辑 settings.json 曾导致配置丢失（packages/extensions 等 119 行变 3 行）。必须使用 shared-utils 的 patchSettingsSectionWithBackup（带锁+备份+校验）或 settings_rollback 工具。",
+		"events": [
+			{
+				"type": "edit",
+				"when": "tool_call"
+			},
+			{
+				"type": "write",
+				"when": "tool_call"
+			},
+			{
+				"type": "bash",
+				"when": "tool_call"
+			}
+		],
+		"match": null,
+		"action": "block",
+		"message": "⛔ 禁止直接编辑 settings.json！使用 patchSettingsSectionWithBackup() 安全修改，或 settings_rollback 回滚。",
+		"conditions": [
+			{
+				"field": "path",
+				"pattern": "settings\\.json$|settings\\.json\\.bak"
+			}
+		],
+		"pattern": "settings\\.json$|settings\\.json\\.bak"
 	}
 ]
