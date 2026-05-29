@@ -1,5 +1,7 @@
 [English](README.en.md) | 程序中文文档
 
+> 📖 **[pi-atelier 实战指南](https://catlain.github.io/pi-atelier/)** — 从零教会你使用 pi-atelier 扩展生态，让 AI 编程助手从「会写代码」进化到「会管理项目」
+
 # pi-shepherd
 
 Line count guard and behavior rules extension for [pi-coding-agent](https://github.com/earendil-works/pi-coding-agent) — rule-driven hooks for tool calls, agent end, and session events.
