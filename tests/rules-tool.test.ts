@@ -171,4 +171,63 @@ describe("rules-tool 集成测试", () => {
 		expect(tool.parameters.required).toContain("action");
 		expect(tool.parameters.properties.action.enum).toEqual(["list", "add", "update", "delete"]);
 	});
+
+	// ── list + index (单条完整查看) ──────────────────────
+
+	it("list index: 显示单条规则的完整 JSON", async () => {
+		fs.writeFileSync(rulesPath, JSON.stringify([
+			{ comment: "规则A", reason: "安全原因", action: "block", tool: "write", pattern: "settings\\.json$" },
+			{ comment: "规则B", reason: "提醒", action: "notify" },
+		]));
+		const result = await callExecute({ action: "list", index: 0 });
+		const text = extractText(result);
+		expect(text).toContain("[global:0]");
+		expect(text).toContain("规则A");
+		expect(text).toContain("安全原因");
+		expect(text).toContain("settings");
+	});
+
+	it("list index: 越界报错", async () => {
+		fs.writeFileSync(rulesPath, JSON.stringify([
+			{ comment: "规则A", reason: "r" },
+		]));
+		const result = await callExecute({ action: "list", index: 5 });
+		expect(extractText(result)).toContain("❌");
+		expect(extractText(result)).toContain("越界");
+	});
+
+	it("list index: 空文件报错", async () => {
+		const result = await callExecute({ action: "list", index: 0 });
+		expect(extractText(result)).toContain("❌");
+		expect(extractText(result)).toContain("越界");
+	});
+
+	it("list index + scope=global: 正常工作", async () => {
+		fs.writeFileSync(rulesPath, JSON.stringify([
+			{ comment: "全局规则", reason: "r", action: "block" },
+		]));
+		const result = await callExecute({ action: "list", scope: "global", index: 0 });
+		const text = extractText(result);
+		expect(text).toContain("[global:0]");
+		expect(text).toContain("全局规则");
+	});
+
+	// ── list + verbose ───────────────────────────────────
+
+	it("list verbose: 显示所有规则的完整字段", async () => {
+		fs.writeFileSync(rulesPath, JSON.stringify([
+			{ comment: "规则A", reason: "安全", action: "block", tool: "write", pattern: "foo" },
+		]));
+		const result = await callExecute({ action: "list", verbose: true, scope: "global" });
+		const text = extractText(result);
+		expect(text).toContain("[global:0]");
+		expect(text).toContain("规则A");
+		expect(text).toContain("安全");
+		expect(text).toContain("foo");
+	});
+
+	it("list verbose: 空规则返回提示", async () => {
+		const result = await callExecute({ action: "list", verbose: true, scope: "global" });
+		expect(extractText(result)).toContain("暂无");
+	});
 });

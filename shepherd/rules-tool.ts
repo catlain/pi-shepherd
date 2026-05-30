@@ -6,20 +6,20 @@
  */
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import * as path from "node:path";
-import { addRule, deleteRule, listRules, updateRule } from "./rules-editor";
+import { addRule, deleteRule, updateRule } from "./rules-editor";
 import {
 	type Scope,
 	checkCrossScopeDuplicate,
 	ensureProjectDir,
 	getRulesFilePath,
-	listRulesByScope,
 } from "./rules-tool-helpers";
-
-/** 构造 pi 工具 execute 的标准返回格式 */
-function textResult(text: string) {
-	return { content: [{ type: "text" as const, text }] };
-}
+import {
+	handleListByIndex,
+	handleListSummary,
+	handleListVerbose,
+	scopeLabel,
+	textResult,
+} from "./rules-tool-list";
 
 export function registerRulesEditorTool(pi: ExtensionAPI, rulesDir: string, cwd?: string) {
 	const effectiveCwd = cwd || process.cwd();
@@ -53,7 +53,13 @@ export function registerRulesEditorTool(pi: ExtensionAPI, rulesDir: string, cwd?
 				},
 				index: {
 					type: "number",
-					description: "update/delete 时指定规则编号（0-based，仅在对应 scope 文件内的索引）",
+					description:
+						"规则编号（0-based，仅在对应 scope 文件内的索引）。list 时传 index 显示该条规则的完整 JSON；update/delete 时指定要操作的规则。",
+				},
+				verbose: {
+					type: "boolean",
+					description:
+						"list 时传 true 显示每条规则的完整字段（含 reason、conditions、pattern 等），默认 false 只显示摘要。",
 				},
 				changes: {
 					type: "object",
@@ -69,59 +75,38 @@ export function registerRulesEditorTool(pi: ExtensionAPI, rulesDir: string, cwd?
 				scope?: Scope;
 				rule?: Record<string, unknown>;
 				index?: number;
+				verbose?: boolean;
 				changes?: Record<string, unknown>;
 			},
 		) {
 			const scope = params.scope;
-			const scopeLabel = (s: Scope) => (s === "global" ? "全局" : "项目级");
 
 			switch (params.action) {
 				case "list": {
-					if (!scope) {
-						// 无 scope → 合并全局+项目，标注来源
-						const items = listRulesByScope(rulesDir, effectiveCwd);
-						if (items.length === 0) return textResult("暂无规则（全局和项目级均为空）。");
-						return textResult(
-							items
-								.map(
-									(r) =>
-										`[${r.scope}:${r.index}] ${r.comment}` +
-										(r.enabled === false ? " (disabled)" : "") +
-										(r.action ? ` — ${r.action}` : "") +
-										(r.tool ? ` on ${r.tool}` : "") +
-										(r.hook ? ` @ ${r.hook}` : ""),
-								)
-								.join("\n"),
-						);
+					// index 指定 → 显示单条完整 JSON
+					if (params.index !== undefined) {
+						return handleListByIndex(scope, params.index, rulesDir, effectiveCwd);
 					}
-					// 指定 scope → 只列对应
-					const filePath = getRulesFilePath(scope, rulesDir, effectiveCwd);
-					const result = listRules(filePath);
-					if (result.error) return textResult(`❌ ${result.error}`);
-					if (result.count === 0) return textResult(`暂无${scopeLabel(scope)}规则。`);
-					return textResult(
-						result.rules
-							.map(
-								(r) =>
-									`[${scope}:${r.index}] ${r.comment}` +
-									(r.enabled === false ? " (disabled)" : "") +
-									(r.action ? ` — ${r.action}` : "") +
-									(r.tool ? ` on ${r.tool}` : "") +
-									(r.hook ? ` @ ${r.hook}` : ""),
-							)
-							.join("\n"),
-					);
+					// verbose=true → 显示所有规则的完整信息
+					if (params.verbose === true) {
+						return handleListVerbose(scope, rulesDir, effectiveCwd);
+					}
+					// 默认摘要模式
+					return handleListSummary(scope, rulesDir, effectiveCwd);
 				}
 				case "add": {
 					if (!params.rule) return textResult("❌ add 需要 rule 参数");
 					const targetScope = scope || "global";
 					const filePath = getRulesFilePath(targetScope, rulesDir, effectiveCwd);
-					// 项目级写入前确保目录存在
 					if (targetScope === "project") ensureProjectDir(effectiveCwd);
 					const result = addRule(filePath, params.rule);
 					if (!result.success) return textResult(`❌ ${result.error}`);
-					// 跨 scope warning
-					const warning = checkCrossScopeDuplicate(targetScope, rulesDir, effectiveCwd, params.rule);
+					const warning = checkCrossScopeDuplicate(
+						targetScope,
+						rulesDir,
+						effectiveCwd,
+						params.rule,
+					);
 					const overwrittenMsg = result.overwritten ? " (覆盖已有同签名规则)" : "";
 					const warningMsg = warning ? `\n${warning}` : "";
 					return textResult(

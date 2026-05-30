@@ -32,6 +32,17 @@ export interface ListResult {
 	error?: string;
 }
 
+export interface RuleDetail {
+	index: number;
+	[key: string]: unknown;
+}
+
+export interface ListDetailResult {
+	rules: RuleDetail[];
+	count: number;
+	error?: string;
+}
+
 export interface WriteResult {
 	success: boolean;
 	error?: string;
@@ -138,6 +149,22 @@ export function listRules(filePath: string): ListResult {
 		})),
 		count: rules.length,
 	};
+}
+
+export function listRulesDetail(filePath: string): ListDetailResult {
+	const { rules, error } = readFile(filePath);
+	if (error) return { rules: [], count: 0, error };
+	return {
+		rules: rules.map((r, i) => ({ index: i, ...r })),
+		count: rules.length,
+	};
+}
+
+export function getRuleDetail(filePath: string, index: number): RuleDetail | { error: string } {
+	const { rules, error } = readFile(filePath);
+	if (error) return { error };
+	if (index < 0 || index >= rules.length) return { error: `编号越界: ${index}（共 ${rules.length} 条）` };
+	return { index, ...rules[index] };
 }
 
 export function addRule(filePath: string, rule: Record<string, unknown>): WriteResult {
