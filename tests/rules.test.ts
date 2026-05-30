@@ -6,7 +6,7 @@ import assert from "node:assert/strict";
 import { execSync } from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { getMatchTargets } from "@pi-atelier/shepherd";
+import { getMatchTargets, toolMatches } from "@pi-atelier/shepherd";
 import { describe, it } from "vitest";
 
 const RULES_PATH = path.resolve(
@@ -77,6 +77,40 @@ describe("has_edits check logic", () => {
 });
 
 // ================================================================
+// ================================================================
+// toolMatches 多工具匹配
+// ================================================================
+
+describe("toolMatches", () => {
+	it("单工具精确匹配", () => {
+		assert.strictEqual(toolMatches("edit", "edit"), true);
+		assert.strictEqual(toolMatches("edit", "write"), false);
+	});
+
+	it("多工具管道分隔匹配", () => {
+		assert.strictEqual(toolMatches("edit|write", "edit"), true);
+		assert.strictEqual(toolMatches("edit|write", "write"), true);
+		assert.strictEqual(toolMatches("edit|write", "bash"), false);
+	});
+
+	it("管道分隔支持空格", () => {
+		assert.strictEqual(toolMatches("edit | write", "edit"), true);
+		assert.strictEqual(toolMatches("edit | write", "write"), true);
+	});
+
+	it("undefined ruleTool 匹配所有工具", () => {
+		assert.strictEqual(toolMatches(undefined, "edit"), true);
+		assert.strictEqual(toolMatches(undefined, "bash"), true);
+	});
+
+	it("三值匹配", () => {
+		assert.strictEqual(toolMatches("edit|write|bash", "edit"), true);
+		assert.strictEqual(toolMatches("edit|write|bash", "write"), true);
+		assert.strictEqual(toolMatches("edit|write|bash", "bash"), true);
+		assert.strictEqual(toolMatches("edit|write|bash", "grep"), false);
+	});
+});
+
 // RTK 可用性
 // ================================================================
 

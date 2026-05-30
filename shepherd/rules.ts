@@ -21,7 +21,7 @@ export interface Condition {
 export interface Rule {
 	comment: string;
 	hook?: "tool_call" | "tool_result" | "agent_end" | "session_shutdown"; // 默认 "tool_call"
-	tool?: string; // 默认 "bash"
+	tool?: string; // 默认 "bash"，支持 "|" 分隔多值匹配（如 "edit|write"）
 	// 单条件模式（向后兼容）：pattern 匹配 command（bash）或 path（edit/write）
 	pattern?: string;
 	flags?: string;
@@ -276,6 +276,12 @@ export function ruleMatches(
 		return rule._compiled.test(target);
 	}
 	return false;
+}
+
+/** tool 字段匹配：支持 "|" 分隔的多值（如 "edit|write"） */
+export function toolMatches(ruleTool: string | undefined, eventTool: string): boolean {
+	if (!ruleTool) return true; // 未指定 tool 时默认匹配所有（由 hook 类型决定范围）
+	return ruleTool.split("|").map((t) => t.trim()).includes(eventTool);
 }
 
 /** rtk 可用性（模块加载时检测） */

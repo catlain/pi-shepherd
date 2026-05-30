@@ -38,9 +38,9 @@
 		"enabled": true
 	},
 	{
-		"comment": "[Rust] 编辑后必须格式检查 + 跑测试",
+		"comment": "[Rust] 编辑/写入后必须格式检查 + 跑测试",
 		"hook": "tool_result",
-		"tool": "edit",
+		"tool": "edit|write",
 		"action": "notify",
 		"conditions": [
 			{
@@ -53,24 +53,9 @@
 		"enabled": true
 	},
 	{
-		"comment": "[Rust][write] 写入后必须格式检查 + 跑测试",
+		"comment": "[TypeScript] 编辑/写入后必须跑测试",
 		"hook": "tool_result",
-		"tool": "write",
-		"action": "notify",
-		"conditions": [
-			{
-				"field": "path",
-				"pattern": "\\.rs$",
-				"flags": ""
-			}
-		],
-		"reason": "写入了 Rust 文件，必须：1) 运行 cargo clippy 做格式和 lint 检查；2) 跑覆盖该代码的单元测试（如无测试则先补充），修复所有测试问题确保通过。",
-		"enabled": true
-	},
-	{
-		"comment": "[TypeScript] 编辑后必须跑测试",
-		"hook": "tool_result",
-		"tool": "edit",
+		"tool": "edit|write",
 		"action": "notify",
 		"conditions": [
 			{
@@ -80,21 +65,6 @@
 			}
 		],
 		"reason": "编辑了 TypeScript 文件，必须跑覆盖该代码的单元测试（如无测试则先补充），修复所有测试问题确保通过。",
-		"enabled": true
-	},
-	{
-		"comment": "[TypeScript][write] 写入后必须跑测试",
-		"hook": "tool_result",
-		"tool": "write",
-		"action": "notify",
-		"conditions": [
-			{
-				"field": "path",
-				"pattern": "\\.ts$",
-				"flags": ""
-			}
-		],
-		"reason": "写入了 TypeScript 文件，必须跑覆盖该代码的单元测试（如无测试则先补充），修复所有测试问题确保通过。",
 		"enabled": true
 	},
 	{
@@ -142,9 +112,9 @@
 		"subagent": false
 	},
 	{
-		"comment": "[dev] 编辑扩展代码时提醒参考规范",
+		"comment": "[dev] 编辑/写入扩展代码时提醒参考规范",
 		"hook": "tool_result",
-		"tool": "edit",
+		"tool": "edit|write",
 		"conditions": [
 			{
 				"field": "path",
@@ -152,15 +122,15 @@
 			}
 		],
 		"action": "steer",
-		"reason": "📝 编辑了扩展代码。如果尚未阅读扩展开发规范，请先 read 根目录或项目目录下 extensions/README.md；如果已阅读且有新知识，更新到该文件。已阅读且无新知识则无视。",
+		"reason": "📝 编辑/写入了扩展代码。如果尚未阅读扩展开发规范，请先 read 根目录或项目目录下 extensions/README.md；如果已阅读且有新知识，更新到该文件。已阅读且无新知识则无视。",
 		"requireSuccess": true,
 		"subagent": false,
 		"enabled": true
 	},
 	{
-		"comment": "[dev] 写入扩展代码时提醒参考规范",
+		"comment": "[dev] 编辑/写入扩展代码后提醒跑 typecheck",
 		"hook": "tool_result",
-		"tool": "write",
+		"tool": "edit|write",
 		"conditions": [
 			{
 				"field": "path",
@@ -168,39 +138,7 @@
 			}
 		],
 		"action": "steer",
-		"reason": "📝 写入了扩展代码。如果尚未阅读扩展开发规范，请先 read 根目录或项目目录下 extensions/README.md；如果已阅读且有新知识，更新到该文件。已阅读且无新知识则无视。",
-		"requireSuccess": true,
-		"subagent": false,
-		"enabled": true
-	},
-	{
-		"comment": "[dev] 编辑扩展代码后提醒跑 typecheck",
-		"hook": "tool_result",
-		"tool": "edit",
-		"conditions": [
-			{
-				"field": "path",
-				"pattern": "extensions/.*\\.ts$"
-			}
-		],
-		"action": "steer",
-		"reason": "📝 编辑了扩展 TypeScript 代码。请运行 `cd extensions && bash check.sh <扩展名> --typecheck` 确认无类型错误。如果已跑过则无视。",
-		"requireSuccess": true,
-		"subagent": false,
-		"enabled": true
-	},
-	{
-		"comment": "[dev] 写入扩展代码后提醒跑 typecheck",
-		"hook": "tool_result",
-		"tool": "write",
-		"conditions": [
-			{
-				"field": "path",
-				"pattern": "extensions/.*\\.ts$"
-			}
-		],
-		"action": "steer",
-		"reason": "📝 写入了扩展 TypeScript 代码。请运行 `cd extensions && bash check.sh <扩展名> --typecheck` 确认无类型错误。如果已跑过则无视。",
+		"reason": "📝 编辑/写入了扩展 TypeScript 代码。请运行 `cd extensions && bash check.sh <扩展名> --typecheck` 确认无类型错误。如果已跑过则无视。",
 		"requireSuccess": true,
 		"subagent": false,
 		"enabled": true
@@ -208,25 +146,7 @@
 	{
 		"comment": "[TS] 禁止空格缩进 — TS 文件必须用 Tab",
 		"hook": "tool_call",
-		"tool": "edit",
-		"action": "notify",
-		"conditions": [
-			{
-				"field": "path",
-				"pattern": "\\.ts$"
-			},
-			{
-				"field": "text",
-				"pattern": "\\n  [\\S ]"
-			}
-		],
-		"reason": "❌ TS 文件要求 Tab 缩进，不是空格。请用 Tab 缩进重写代码。",
-		"enabled": true
-	},
-	{
-		"comment": "[TS][write] 禁止空格缩进 — TS 文件必须用 Tab",
-		"hook": "tool_call",
-		"tool": "write",
+		"tool": "edit|write",
 		"action": "notify",
 		"conditions": [
 			{
@@ -244,25 +164,7 @@
 	{
 		"comment": "[Python] 禁止 Tab 缩进 — Python 必须用 4 空格",
 		"hook": "tool_call",
-		"tool": "edit",
-		"action": "notify",
-		"conditions": [
-			{
-				"field": "path",
-				"pattern": "\\.py$"
-			},
-			{
-				"field": "text",
-				"pattern": "\\n\\t"
-			}
-		],
-		"reason": "❌ Python 文件禁止 Tab 缩进，必须用 4 空格（PEP 8）。",
-		"enabled": true
-	},
-	{
-		"comment": "[Python][write] 禁止 Tab 缩进 — Python 必须用 4 空格",
-		"hook": "tool_call",
-		"tool": "write",
+		"tool": "edit|write",
 		"action": "notify",
 		"conditions": [
 			{
@@ -280,25 +182,7 @@
 	{
 		"comment": "[Rust] 禁止 Tab 缩进 — Rust 必须用 4 空格",
 		"hook": "tool_call",
-		"tool": "edit",
-		"action": "notify",
-		"conditions": [
-			{
-				"field": "path",
-				"pattern": "\\.rs$"
-			},
-			{
-				"field": "text",
-				"pattern": "\\n\\t"
-			}
-		],
-		"reason": "❌ Rust 文件禁止 Tab 缩进，必须用 4 空格（rustfmt）。",
-		"enabled": true
-	},
-	{
-		"comment": "[Rust][write] 禁止 Tab 缩进 — Rust 必须用 4 空格",
-		"hook": "tool_call",
-		"tool": "write",
+		"tool": "edit|write",
 		"action": "notify",
 		"conditions": [
 			{
@@ -351,9 +235,9 @@
 		"enabled": true
 	},
 	{
-		"comment": "[deps] 编辑 package.json 时提醒依赖合规检查",
+		"comment": "[deps] 编辑/写入 package.json 时提醒依赖合规检查",
 		"hook": "tool_result",
-		"tool": "edit",
+		"tool": "edit|write",
 		"action": "notify",
 		"conditions": [
 			{
@@ -362,20 +246,6 @@
 			}
 		],
 		"reason": "📦 编辑了 package.json 依赖字段。请对照 DEPENDENCY-GUIDE.md 检查合规性：① pi SDK 必须放 peerDependencies + optionalDependencies，禁止放 dependencies/devDependencies；② shared-utils 运行时引用放 dependencies（开发放 devDependencies）；③ 检查 files 白名单是否存在；④ 添加新依赖后运行 scan-deps.sh 验证无嵌套/版本冲突。",
-		"enabled": true
-	},
-	{
-		"comment": "[deps][write] 写入 package.json 时提醒依赖合规检查",
-		"hook": "tool_result",
-		"tool": "write",
-		"action": "notify",
-		"conditions": [
-			{
-				"field": "path",
-				"pattern": "package\\.json$"
-			}
-		],
-		"reason": "📦 写入了 package.json 依赖字段。请对照 DEPENDENCY-GUIDE.md 检查合规性：① pi SDK 必须放 peerDependencies + optionalDependencies，禁止放 dependencies/devDependencies；② shared-utils 运行时引用放 dependencies（开发放 devDependencies）；③ 检查 files 白名单是否存在；④ 添加新依赖后运行 scan-deps.sh 验证无嵌套/版本冲突。",
 		"enabled": true
 	},
 	{
@@ -394,9 +264,9 @@
 		"enabled": true
 	},
 	{
-		"comment": "[roadmap] 禁止直接编辑 roadmap JSON — 必须用 roadmap 工具",
+		"comment": "[roadmap] 禁止直接编辑/写入 roadmap JSON — 必须用 roadmap 工具",
 		"hook": "tool_call",
-		"tool": "edit",
+		"tool": "edit|write",
 		"action": "block",
 		"conditions": [
 			{
@@ -405,20 +275,6 @@
 			}
 		],
 		"reason": "⛔ 禁止直接编辑 roadmap JSON！请用 roadmap 工具操作（自动处理时间戳/ID分配/状态级联/归档/doing同步）：\n查看：roadmap_list（列表）、roadmap_show（详情）、roadmap_next（待办）\n创建：roadmap_plan（完整JSON创建/更新）、roadmap_create + roadmap_add_epic/story/task（逐步构建）\n修改：roadmap_update(roadmapId, item_id, {status/title/description/priority}) — 更新单个项\n完成：roadmap_done(roadmapId, taskId) — 标记完成并级联更新\n归档：roadmap_archive(roadmapId) — 归档已完成项\n直接改 JSON 会绕过这些机制导致数据不一致。",
-		"enabled": true
-	},
-	{
-		"comment": "[roadmap] 禁止直接写入 roadmap JSON — 必须用 roadmap 工具",
-		"hook": "tool_call",
-		"tool": "write",
-		"action": "block",
-		"conditions": [
-			{
-				"field": "path",
-				"pattern": "\\.roadmap\\.json$|\\broadmap/roadmap\\.json$"
-			}
-		],
-		"reason": "⛔ 禁止直接写入 roadmap JSON！请用 roadmap 工具操作（自动处理时间戳/ID分配/状态级联/归档/doing同步）：\n查看：roadmap_list（列表）、roadmap_show（详情）、roadmap_next（待办）\n创建：roadmap_plan（完整JSON创建/更新）、roadmap_create + roadmap_add_epic/story/task（逐步构建）\n修改：roadmap_update(roadmapId, item_id, {status/title/description/priority}) — 更新单个项\n完成：roadmap_done(roadmapId, taskId) — 标记完成并级联更新\n归档：roadmap_archive(roadmapId) — 归档已完成项\n直接改 JSON 会绕过这些机制导致数据不一致。",
 		"enabled": true
 	},
 	{
@@ -436,29 +292,9 @@
 		"enabled": true
 	},
 	{
-		"comment": "[GDScript] 编辑 .gd 文件后提醒写/跑 GUT 测试",
-		"reason": "跟 Python/Rust/TS 规则一致——编辑代码后提醒补充单元测试。触发条件：edit 工具的 file 参数匹配 .gd 扩展名。提醒内容：是否有对应的 GUT 测试？如果没有，建议补写。如果有，提醒跑 run_unit_tests.sh 验证。",
-		"trigger": {
-			"tool": "edit",
-			"event": "tool_result",
-			"match": "\\.gd$"
-		},
-		"action": "notify"
-	},
-	{
-		"action": "notify",
-		"comment": "[GDScript][write] 写入 .gd 文件后提醒写/跑 GUT 测试",
-		"reason": "跟 edit 规则配对。新建 .gd 文件时提醒创建对应的测试文件。",
-		"trigger": {
-			"event": "tool_result",
-			"match": "\\.gd$",
-			"tool": "write"
-		}
-	},
-	{
-		"comment": "[settings] 禁止 edit settings.json — 必须用 patchSettingsSectionWithBackup 或 settings_rollback",
+		"comment": "[settings] 禁止 edit/write settings.json — 必须用 patchSettingsSectionWithBackup",
 		"reason": "直接编辑 settings.json 曾导致配置丢失（119 行变 3 行）。必须使用 patchSettingsSectionWithBackup 或 settings_rollback。",
-		"tool": "edit",
+		"tool": "edit|write",
 		"hook": "tool_call",
 		"action": "block",
 		"message": "⛔ 禁止直接 edit settings.json！使用 patchSettingsSectionWithBackup() 安全修改，或 settings_rollback 回滚。",
@@ -468,20 +304,6 @@
 				"pattern": "settings\\.json$|settings\\.json\\.bak"
 			}
 		]
-	},
-	{
-		"action": "block",
-		"comment": "[settings] 禁止 write settings.json — 必须用 patchSettingsSectionWithBackup 或 settings_rollback",
-		"conditions": [
-			{
-				"field": "path",
-				"pattern": "settings\\.json$|settings\\.json\\.bak"
-			}
-		],
-		"hook": "tool_call",
-		"message": "⛔ 禁止直接 write settings.json！使用 patchSettingsSectionWithBackup() 安全修改，或 settings_rollback 回滚。",
-		"reason": "直接编辑 settings.json 曾导致配置丢失（119 行变 3 行）。必须使用 patchSettingsSectionWithBackup 或 settings_rollback。",
-		"tool": "write"
 	},
 	{
 		"action": "block",
@@ -505,42 +327,5 @@
 		"condition": "bash command contains 'git commit' and exit code is 0",
 		"action": "notify",
 		"message": "commit 成功。检查是否有远程仓库（git remote），有的话立即 git push 同步到远程。"
-	},
-	{
-		"comment": "UI 布局改动提醒",
-		"reason": "编辑 GameScene.gd 或 UI 相关代码时，先查 debug_summary().ui_layout 确认位置，改完用 debug_toggle_borders() 验证无重叠",
-		"pattern": "GameScene\\.gd",
-		"type": "notify",
-		"action": "notify"
-	},
-	{
-		"comment": "[bridge] find_nodes 禁止用不存在的参数(search/name)",
-		"hook": "tool_call",
-		"tool": "godot_game_query",
-		"action": "block",
-		"conditions": [
-			{
-				"field": "text",
-				"pattern": "find_nodes"
-			},
-			{
-				"field": "text",
-				"pattern": "\"(search|name)\"\\s*:"
-			}
-		],
-		"reason": "find_nodes 的合法参数只有 pattern(通配符如*Button*)/type(Godot类名)/group/limit。不存在search/name参数! 传错参数会被Bridge忽略,导致匹配全部节点返回巨大结果(7k+ tokens)。正确用法: {\"pattern\":\"*GameScene*\",\"type\":\"Button\",\"limit\":10}"
-	},
-	{
-		"action": "block",
-		"comment": "[bridge] get_tree 禁用——用 find_nodes 或 debug_summary 替代",
-		"conditions": [
-			{
-				"field": "text",
-				"pattern": "\"method\"\\s*:\\s*\"get_tree\""
-			}
-		],
-		"hook": "tool_call",
-		"reason": "get_tree在游戏运行时返回完整场景树(47k+ tokens),极其浪费! 替代方案: 1)找特定节点->find_nodes(pattern/type/group/limit); 2)查游戏状态->call_method调debug_summary(); 3)查特定节点属性->get_node_properties。如确实需要场景树概览仅限初始化阶段使用一次。",
-		"tool": "godot_game_query"
 	}
 ]

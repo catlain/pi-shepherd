@@ -38,6 +38,10 @@ vi.mock("../shepherd/rules.js", () => ({
 	loadRules: mockedLoadRules,
 	getMatchTargets: mockedGetMatchTargets,
 	ruleMatches: mockedRuleMatches,
+	toolMatches: (ruleTool: string | undefined, eventTool: string) => {
+		if (!ruleTool) return true;
+		return ruleTool.split("|").map((t: string) => t.trim()).includes(eventTool);
+	},
 	isSubagent: vi.fn(() => false),
 	isRtkAvailable: false,
 }));

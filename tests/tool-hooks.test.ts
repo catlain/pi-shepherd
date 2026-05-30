@@ -34,6 +34,10 @@ vi.mock("../shepherd/rules.js", () => ({
 	isRtkAvailable: false,
 	isSubagent: vi.fn(() => false),
 	ruleMatches: (...args: any[]) => mockedRuleMatches(...args),
+	toolMatches: (ruleTool: string | undefined, eventTool: string) => {
+		if (!ruleTool) return true;
+		return ruleTool.split("|").map((t: string) => t.trim()).includes(eventTool);
+	},
 }));
 
 import { pushWarning } from "../shepherd/ephemeral.js";

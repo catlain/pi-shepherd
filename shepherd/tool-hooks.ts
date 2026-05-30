@@ -20,6 +20,7 @@ import {
 	loadRules,
 	type Rule,
 	ruleMatches,
+	toolMatches,
 } from "./rules.js";
 import type { ResettableRule, StateTracker } from "./state-tracker.js";
 
@@ -63,7 +64,7 @@ export function registerToolCall(
 		}
 
 		const rules = loadRules(rulesDir, rulesOptions).filter(
-			(r) => r.hook === "tool_call" && r.tool === event.toolName,
+			(r) => r.hook === "tool_call" && toolMatches(r.tool, event.toolName!),
 		);
 		if (rules.length === 0) return;
 
@@ -139,7 +140,7 @@ export function registerToolResult(
 			if (isSubagent() && rule.subagent === false) continue;
 			if (!toolsAvailable(rule, pi, state)) continue;
 			if (rule.requireSuccess && event.isError) continue;
-			if (rule.tool && rule.tool !== event.toolName) continue;
+			if (rule.tool && !toolMatches(rule.tool, event.toolName!)) continue;
 
 			// 正则条件匹配
 			if (rule.conditions || rule.pattern) {

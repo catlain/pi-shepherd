@@ -23,6 +23,7 @@ export {
 	loadRulesFromFile,
 	type Rule,
 	ruleMatches,
+	toolMatches,
 } from "./rules";
 export {
 	type ResettableRule,
