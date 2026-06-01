@@ -1,6 +1,6 @@
 {
   "name": "pi-shepherd",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Line count guard and behavior rules extension for pi-coding-agent",
   "main": "index.ts",
   "scripts": {
@@ -39,9 +39,6 @@
     "tsconfig.json",
     "vitest.config.ts",
     "package.json"
-  ],
-  "bundleDependencies": [
-    "@pi-atelier/shared-utils"
   ],
   "keywords": [
     "pi-package"
