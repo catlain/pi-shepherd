@@ -2,8 +2,8 @@
  * message_end 规则边缘情况测试
  *
  * 验证当前项目配置的两条 message_end 规则：
- * 1. 归因猜测提醒（notify）
- * 2. 工具链猜测拦截（steer）
+ * 1. 归因猜测提醒（notify）— 宽匹配：含'可能'
+ * 2. 工具链猜测拦截（steer）— 精准匹配工具链关键词
  *
  * 测试各种边缘场景，确保正则匹配准确、误报可控。
  */
@@ -12,7 +12,7 @@ import { describe, it, expect } from "vitest";
 
 // ── 实际规则的正则（从 shepherd-rules.json 复制）──
 
-const RULE_ATTRIBUTION = /可能是.{0,20}(导致|引起|造成|问题|原因|bug|错误|缓存|权限|版本)/;
+const RULE_ATTRIBUTION = /可能/;
 const RULE_TOOLCHAIN = /(可能|应该|估计).{0,30}(缓存|jiti|vitest|proxy|模块解析|工具链)/;
 
 // ── 辅助 ──
@@ -26,75 +26,46 @@ describe("message_end 规则边缘情况", () => {
 
 	describe("规则 1：归因猜测提醒", () => {
 
-		// ✅ 应该匹配
+		// ✅ 应该匹配（宽匹配：含'可能'即触发）
 		it("匹配：可能是缓存导致的问题", () => {
 			expect(matchAttribution("这个错误可能是缓存导致的")).toBe(true);
 		});
 
-		it("匹配：可能是因为权限问题", () => {
-			expect(matchAttribution("可能是因为权限问题")).toBe(true);
+		it("匹配：可能截图是黑的", () => {
+			expect(matchAttribution("可能截图是黑的（渲染管线还没完成就截了）")).toBe(true);
 		});
 
-		it("匹配：可能是版本不兼容造成的", () => {
-			expect(matchAttribution("可能是版本不兼容造成的")).toBe(true);
+		it("匹配：默认视口可能只有几百像素高", () => {
+			expect(matchAttribution("默认视口可能只有几百像素高")).toBe(true);
 		});
 
-		it("匹配：可能是 jiti 引起的", () => {
-			expect(matchAttribution("可能是 jiti 引起的")).toBe(true);
+		it("匹配：测试文件可能被筛选掉了", () => {
+			expect(matchAttribution("测试文件可能被筛选掉了")).toBe(true);
 		});
 
-		it("匹配：可能是代码逻辑bug", () => {
-			expect(matchAttribution("可能是代码逻辑bug")).toBe(true);
+		it("匹配：问题可能出在 FixedVertical", () => {
+			expect(matchAttribution("问题可能出在 FixedVertical + Projection")).toBe(true);
 		});
 
-		it("匹配：中间隔着 15 个字符仍然匹配", () => {
-			expect(matchAttribution("可能是一些未知的因素共同导致的原因")).toBe(true);
+		it("匹配：可能是 Startup 阶段", () => {
+			expect(matchAttribution("问题可能是 Startup 阶段的系统执行顺序")).toBe(true);
 		});
 
-		it("匹配：可能是运行时错误", () => {
-			expect(matchAttribution("可能是运行时错误")).toBe(true);
+		it("匹配：可能是死循环", () => {
+			expect(matchAttribution("可能是 test_interaction.rs 里有死循环")).toBe(true);
+		});
+
+		it("匹配：可能被遮挡了", () => {
+			expect(matchAttribution("游戏窗口可能被遮挡了")).toBe(true);
 		});
 
 		// ❌ 不应匹配
-		it("不匹配：单独的'可能'无归因", () => {
-			expect(matchAttribution("这个方法可能可行")).toBe(false);
-		});
-
-		it("不匹配：用户说的'可能'", () => {
-			expect(matchAttribution("用户说可能是想表达某个意思")).toBe(false);
-		});
-
-		it("不匹配：'可能'和归因词之间超过 20 字符", () => {
-			const gap21 = "可能是一个很长很长的描述超出了限制导致";
-			// "可能是一个很长很长的描述超出了限制" = 17 字符，< 20，应该匹配
-			expect(matchAttribution(gap21)).toBe(true);
-
-			// 真正超过 20 字符
-			const gap25 = "可能是abcdefghij一二三四五六七八九十导致";
-			// "abcdefghij一二三四五六七八九十" = 20 字符，刚好边界
-			expect(matchAttribution(gap25)).toBe(true);
-
-			const gapOver = "可能是abcdefghij一二三四五六七八九十X导致";
-			// 超过 20 字符
-			expect(matchAttribution(gapOver)).toBe(false);
-		});
-
-		it("不匹配：没有'可能是'前缀", () => {
-			expect(matchAttribution("这个问题导致了错误")).toBe(false);
-		});
-
-		it("不匹配：分析假设的正确用法（问题在可能是前面）", () => {
-			// 正则要求 "可能是" 在前、归因词在后
-			// "问题可能是" 中"问题"在前面，不匹配
-			expect(matchAttribution("问题可能是 A、B、C 其中之一，我先排查 A")).toBe(false);
-		});
-
-		it("不匹配：纯分析无归因词", () => {
+		it("不匹配：纯分析无可能", () => {
 			expect(matchAttribution("根据日志可以看到这个函数在处理空值时没有做检查")).toBe(false);
 		});
 
-		it("不匹配：条件性建议", () => {
-			expect(matchAttribution("如果 X 成立的话，可能需要调整配置")).toBe(false);
+		it("不匹配：明确陈述事实", () => {
+			expect(matchAttribution("测试失败了，错误信息是 expected true received false")).toBe(false);
 		});
 	});
 
@@ -159,15 +130,15 @@ describe("message_end 规则边缘情况", () => {
 			expect(matchToolchain(text)).toBe(true);
 		});
 
-		it("只触发规则1：'可能是权限导致的'", () => {
-			const text = "可能是权限导致的";
+		it("只触发规则1：'可能视口太小'", () => {
+			const text = "可能视口太小";
 			expect(matchAttribution(text)).toBe(true);
 			expect(matchToolchain(text)).toBe(false);
 		});
 
 		it("只触发规则2：'应该是 jiti 的问题'", () => {
 			const text = "应该是 jiti 的问题";
-			expect(matchAttribution(text)).toBe(false); // 没有"可能是"
+			expect(matchAttribution(text)).toBe(false); // 没有"可能"
 			expect(matchToolchain(text)).toBe(true);
 		});
 
