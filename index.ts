@@ -47,8 +47,10 @@ import {
 	loadRules,
 	notifySummary,
 	pushWarning,
+	registerMessageEnd,
 	registerToolCall,
 	registerToolResult,
+	resetMessageEndState,
 	StateTracker,
 	type ToolState,
 } from "./shepherd";
@@ -135,6 +137,7 @@ export default function shepherdExtension(pi: ExtensionAPI) {
 		_toolState.hasEdits = false;
 		_toolState.cachedTools = null;
 		_agentEndFired.clear();
+		resetMessageEndState();
 		if (ctx.signal && !ctx.signal.aborted) {
 			ctx.signal.addEventListener("abort", () => {
 				_aborted = true;
@@ -223,6 +226,7 @@ export default function shepherdExtension(pi: ExtensionAPI) {
 	};
 	registerToolCall(pi, _toolState, RULES_DIR, _rulesOpts);
 	registerToolResult(pi, _toolState, RULES_DIR, _rulesOpts);
+	registerMessageEnd(pi, _toolState, RULES_DIR, _rulesOpts);
 
 	// ── shepherd_rules 工具：规则文件安全编辑 ───────────────────
 	registerRulesEditorTool(pi, RULES_DIR, process.cwd());

@@ -40,6 +40,8 @@ vi.mock("../shepherd", () => ({
 	pushWarning: mockPushWarning,
 	registerToolCall: mockRegisterToolCall,
 	registerToolResult: mockRegisterToolResult,
+	registerMessageEnd: vi.fn(),
+	resetMessageEndState: vi.fn(),
 	StateTracker: mockStateTracker,
 }));
 

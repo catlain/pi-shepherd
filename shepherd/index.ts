@@ -12,6 +12,11 @@ export {
 } from "./ephemeral-shared";
 export { checkLineCount } from "./line-count";
 export {
+	extractAssistantText,
+	registerMessageEnd,
+	resetMessageEndState,
+} from "./message-end";
+export {
 	CODE_EXT_RE,
 	type Condition,
 	compileRules,

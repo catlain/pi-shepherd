@@ -20,7 +20,7 @@ export interface Condition {
 
 export interface Rule {
 	comment: string;
-	hook?: "tool_call" | "tool_result" | "agent_end" | "session_shutdown"; // 默认 "tool_call"
+	hook?: "tool_call" | "tool_result" | "agent_end" | "session_end" | "session_shutdown" | "message_end"; // 默认 "tool_call"
 	tool?: string; // 默认 "bash"，支持 "|" 分隔多值匹配（如 "edit|write"）
 	// 单条件模式（向后兼容）：pattern 匹配 command（bash）或 path（edit/write）
 	pattern?: string;
