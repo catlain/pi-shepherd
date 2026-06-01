@@ -3,7 +3,7 @@
  */
 
 const VALID_ACTIONS = ["block", "notify", "rewrite", "steer"] as const;
-const VALID_HOOKS = ["tool_call", "tool_result", "agent_end", "session_shutdown"] as const;
+const VALID_HOOKS = ["tool_call", "tool_result", "agent_end", "message_end", "session_shutdown"] as const;
 
 export interface ValidationResult {
 	valid: boolean;
