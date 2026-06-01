@@ -115,6 +115,36 @@ describe("ruleMatches", () => {
 		const rule = compileRules([{ comment: "r", check: "has_edits", hook: "agent_end" }])[0];
 		expect(ruleMatches(rule, "bash", { command: "", path: "", text: "" })).toBe(false);
 	});
+
+	// ── negate 条件 ───────────────────────────────────────────
+
+	it("negate=true 时正则不匹配才算通过", () => {
+		const rule = compileRules([{
+			comment: "unwrap 但排除测试代码",
+			conditions: [
+				{ field: "path", pattern: "src/.*\\.rs$" },
+				{ field: "text", pattern: "\\.(unwrap|expect)\\(" },
+				{ field: "text", pattern: "#\\[cfg\\(test\\)]", negate: true },
+			],
+		}])[0];
+		// 生产代码有 unwrap，且不包含 #[cfg(test)] → 匹配
+		expect(ruleMatches(rule, "edit", { path: "src/logic/board.rs", text: "val.unwrap()", command: "" })).toBe(true);
+		// 测试代码有 unwrap，包含 #[cfg(test)] → 不匹配（negate 取反）
+		expect(ruleMatches(rule, "edit", { path: "src/logic/board.rs", text: "#[cfg(test)]\nval.unwrap()", command: "" })).toBe(false);
+		// 没有 unwrap → 不匹配（第二个条件失败）
+		expect(ruleMatches(rule, "edit", { path: "src/logic/board.rs", text: "val?", command: "" })).toBe(false);
+	});
+
+	it("negate=false（默认）行为不变", () => {
+		const rule = compileRules([{
+			comment: "简单测试",
+			conditions: [
+				{ field: "text", pattern: "hello" },
+			],
+		}])[0];
+		expect(ruleMatches(rule, "edit", { path: "", text: "hello world", command: "" })).toBe(true);
+		expect(ruleMatches(rule, "edit", { path: "", text: "goodbye", command: "" })).toBe(false);
+	});
 });
 
 // ── CODE_EXT_RE ───────────────────────────────────────────

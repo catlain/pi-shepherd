@@ -15,6 +15,8 @@ export interface Condition {
 	field: "path" | "text" | "glob";
 	pattern: string;
 	flags?: string;
+	/** true 时取反：正则不匹配才算通过 */
+	negate?: boolean;
 	_compiled?: RegExp;
 }
 
@@ -267,7 +269,8 @@ export function ruleMatches(
 	if (rule.conditions && rule.conditions.length > 0) {
 		return rule.conditions.every((cond) => {
 			const target = targets[cond.field] || "";
-			return cond._compiled?.test(target) ?? false;
+			const matched = cond._compiled?.test(target) ?? false;
+			return cond.negate ? !matched : matched;
 		});
 	}
 	// 单条件模式（向后兼容）
