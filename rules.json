@@ -311,7 +311,8 @@
 		"conditions": [
 			{
 				"field": "command",
-				"pattern": "^(?!.*\\b(git|grep|find|ls|cat|head|tail|diff|test|python3.*json\\.load)\\b).*settings\\.json"
+				"pattern": "^(?!.*\\b(git|grep|find|ls|cat|head|tail|diff|test|python3.*json\\.load)\\b).*settings\\.json",
+				"flags": "s"
 			}
 		],
 		"hook": "tool_call",
