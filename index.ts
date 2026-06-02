@@ -131,6 +131,7 @@ export default function shepherdExtension(pi: ExtensionAPI) {
 	// ── session_start ──────────────────────────────────────────
 	pi.on("session_start", async (_event, ctx) => {
 		checkWorktrees(ctx.ui);
+		_agentEndFired.clear();
 	});
 
 	// ── agent_start ────────────────────────────────────────────
@@ -138,7 +139,6 @@ export default function shepherdExtension(pi: ExtensionAPI) {
 		_aborted = ctx.signal?.aborted ?? false;
 		_toolState.hasEdits = false;
 		_toolState.cachedTools = null;
-		_agentEndFired.clear();
 		resetMessageEndState();
 		if (ctx.signal && !ctx.signal.aborted) {
 			ctx.signal.addEventListener("abort", () => {

@@ -68,13 +68,22 @@
 		"enabled": true
 	},
 	{
-		"comment": "[arch] 会话结束前检查治理健康度",
+		"comment": "[arch] 会话结束前检查 git 状态",
 		"hook": "agent_end",
-		"check": "has_edits",
+		"check": "",
 		"action": "notify",
-		"reason": "本次会话编辑了文件。收尾时请确认：\n1. git add + commit（必须带 session ID）\n2. 如有重要决策/发现 → 更新记忆文件",
+		"reason": "Git 检测到未提交或未跟踪的文件。收尾时请确认：\n1. git add + commit（必须带 session ID）\n2. 如有重要决策/发现 → 更新记忆文件",
 		"enabled": true,
-		"subagent": false
+		"subagent": false,
+		"conditions": [
+			{
+				"builtin": "git_dirty"
+			},
+			{
+				"builtin": "git_untracked"
+			}
+		],
+		"conditionLogic": "or"
 	},
 	{
 		"comment": "[memory] git commit 后提醒更新记忆",
@@ -356,5 +365,21 @@
 		"reason": "📝 编辑了源码。请确认：\n1. cargo clippy --all-targets -- -D warnings\n2. cargo test\n3. bash scripts/check_arch.sh（架构合规）\n4. python scripts/govern_check.py（治理健康度）",
 		"enabled": false,
 		"subagent": false
+	},
+	{
+		"comment": "[roadmap] 读计划文件时提醒标记 task 为 doing",
+		"hook": "tool_result",
+		"tool": "read",
+		"action": "steer",
+		"conditions": [
+			{
+				"field": "path",
+				"pattern": "\\.pi[/\\\\]plans[/\\\\].*\\.md$"
+			}
+		],
+		"reason": "📖 你正在读取计划文件，说明即将开始执行某个 Task。请在开始编码之前先用 roadmap_update(roadmapId, taskId, {status: 'doing'}) 将对应 Task 标记为 🔄 doing，这样其他会话能看到你正在做什么，避免冲突。如果已经标记过则无视。",
+		"subagent": false,
+		"requireSuccess": true,
+		"enabled": true
 	}
 ]
