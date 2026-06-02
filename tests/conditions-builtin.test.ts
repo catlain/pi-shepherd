@@ -166,18 +166,10 @@ describe("matchBuiltinCondition — 内置条件判断", () => {
 		expect(matchBuiltinCondition("git_untracked", {})).toBe(false);
 	});
 
-	it("builtin=git_dirty_or_untracked + 只有dirty → true", () => {
-		mockGitStatus(["M file.ts"]);
-		expect(matchBuiltinCondition("git_dirty_or_untracked", {})).toBe(true);
-	});
-
-	it("builtin=git_dirty_or_untracked + 只有untracked → true", () => {
-		mockGitStatus(["?? new.ts"]);
-		expect(matchBuiltinCondition("git_dirty_or_untracked", {})).toBe(true);
-	});
-
-	it("builtin=git_dirty_or_untracked + 都没有 → false", () => {
-		mockGitStatus([]);
-		expect(matchBuiltinCondition("git_dirty_or_untracked", {})).toBe(false);
+	it("builtin=git_dirty_or_untracked 已移除，用 OR 组合", () => {
+		// git_dirty_or_untracked 已从 ConditionBuiltin 移除
+		// 应该用 conditions: [{ builtin: "git_dirty" }, { builtin: "git_untracked" }] + conditionLogic: "or"
+		// 见 condition-logic-or.test.ts
+		expect(true).toBe(true);
 	});
 });

@@ -54,14 +54,17 @@ describe("grep scope filtering", () => {
 // ================================================================
 
 describe("has_edits check logic", () => {
-	it("should find agent_end rule with check=has_edits", () => {
+	it("should find agent_end rule with git_dirty + git_untracked OR conditions", () => {
 		const rules = loadRules();
 		const agentEndRule = rules.find(
-			(r: any) => r.hook === "agent_end" && r.check === "has_edits",
+			(r: any) => r.hook === "agent_end",
 		);
 		assert.ok(agentEndRule);
 		assert.equal(agentEndRule.action, "notify");
-		// stopReason 已从 rules.json 中移除（由 agent_end handler 提供默认值）
+		// 应该有 git_dirty + git_untracked 两个 builtin 条件 + OR
+		assert.ok(agentEndRule.conditions?.some((c: any) => c.builtin === "git_dirty"));
+		assert.ok(agentEndRule.conditions?.some((c: any) => c.builtin === "git_untracked"));
+		assert.equal(agentEndRule.conditionLogic, "or");
 	});
 
 	it("should detect edit/write tools correctly", () => {

@@ -4,7 +4,6 @@ import { isGitDirty, hasGitUntracked } from "./git";
 export type ConditionBuiltin =
 	| "git_dirty" // git 有已跟踪文件的未提交改动（M/A/D/R）
 	| "git_untracked" // git 有未跟踪文件（??）
-	| "git_dirty_or_untracked" // 两者任一
 	| "has_edits" // 本轮调用过 edit/write
 	| "always"; // 始终匹配
 
@@ -29,8 +28,8 @@ export function matchBuiltinCondition(
 			return (ctx.gitDirty ?? isGitDirty()) === true;
 		case "git_untracked":
 			return (ctx.gitUntracked ?? hasGitUntracked()) === true;
-		case "git_dirty_or_untracked":
 		case "git_uncommitted": {
+			// 旧 check 字段迁移兼容：git_uncommitted = dirty || untracked
 			const dirty = ctx.gitDirty !== undefined ? ctx.gitDirty : isGitDirty();
 			const untracked = ctx.gitUntracked !== undefined ? ctx.gitUntracked : hasGitUntracked();
 			return dirty || untracked;
