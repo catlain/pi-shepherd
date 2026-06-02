@@ -131,7 +131,6 @@ export default function shepherdExtension(pi: ExtensionAPI) {
 	// ── session_start ──────────────────────────────────────────
 	pi.on("session_start", async (_event, ctx) => {
 		checkWorktrees(ctx.ui);
-		_agentEndFired.clear();
 	});
 
 	// ── agent_start ────────────────────────────────────────────
@@ -149,7 +148,8 @@ export default function shepherdExtension(pi: ExtensionAPI) {
 	});
 
 	pi.on("input", async (_event) => {
-		/* 占位：防止 shepherd steer 循环 */
+		/* 用户输入新消息 — 允许 agent_end 规则再次触发 */
+		_agentEndFired.clear();
 	});
 
 	// ── agent_end ──────────────────────────────────────────────
