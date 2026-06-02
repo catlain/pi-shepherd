@@ -164,6 +164,7 @@ export default function shepherdExtension(pi: ExtensionAPI) {
 			.reverse()
 			.find((m: PayloadMessage) => m.role === "assistant");
 		const stopReason: string | undefined = (lastAssistant as PayloadMessage | undefined)?.stopReason as string | undefined;
+		let pushed = false;
 
 		for (const rule of rules) {
 			const allowedReasons = rule.stopReason ?? ["stop"];
@@ -182,11 +183,13 @@ export default function shepherdExtension(pi: ExtensionAPI) {
 			if (shouldNotify && rule.action === "notify") {
 				_agentEndFired.add(rule.comment);
 				pushWarning(rule.reason, rule.comment);
+				pushed = true;
 			}
 		}
 
 		// 如有缓冲提示，用极简消息触发新 turn（before_provider_request 会注入实际内容）
-		if (hasWarnings()) {
+		// 只在本 handler 推入了 warning 时才触发，避免与 message_end 竞态重复发送空消息
+		if (pushed) {
 			setTimeout(() => {
 				try {
 					pi.sendMessage(

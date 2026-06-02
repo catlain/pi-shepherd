@@ -144,7 +144,8 @@ describe("agent_end — triggerTurn / abort", () => {
 
 	it("无 warnings 时不发送 triggerTurn", async () => {
 		mockHasWarnings.mockReturnValue(false);
-		mockLoadRules.mockReturnValue(makeRules([{ check: "always" }]));
+		// has_edits + 没有编辑 → 条件不匹配 → pushed=false → 不发消息
+		mockLoadRules.mockReturnValue(makeRules([{ check: "has_edits" }]));
 
 		await fire(makeEvent("stop"));
 		await vi.advanceTimersByTimeAsync(10);
