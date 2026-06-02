@@ -87,6 +87,30 @@ describe("validateRule", () => {
 		expect(result.valid).toBe(false);
 		expect(result.errors[0]).toContain("hook");
 	});
+
+	it("disabled: true 归一化为 enabled: false", () => {
+		const rule = { comment: "test", reason: "test", disabled: true } as Record<string, unknown>;
+		const result = validateRule(rule);
+		expect(result.valid).toBe(true);
+		expect(rule.disabled).toBeUndefined();
+		expect(rule.enabled).toBe(false);
+	});
+
+	it("disabled: false 归一化为 enabled: true", () => {
+		const rule = { comment: "test", reason: "test", disabled: false } as Record<string, unknown>;
+		const result = validateRule(rule);
+		expect(result.valid).toBe(true);
+		expect(rule.disabled).toBeUndefined();
+		expect(rule.enabled).toBe(true);
+	});
+
+	it("disabled 不覆盖已有的 enabled", () => {
+		const rule = { comment: "test", reason: "test", enabled: true, disabled: true } as Record<string, unknown>;
+		const result = validateRule(rule);
+		expect(result.valid).toBe(true);
+		expect(rule.disabled).toBeUndefined();
+		expect(rule.enabled).toBe(true); // 已有的 enabled 优先
+	});
 });
 
 // ── listRules ────────────────────────────────────────────

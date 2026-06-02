@@ -14,6 +14,14 @@ export interface ValidationResult {
 export function validateRule(rule: Record<string, unknown>): ValidationResult {
 	const errors: string[] = [];
 
+	// 归一化：将 disabled 转为 enabled
+	if ("disabled" in rule) {
+		const v = rule.disabled;
+		delete rule.disabled;
+		if (v === true && rule.enabled === undefined) rule.enabled = false;
+		if (v === false && rule.enabled === undefined) rule.enabled = true;
+	}
+
 	if (!rule.comment || typeof rule.comment !== "string" || !rule.comment.trim()) {
 		errors.push("缺少必填字段: comment");
 	}
