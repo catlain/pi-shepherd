@@ -30,6 +30,7 @@ vi.mock("../shepherd", () => ({
 	checkWorktrees: vi.fn(),
 	drainHints: vi.fn().mockReturnValue(""),
 	hasGitUncommittedChanges: vi.fn().mockReturnValue(false),
+	hasGitUntracked: vi.fn().mockReturnValue(false),
 	hasWarnings: mockHasWarnings,
 	isSubagent: mockIsSubagent,
 	loadRules: mockLoadRules,
@@ -71,15 +72,20 @@ function makeRules(
 		stopReason?: string[];
 	}>,
 ) {
-	return arr.map((r) => ({
-		hook: "agent_end",
-		check: "always",
-		action: "notify",
-		comment: "test-rule",
-		reason: "test reason",
-		stopReason: ["stop"],
-		...r,
-	}));
+	return arr.map(({ check, ...rest }) => {
+		const base: Record<string, unknown> = {
+			hook: "agent_end",
+			action: "notify",
+			comment: "test-rule",
+			reason: "test reason",
+			stopReason: ["stop"],
+		};
+		const resolvedCheck = check ?? "always";
+		if (resolvedCheck && !rest.conditions) {
+			base.conditions = [{ builtin: resolvedCheck }];
+		}
+		return { ...base, ...rest };
+	});
 }
 
 async function fireAgentEnd(

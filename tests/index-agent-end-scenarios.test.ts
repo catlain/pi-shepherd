@@ -30,6 +30,7 @@ vi.mock("../shepherd", () => ({
 	checkWorktrees: vi.fn(),
 	drainHints: vi.fn().mockReturnValue(""),
 	hasGitUncommittedChanges: mockHasGitUncommittedChanges,
+	hasGitUntracked: vi.fn().mockReturnValue(false),
 	hasWarnings: mockHasWarnings,
 	isSubagent: mockIsSubagent,
 	loadRules: mockLoadRules,
@@ -67,17 +68,28 @@ function makeRules(
 		comment?: string;
 		reason?: string;
 		stopReason?: string[];
+		conditions?: Array<{ builtin?: string; pattern?: string; field?: string }>;
 	}>,
 ) {
-	return arr.map((r) => ({
-		hook: "agent_end",
-		check: "always",
-		action: "notify",
-		comment: "test-rule",
-		reason: "test reason",
-		stopReason: ["stop"],
-		...r,
-	}));
+	return arr.map(({ check, ...rest }) => {
+		const base: Record<string, unknown> = {
+			hook: "agent_end",
+			action: "notify",
+			comment: "test-rule",
+			reason: "test reason",
+			stopReason: ["stop"],
+		};
+		// 兼容旧 check 字段：自动转为 conditions
+		if (check === undefined || check === "always") {
+			base.conditions = [{ builtin: "always" }];
+		} else if (check && !rest.conditions) {
+			base.conditions = [{ builtin: check }];
+		} else if (rest.conditions) {
+			base.conditions = rest.conditions;
+			delete rest.conditions;
+		}
+		return { ...base, ...rest };
+	});
 }
 
 function makeEvent(stopReason = "stop") {
@@ -139,10 +151,14 @@ describe("agent_end — check 类型", () => {
 		expect(mockPushWarning).not.toHaveBeenCalled();
 	});
 
-	it("check=git_uncommitted: 有更改 + 有编辑时触发", async () => {
+	it("check=git_dirty AND has_edits: 有更改 + 有编辑时触发", async () => {
 		mockHasGitUncommittedChanges.mockReturnValue(true);
 		mockLoadRules.mockReturnValue(
-			makeRules([{ check: "git_uncommitted", reason: "git dirty" }]),
+			makeRules([{
+				conditions: [{ builtin: "git_dirty" }, { builtin: "has_edits" }],
+				conditionLogic: "and",
+				reason: "git dirty",
+			}]),
 		);
 		for (const h of pi._handlers.get("agent_start")!)
 			await h({}, { signal: new AbortController().signal });
@@ -153,7 +169,7 @@ describe("agent_end — check 类型", () => {
 		expect(mockPushWarning).toHaveBeenCalledWith("git dirty", "test-rule");
 	});
 
-	it("check=git_uncommitted: 无更改时跳过", async () => {
+	it("conditions git_dirty: 无更改时跳过", async () => {
 		mockHasGitUncommittedChanges.mockReturnValue(false);
 		mockLoadRules.mockReturnValue(
 			makeRules([{ check: "git_uncommitted" }]),

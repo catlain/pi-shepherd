@@ -42,6 +42,7 @@ import {
 	checkWorktrees,
 	drainHints,
 	hasGitUncommittedChanges,
+	hasGitUntracked,
 	hasWarnings,
 	isSubagent,
 	loadRules,
@@ -54,6 +55,7 @@ import {
 	StateTracker,
 	type ToolState,
 } from "./shepherd";
+import { ruleMatches } from "./shepherd/rules";
 import { registerRulesEditorTool } from "./shepherd/rules-tool";
 
 /** 本地 hints 缓冲区（收集 pi.events.emit("ephemeral:hint") 的数据） */
@@ -168,17 +170,14 @@ export default function shepherdExtension(pi: ExtensionAPI) {
 			if (!allowedReasons.includes(stopReason ?? "")) continue;
 			if (_agentEndFired.has(rule.comment)) continue;
 
-			let shouldNotify = false;
-			if (rule.check === "git_uncommitted") {
-				const isDirty = hasGitUncommittedChanges();
-				shouldNotify = isDirty && _toolState.hasEdits;
-				_wasDirty = isDirty;
-			} else if (rule.check === "has_edits") {
-				// hasEdits：本轮是否调用过 edit/write，用于提醒记忆更新和总结
-				shouldNotify = _toolState.hasEdits;
-			} else if (rule.check === "always" || !rule.check) {
-				shouldNotify = true;
-			}
+			// 统一条件匹配：通过 ruleMatches 检查 conditions（含 builtin）
+			const ctx: BuiltinContext = {
+				hasEdits: _toolState.hasEdits,
+				gitDirty: hasGitUncommittedChanges(),
+				gitUntracked: hasGitUntracked(),
+			};
+			const shouldNotify = ruleMatches(rule, {}, ctx);
+			if (ctx.gitDirty) _wasDirty = true;
 
 			if (shouldNotify && rule.action === "notify") {
 				_agentEndFired.add(rule.comment);
@@ -208,14 +207,15 @@ export default function shepherdExtension(pi: ExtensionAPI) {
 		}).filter((r) => r.hook === "session_shutdown");
 		if (rules.length === 0) return;
 		for (const rule of rules) {
-			let shouldNotify = false;
-			if (rule.check === "git_uncommitted") {
-				shouldNotify = hasGitUncommittedChanges();
-			} else if (rule.check === "always" || !rule.check) {
-				shouldNotify = true;
-			}
+			// 统一条件匹配
+			const builtinCtx: BuiltinContext = {
+				hasEdits: false,
+				gitDirty: hasGitUncommittedChanges(),
+				gitUntracked: hasGitUntracked(),
+			};
+			const shouldNotify = ruleMatches(rule, {}, builtinCtx);
 			if (shouldNotify && rule.action === "notify") {
-				ctx.ui.notify?.(`⚠️ shepherd: ${rule.reason}`, "warning");
+				ctx.ui?.notify?.(`⚠️ shepherd: ${rule.reason}`, "warning");
 			}
 		}
 	});

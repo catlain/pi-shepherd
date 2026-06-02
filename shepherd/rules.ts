@@ -1,13 +1,32 @@
 /**
- * Guard 规则类型定义 + 规则加载/编译/匹配 + git 辅助函数
+ * Guard 规则类型定义 + 规则加载/编译/匹配
  */
 
-import { execSync } from "node:child_process";
+// git 相关函数从 git.ts re-export，保持向后兼容
+export {
+	isGitDirty,
+	hasGitUntracked,
+	isGitDirtyOrUntracked,
+	hasGitUncommittedChanges,
+	isInWorktree,
+} from "./git";
+
+// 条件匹配从 conditions.ts re-export
+export { matchBuiltinCondition } from "./conditions";
+export type { BuiltinContext } from "./conditions";
+
+/** 当前是否在子代理环境中 */
+export const isSubagent = () =>
+	!!(process.env.PI_SUBAGENT_AGENT || process.env.PI_SUBAGENT_SESSION);
+
+/** 代码文件扩展名正则（glob 或文件名末尾） */
+export const CODE_EXT_RE = /\.(py|rs|ts|js|toml|json)(\*|"|')?$/;
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { pushRuleError } from "./ephemeral.js";
 import type { ResettableRule, StateCondition } from "./state-tracker.js";
 import type { ToolEvent } from "./tool-event-types.js";
+import { matchBuiltinCondition } from "./conditions";
 
 // ── 类型定义 ──────────────────────────────────────────────────
 
@@ -17,8 +36,13 @@ export interface Condition {
 	flags?: string;
 	/** true 时取反：正则不匹配才算通过 */
 	negate?: boolean;
+	/** 内置条件：不依赖正则，直接检查环境状态（field/pattern 为占位） */
+	builtin?: ConditionBuiltin;
 	_compiled?: RegExp;
 }
+
+// ConditionBuiltin 类型定义移到 conditions.ts，这里 re-export
+export type { ConditionBuiltin } from "./conditions";
 
 export interface Rule {
 	comment: string;
@@ -32,7 +56,7 @@ export interface Rule {
 	action?: "block" | "notify" | "rewrite" | "steer"; // 默认 "block"
 	reason: string;
 	enabled?: boolean;
-	// session_shutdown / agent_end 专用：内置检查类型
+	// session_shutdown / agent_end 专用：内置检查类型（旧字段，自动迁移到 conditions）
 	check?: "git_uncommitted" | "has_edits" | "always";
 	// agent_end 专用：只在指定 stopReason 时触发（默认 ["stop"]）
 	stopReason?: ("stop" | "length" | "toolUse" | "error" | "aborted")[];
@@ -46,68 +70,15 @@ export interface Rule {
 	requiresTools?: string[];
 	// 仅成功时触发：true 时跳过 isError 的 tool_result（默认 false）
 	requireSuccess?: boolean;
+	// 条件组合逻辑："and"（默认）= 所有条件都满足，"or" = 任一满足
+	conditionLogic?: "and" | "or";
 	// 运行时：已触发标记（防重复）
 	_triggered?: boolean;
 	// 编译后的正则（运行时填充，单条件模式）
 	_compiled?: RegExp;
 }
 
-// ── Git 辅助函数 ──────────────────────────────────────────────
-
-/** 检测 git 工作区是否有未提交的改动 */
-export function hasGitUncommittedChanges(): boolean {
-	try {
-		const cwd = process.cwd();
-		const status = execSync("git status --porcelain", {
-			timeout: 5000,
-			stdio: ["pipe", "pipe", "pipe"],
-			cwd,
-		})
-			.toString()
-			.trim();
-		// 只关注已跟踪文件的变更（M/A/D/R 等），忽略 untracked（?? 前缀）
-		const tracked = status
-			.split("\n")
-			.filter((line) => line && !line.startsWith("??"));
-		return tracked.length > 0;
-	} catch {
-		return false;
-	}
-}
-
-/** 当前是否在 worktree 中 */
-export function isInWorktree(): boolean {
-	try {
-		const cwd = process.cwd();
-		if (/\/\.worktrees\/[^/]+/.test(cwd)) return true;
-		const gitDir = execSync("git rev-parse --git-dir", {
-			timeout: 3000,
-			stdio: ["pipe", "pipe", "pipe"],
-			cwd,
-		})
-			.toString()
-			.trim();
-		const commonDir = execSync("git rev-parse --git-common-dir", {
-			timeout: 3000,
-			stdio: ["pipe", "pipe", "pipe"],
-			cwd,
-		})
-			.toString()
-			.trim();
-		return gitDir !== commonDir && gitDir !== ".git";
-	} catch {
-		return false;
-	}
-}
-
-/** 当前是否在子代理环境中 */
-export const isSubagent = () =>
-	!!(process.env.PI_SUBAGENT_AGENT || process.env.PI_SUBAGENT_SESSION);
-
-// ── 代码文件扩展名 ─────────────────────────────────────────
-
-/** 代码文件扩展名正则（glob 或文件名末尾） */
-export const CODE_EXT_RE = /\.(py|rs|ts|js|toml|json)(\*|"|')?$/;
+// ── 内置条件匹配 ────────────────────────────────────────────
 
 // ── 规则加载/编译/匹配 ────────────────────────────────────────
 
@@ -149,6 +120,11 @@ export function compileRules(rules: Rule[]): Rule[] {
 		} else if (rule.pattern) {
 			// 单条件模式：编译 pattern（向后兼容）
 			rule._compiled = new RegExp(rule.pattern, rule.flags || "");
+		}
+		// check 字段自动迁移为 conditions（向后兼容）
+		if (rule.check && (!rule.conditions || rule.conditions.length === 0)) {
+			const builtinName = rule.check === "has_edits" ? "has_edits" : rule.check;
+			rule.conditions = [{ builtin: builtinName as ConditionBuiltin }];
 		}
 		// 填充默认值
 		if (!rule.hook) rule.hook = "tool_call";
@@ -259,26 +235,65 @@ export function getMatchTargets(
 	return { path: pathVal, text, command: "", glob: "" };
 }
 
-/** 判断规则是否匹配事件 */
+/** 判断规则是否匹配事件
+ * @param rule 规则对象
+ * @param toolOrTargets 工具名（旧签名）或匹配目标（新签名）
+ * @param targetsOrCtx 匹配目标（旧签名）或 BuiltinContext（新签名）
+ * @param tool 工具名（仅新签名使用）
+ */
 export function ruleMatches(
 	rule: Rule,
-	tool: string,
-	targets: Record<string, string>,
+	toolOrTargets: string | Record<string, string>,
+	targetsOrCtx?: Record<string, string> | BuiltinContext,
+	tool?: string,
 ): boolean {
-	// 多条件 AND 模式
+	// 参数重载：兼容旧签名 ruleMatches(rule, tool, targets)
+	let targets: Record<string, string>;
+	let ctx: BuiltinContext | undefined;
+	let toolName: string | undefined;
+	if (typeof toolOrTargets === "string") {
+		// 旧签名: ruleMatches(rule, toolName, targets)
+		toolName = toolOrTargets;
+		targets = (targetsOrCtx as Record<string, string>) ?? {};
+		ctx = undefined;
+	} else {
+		// 新签名: ruleMatches(rule, targets, ctx?, tool?)
+		targets = toolOrTargets;
+		ctx = targetsOrCtx as BuiltinContext | undefined;
+		toolName = tool;
+	}
+	// 多条件模式
 	if (rule.conditions && rule.conditions.length > 0) {
-		return rule.conditions.every((cond) => {
-			const target = targets[cond.field] || "";
-			const matched = cond._compiled?.test(target) ?? false;
-			return cond.negate ? !matched : matched;
-		});
+		const logic = rule.conditionLogic ?? "and";
+		if (logic === "or") {
+			return rule.conditions.some((cond) => matchCondition(cond, targets, ctx));
+		}
+		return rule.conditions.every((cond) => matchCondition(cond, targets, ctx));
 	}
 	// 单条件模式（向后兼容）
 	if (rule._compiled) {
-		const target = targets[tool === "bash" ? "command" : "path"] || "";
+		const field = toolName === "bash" ? "command" : "path";
+		const target = targets[field] || "";
 		return rule._compiled.test(target);
 	}
 	return false;
+}
+
+/** 判断单个条件是否满足（正则或 builtin） */
+function matchCondition(
+	cond: Condition,
+	targets: Record<string, string>,
+	ctx?: BuiltinContext,
+): boolean {
+	// builtin 条件：直接检查环境状态
+	if (cond.builtin) {
+		const result = matchBuiltinCondition(cond.builtin, ctx ?? {});
+		return cond.negate ? !result : result;
+	}
+	// 正则条件
+	const target = targets[cond.field] || "";
+	const matched = cond._compiled?.test(target) ?? false;
+	return cond.negate ? !matched : matched;
 }
 
 /** tool 字段匹配：支持 "|" 分隔的多值（如 "edit|write"） */

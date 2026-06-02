@@ -61,7 +61,7 @@ describe("has_edits check logic", () => {
 		);
 		assert.ok(agentEndRule);
 		assert.equal(agentEndRule.action, "notify");
-		assert.deepEqual(agentEndRule.stopReason, ["stop"]);
+		// stopReason 已从 rules.json 中移除（由 agent_end handler 提供默认值）
 	});
 
 	it("should detect edit/write tools correctly", () => {

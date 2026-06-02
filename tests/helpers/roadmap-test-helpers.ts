@@ -52,6 +52,6 @@ export function isBlocked(toolName: string, input: Record<string, unknown>): boo
 	if (Object.keys(targets).length === 0) return false;
 	return roadmapBlockRules.some((rule) => {
 		if (rule.tool !== toolName) return false;
-		return ruleMatches(rule, toolName, targets);
+		return ruleMatches(rule, targets, undefined, toolName);
 	});
 }

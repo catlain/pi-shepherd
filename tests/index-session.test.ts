@@ -22,6 +22,7 @@ vi.mock("../shepherd", () => ({
 	checkWorktrees: mockCheckWorktrees,
 	drainHints: vi.fn().mockReturnValue(""),
 	hasGitUncommittedChanges: mockHasGitUncommittedChanges,
+	hasGitUntracked: vi.fn().mockReturnValue(false),
 	hasWarnings: vi.fn().mockReturnValue(false),
 	isSubagent: vi.fn().mockReturnValue(false),
 	loadRules: mockLoadRules,
@@ -64,14 +65,19 @@ function getHandler(
 function shutdownRules(
 	arr: Array<{ check?: string; reason?: string }>,
 ) {
-	return arr.map((r) => ({
-		hook: "session_shutdown",
-		check: "always",
-		action: "notify",
-		comment: "shutdown-rule",
-		reason: "default reason",
-		...r,
-	}));
+	return arr.map(({ check, ...rest }) => {
+		const base: Record<string, unknown> = {
+			hook: "session_shutdown",
+			action: "notify",
+			comment: "shutdown-rule",
+			reason: "default reason",
+		};
+		const resolvedCheck = check ?? "always";
+		if (resolvedCheck && !rest.conditions) {
+			base.conditions = [{ builtin: resolvedCheck }];
+		}
+		return { ...base, ...rest };
+	});
 }
 
 // ── session_start ──

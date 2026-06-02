@@ -74,7 +74,7 @@ export function registerToolCall(
 		for (const rule of rules) {
 			if (isSubagent() && rule.subagent === false) continue;
 			if (!toolsAvailable(rule, pi, state)) continue;
-			if (!ruleMatches(rule, event.toolName!, targets)) continue;
+			if (!ruleMatches(rule, targets, undefined, event.toolName!)) continue;
 
 			if (rule.action === "block") {
 				return { block: true, reason: `⛔ shepherd: ${rule.reason}` };
@@ -146,7 +146,7 @@ export function registerToolResult(
 			if (rule.conditions || rule.pattern) {
 				const targets = getMatchTargets(event.toolName!, event, "tool_result");
 				if (!targets || Object.keys(targets).length === 0) continue;
-				if (!ruleMatches(rule, event.toolName!, targets)) continue;
+				if (!ruleMatches(rule, targets, undefined, event.toolName!)) continue;
 			}
 
 			// 状态条件匹配
