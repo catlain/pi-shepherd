@@ -192,11 +192,23 @@ describe("getMatchTargets grep", () => {
 // ── getMatchTargets edit/write/bash ───────────────────────
 
 describe("getMatchTargets edit/write/bash", () => {
-	it("edit 提取 path 和 edits 文本", () => {
+	it("edit 提取 path 和 newText（不含 oldText）", () => {
 		const r = getMatchTargets("edit", { input: { path: "main.ts", edits: [{ oldText: "var", newText: "const" }] } });
 		expect(r.path).toBe("main.ts");
-		expect(r.text).toContain("var");
 		expect(r.text).toContain("const");
+		expect(r.text).not.toContain("var");
+	});
+
+	it("edit 修复违规引用时 text 不含旧引用", () => {
+		// 回归：把 crate::render 改为 crate::data 时，text 不应包含 crate::render
+		const r = getMatchTargets("edit", {
+			input: {
+				path: "src/logic/interaction.rs",
+				edits: [{ oldText: "use crate::render::BoardBead;", newText: "use crate::data::BoardBead;" }],
+			},
+		});
+		expect(r.text).toContain("crate::data");
+		expect(r.text).not.toContain("crate::render");
 	});
 
 	it("write 提取 path 和 content", () => {

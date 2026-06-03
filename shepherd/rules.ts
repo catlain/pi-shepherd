@@ -220,7 +220,7 @@ export function getMatchTargets(
 		const edits = (event.input as any)?.edits;
 		if (Array.isArray(edits)) {
 			text = edits
-				.flatMap((e: { oldText?: string; newText?: string }) => [e.oldText || "", e.newText || ""])
+				.map((e: { newText?: string }) => e.newText || "")
 				.join("\n");
 		}
 	} else if (tool === "write") {
