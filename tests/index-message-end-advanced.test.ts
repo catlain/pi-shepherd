@@ -99,7 +99,9 @@ describe("message_end — 集成测试（高级场景）", () => {
 		);
 	});
 
-	it("hasWarnings 时 sendMessage 触发新 turn", async () => {
+	it("message_end 不再发送 sendMessage，由 agent_end 统一发送", async () => {
+		// 修复竞态空回复：message_end 只推入 warning，不再自己发 sendMessage。
+		// agent_end 统一检查 pushed || hasWarnings() 发唯一的 triggerTurn。
 		mockLoadRules.mockReturnValue(
 			makeMsgEndRules([
 				{
@@ -119,13 +121,11 @@ describe("message_end — 集成测试（高级场景）", () => {
 
 		vi.advanceTimersByTime(10);
 
-		expect(pi.sendMessage).toHaveBeenCalledWith(
-			expect.objectContaining({
-				customType: "shepherd-message-end",
-				display: false,
-			}),
-			{ triggerTurn: true },
-		);
+		// message_end 不再发送 sendMessage
+		expect(pi.sendMessage).not.toHaveBeenCalled();
+
+		// 验证 pushHint 被调用（warning 已推入缓冲区，等待 agent_end 统一消费）
+		expect(mockPushHint).toHaveBeenCalled();
 	});
 
 	it("agent_start 重置防重复状态", async () => {

@@ -112,26 +112,11 @@ export function registerMessageEnd(
 			}
 		}
 
-		// 有缓冲提示时，触发新 turn 注入
-		// （before_provider_request 会消费 pushWarning 的内容）
-		// 注意：如果后续还有 tool call，before_provider_request 自然会被调用
-		// 这里处理的是 agent 循环已结束但需要注入 steer 的场景
-		const { hasWarnings } = await import("./ephemeral.js");
-		if (hasWarnings()) {
-			setTimeout(() => {
-				try {
-					pi.sendMessage(
-						{
-							customType: "shepherd-message-end",
-							display: false,
-							content: "",
-						},
-						{ triggerTurn: true },
-					);
-				} catch {
-					/* session 已替换 */
-				}
-			}, 0);
-		}
+		// 不再在此处发送 sendMessage(triggerTurn)。
+		// agent_end 会统一检查 hasWarnings() 并发送唯一的 triggerTurn，
+		// 避免 message_end 和 agent_end 各发一个 sendMessage 导致第二个 drainHints 空 → 空回复。
+		//
+		// 时序：message_end → turn_end → agent_end
+		// message_end 推入的 warning 会在 agent_end 的 sendMessage 触发后被 drainHints 消费。
 	});
 }

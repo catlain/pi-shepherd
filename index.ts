@@ -187,9 +187,11 @@ export default function shepherdExtension(pi: ExtensionAPI) {
 			}
 		}
 
-		// 如有缓冲提示，用极简消息触发新 turn（before_provider_request 会注入实际内容）
-		// 只在本 handler 推入了 warning 时才触发，避免与 message_end 竞态重复发送空消息
-		if (pushed) {
+		// 统一发送唯一的 sendMessage(triggerTurn)：
+		// - pushed：agent_end 自己推入了 warning
+		// - hasWarnings()：message_end 或 tool_result 推入了 warning（它们不再自己发 sendMessage）
+		// 只发一次，避免多个 hook 各发一次导致第二个 drainHints 拿空 → 空回复
+		if (pushed || hasWarnings()) {
 			setTimeout(() => {
 				try {
 					pi.sendMessage(
