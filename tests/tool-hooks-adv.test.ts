@@ -70,13 +70,18 @@ vi.mock("../shepherd/rules.js", () => ({
 	ruleMatches: mockedRuleMatches,
 	toolMatches: (ruleTool: string | undefined, eventTool: string) => {
 		if (!ruleTool) return true;
-		return ruleTool.split("|").map((t: string) => t.trim()).includes(eventTool);
+		return ruleTool
+			.split("|")
+			.map((t: string) => t.trim())
+			.includes(eventTool);
 	},
 	isSubagent: mockedIsSubagent,
 	isRtkAvailable: false,
 }));
 vi.mock("../shepherd/ephemeral.js", () => ({ pushWarning: mockedPushWarning }));
-vi.mock("../shepherd/line-count.js", () => ({ checkLineCount: mockedCheckLineCount }));
+vi.mock("../shepherd/line-count.js", () => ({
+	checkLineCount: mockedCheckLineCount,
+}));
 
 // ── registerToolCall 高级场景 ────────────────────────────
 
@@ -96,43 +101,63 @@ describe("registerToolCall — 高级", () => {
 		]);
 		mockedGetMatchTargets.mockReturnValue({}); // 空 targets
 		registerToolCall(pi as any, state);
-		const handler = pi.handlers["tool_call"];
-		const r = await handler({ toolName: "bash", input: { command: "git push" } });
+		const handler = pi.handlers.tool_call;
+		const r = await handler({
+			toolName: "bash",
+			input: { command: "git push" },
+		});
 		expect(r).toBeUndefined();
 	});
 
 	it("tool 不匹配的规则被过滤", async () => {
 		mockedLoadRules.mockReturnValue([
-			{ hook: "tool_call", tool: "edit", action: "block", reason: "for edit only" },
+			{
+				hook: "tool_call",
+				tool: "edit",
+				action: "block",
+				reason: "for edit only",
+			},
 		]);
 		mockedGetMatchTargets.mockReturnValue({ command: "ls" });
 		mockedRuleMatches.mockReturnValue(true);
 		registerToolCall(pi as any, state);
-		const handler = pi.handlers["tool_call"];
+		const handler = pi.handlers.tool_call;
 		const r = await handler({ toolName: "bash", input: { command: "ls" } });
 		expect(r).toBeUndefined();
 	});
 
 	it("notify action 应 pushWarning", async () => {
 		mockedLoadRules.mockReturnValue([
-			{ hook: "tool_call", tool: "bash", action: "notify", reason: "小心操作", comment: "alert" },
+			{
+				hook: "tool_call",
+				tool: "bash",
+				action: "notify",
+				reason: "小心操作",
+				comment: "alert",
+			},
 		]);
 		mockedGetMatchTargets.mockReturnValue({ command: "rm -rf /" });
 		mockedRuleMatches.mockReturnValue(true);
 		registerToolCall(pi as any, state);
-		const handler = pi.handlers["tool_call"];
+		const handler = pi.handlers.tool_call;
 		await handler({ toolName: "bash", input: { command: "rm -rf /" } });
 		expect(mockedPushWarning).toHaveBeenCalledWith("小心操作", "alert");
 	});
 
 	it("toolsAvailable 返回 false 时跳过", async () => {
 		mockedLoadRules.mockReturnValue([
-			{ hook: "tool_call", tool: "bash", action: "block", reason: "test", requiresTools: ["nonexistent"] },
+			{
+				hook: "tool_call",
+				tool: "bash",
+				action: "block",
+				reason: "test",
+				requiresTools: ["nonexistent"],
+			},
 		]);
 		mockedGetMatchTargets.mockReturnValue({ command: "ls" });
 		mockedRuleMatches.mockReturnValue(true);
 		registerToolCall(pi as any, state);
-		const handler = pi.handlers["tool_call"];
+		const handler = pi.handlers.tool_call;
 		const r = await handler({ toolName: "bash", input: { command: "ls" } });
 		expect(r).toBeUndefined();
 	});
@@ -152,7 +177,7 @@ describe("registerToolResult — 高级", () => {
 
 	it("memory_update 无匹配路径时不调用 checkLineCount", async () => {
 		registerToolResult(pi as any, state);
-		const handler = pi.handlers["tool_result"];
+		const handler = pi.handlers.tool_result;
 		await handler({
 			toolName: "memory_update",
 			input: {},
@@ -163,7 +188,7 @@ describe("registerToolResult — 高级", () => {
 
 	it("edit/write 无 filePath 时不调用 checkLineCount", async () => {
 		registerToolResult(pi as any, state);
-		const handler = pi.handlers["tool_result"];
+		const handler = pi.handlers.tool_result;
 		await handler({
 			toolName: "edit",
 			input: {},
@@ -174,29 +199,44 @@ describe("registerToolResult — 高级", () => {
 
 	it("requireSuccess + isError 跳过匹配的规则", async () => {
 		mockedLoadRules.mockReturnValue([
-			{ hook: "tool_result", tool: "bash", action: "notify", reason: "出错", requireSuccess: true },
+			{
+				hook: "tool_result",
+				tool: "bash",
+				action: "notify",
+				reason: "出错",
+				requireSuccess: true,
+			},
 		]);
 		mockedGetMatchTargets.mockReturnValue({ command: "ls" });
 		mockedRuleMatches.mockReturnValue(true);
 		registerToolResult(pi as any, state);
-		const handler = pi.handlers["tool_result"];
+		const handler = pi.handlers.tool_result;
 		await handler({
-			toolName: "bash", input: { command: "ls" },
-			content: [{ type: "text", text: "error" }], isError: true,
+			toolName: "bash",
+			input: { command: "ls" },
+			content: [{ type: "text", text: "error" }],
+			isError: true,
 		});
 		expect(mockedPushWarning).not.toHaveBeenCalled();
 	});
 
 	it("enabled===false 的规则被跳过", async () => {
 		mockedLoadRules.mockReturnValue([
-			{ hook: "tool_result", tool: "bash", action: "notify", reason: "不应触发", enabled: false },
+			{
+				hook: "tool_result",
+				tool: "bash",
+				action: "notify",
+				reason: "不应触发",
+				enabled: false,
+			},
 		]);
 		mockedGetMatchTargets.mockReturnValue({ command: "ls" });
 		mockedRuleMatches.mockReturnValue(true);
 		registerToolResult(pi as any, state);
-		const handler = pi.handlers["tool_result"];
+		const handler = pi.handlers.tool_result;
 		await handler({
-			toolName: "bash", input: { command: "ls" },
+			toolName: "bash",
+			input: { command: "ls" },
 			content: [{ type: "text", text: "ok" }],
 		});
 		expect(mockedPushWarning).not.toHaveBeenCalled();
@@ -204,14 +244,20 @@ describe("registerToolResult — 高级", () => {
 
 	it("rule.tool 不匹配 event.toolName 时跳过", async () => {
 		mockedLoadRules.mockReturnValue([
-			{ hook: "tool_result", tool: "edit", action: "notify", reason: "只对 edit" },
+			{
+				hook: "tool_result",
+				tool: "edit",
+				action: "notify",
+				reason: "只对 edit",
+			},
 		]);
 		mockedGetMatchTargets.mockReturnValue({ path: "foo.ts" });
 		mockedRuleMatches.mockReturnValue(true);
 		registerToolResult(pi as any, state);
-		const handler = pi.handlers["tool_result"];
+		const handler = pi.handlers.tool_result;
 		await handler({
-			toolName: "bash", input: {},
+			toolName: "bash",
+			input: {},
 			content: [{ type: "text", text: "ok" }],
 		});
 		expect(mockedPushWarning).not.toHaveBeenCalled();
@@ -219,14 +265,21 @@ describe("registerToolResult — 高级", () => {
 
 	it("notify action 应 pushWarning", async () => {
 		mockedLoadRules.mockReturnValue([
-			{ hook: "tool_result", tool: "bash", action: "notify", reason: "注意", comment: "alert" },
+			{
+				hook: "tool_result",
+				tool: "bash",
+				action: "notify",
+				reason: "注意",
+				comment: "alert",
+			},
 		]);
 		mockedGetMatchTargets.mockReturnValue({ command: "ls" });
 		mockedRuleMatches.mockReturnValue(true);
 		registerToolResult(pi as any, state);
-		const handler = pi.handlers["tool_result"];
+		const handler = pi.handlers.tool_result;
 		await handler({
-			toolName: "bash", input: { command: "ls" },
+			toolName: "bash",
+			input: { command: "ls" },
 			content: [{ type: "text", text: "ok" }],
 		});
 		expect(mockedPushWarning).toHaveBeenCalledWith("注意", "alert");
@@ -238,13 +291,21 @@ describe("registerToolResult — 高级", () => {
 		tracker.matches.mockReturnValue(true);
 
 		mockedLoadRules.mockReturnValue([
-			{ hook: "tool_result", tool: "bash", action: "steer", reason: "已 {count} 次", comment: "c", state: { tools: ["edit"], gte: 3 } },
+			{
+				hook: "tool_result",
+				tool: "bash",
+				action: "steer",
+				reason: "已 {count} 次",
+				comment: "c",
+				state: { tools: ["edit"], gte: 3 },
+			},
 		]);
 		mockedRuleMatches.mockReturnValue(true);
 		registerToolResult(pi as any, state);
-		const handler = pi.handlers["tool_result"];
+		const handler = pi.handlers.tool_result;
 		await handler({
-			toolName: "bash", input: {},
+			toolName: "bash",
+			input: {},
 			content: [{ type: "text", text: "ok" }],
 		});
 		expect(tracker.nextThreshold).toHaveBeenCalled();
@@ -252,14 +313,24 @@ describe("registerToolResult — 高级", () => {
 
 	it("resetOn 应传入 rules 和 event.toolName", async () => {
 		mockedLoadRules.mockReturnValue([
-			{ hook: "tool_result", tool: "bash", action: "notify", reason: "r", resetOn: ["bash"] },
+			{
+				hook: "tool_result",
+				tool: "bash",
+				action: "notify",
+				reason: "r",
+				resetOn: ["bash"],
+			},
 		]);
 		registerToolResult(pi as any, state);
-		const handler = pi.handlers["tool_result"];
+		const handler = pi.handlers.tool_result;
 		await handler({
-			toolName: "bash", input: {},
+			toolName: "bash",
+			input: {},
 			content: [{ type: "text", text: "ok" }],
 		});
-		expect(state.tracker.resetIf).toHaveBeenCalledWith("bash", expect.any(Array));
+		expect(state.tracker.resetIf).toHaveBeenCalledWith(
+			"bash",
+			expect.any(Array),
+		);
 	});
 });

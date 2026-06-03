@@ -2,7 +2,7 @@
  * index.ts 测试 — agent_end triggerTurn / abort 信号
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockGetEffectiveConfig = vi.fn().mockReturnValue({
 	config: { projectRulesPattern: "shepherd-rules-", maxWarnings: 5 },
@@ -10,8 +10,7 @@ const mockGetEffectiveConfig = vi.fn().mockReturnValue({
 });
 
 vi.mock("@pi-atelier/shared-utils", () => ({
-	getEffectiveConfig: (...args: unknown[]) =>
-		mockGetEffectiveConfig(...args),
+	getEffectiveConfig: (...args: unknown[]) => mockGetEffectiveConfig(...args),
 }));
 
 const mockHasGitUncommittedChanges = vi.fn().mockReturnValue(false);
@@ -94,10 +93,7 @@ function makeEvent(stopReason = "stop") {
 	};
 }
 
-async function fireAgentEnd(
-	handlers: Map<string, Function[]>,
-	event: unknown,
-) {
+async function fireAgentEnd(handlers: Map<string, Function[]>, event: unknown) {
 	const hs = handlers.get("agent_end")!;
 	for (const h of hs) await h(event, {});
 }

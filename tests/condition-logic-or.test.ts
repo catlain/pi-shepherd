@@ -8,14 +8,14 @@
  * - builtin + 正则条件混合，AND/OR 组合
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
-	type Rule,
 	type Condition,
 	type ConditionBuiltin,
 	compileRules,
+	type Rule,
 	ruleMatches,
 } from "@pi-atelier/shepherd";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // mock child_process
 const mockExecSync = vi.fn();
@@ -27,15 +27,20 @@ function mockGitStatus(lines: string[]) {
 	mockExecSync.mockReturnValue(lines.join("\n"));
 }
 
-function makeBuiltinCondition(builtin: ConditionBuiltin): Condition & { builtin: ConditionBuiltin } {
+function makeBuiltinCondition(
+	builtin: ConditionBuiltin,
+): Condition & { builtin: ConditionBuiltin } {
 	return {
 		field: "path", // 占位，builtin 不需要
-		pattern: "",    // 占位
+		pattern: "", // 占位
 		builtin,
 	};
 }
 
-function makeRegexCondition(field: "path" | "text" | "glob", pattern: string): Condition {
+function makeRegexCondition(
+	field: "path" | "text" | "glob",
+	pattern: string,
+): Condition {
 	return { field, pattern, flags: "" };
 }
 
@@ -151,7 +156,9 @@ describe("builtin + 正则混合", () => {
 		compileRules([rule]);
 
 		// hasEdits=true 但 path 不是 .rs
-		expect(ruleMatches(rule, { path: "foo.ts" }, { hasEdits: true })).toBe(true);
+		expect(ruleMatches(rule, { path: "foo.ts" }, { hasEdits: true })).toBe(
+			true,
+		);
 	});
 
 	it("AND: builtin 通过 + 正则不通过 → 不匹配", () => {
@@ -164,7 +171,9 @@ describe("builtin + 正则混合", () => {
 		});
 		compileRules([rule]);
 
-		expect(ruleMatches(rule, { path: "foo.ts" }, { hasEdits: true })).toBe(false);
+		expect(ruleMatches(rule, { path: "foo.ts" }, { hasEdits: true })).toBe(
+			false,
+		);
 	});
 
 	it("AND: builtin 不通过 → 短路不匹配", () => {
@@ -211,8 +220,12 @@ describe("conditionLogic 默认值", () => {
 		compileRules([rule]);
 
 		// 两个都满足
-		expect(ruleMatches(rule, { path: "foo.ts" }, { hasEdits: true })).toBe(true);
+		expect(ruleMatches(rule, { path: "foo.ts" }, { hasEdits: true })).toBe(
+			true,
+		);
 		// 一个不满足
-		expect(ruleMatches(rule, { path: "foo.ts" }, { hasEdits: false })).toBe(false);
+		expect(ruleMatches(rule, { path: "foo.ts" }, { hasEdits: false })).toBe(
+			false,
+		);
 	});
 });

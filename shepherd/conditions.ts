@@ -1,4 +1,4 @@
-import { isGitDirty, hasGitUntracked } from "./git";
+import { hasGitUntracked, isGitDirty } from "./git";
 
 /** 内置条件类型：不依赖正则，直接检查环境状态 */
 export type ConditionBuiltin =
@@ -31,7 +31,8 @@ export function matchBuiltinCondition(
 		case "git_uncommitted": {
 			// 旧 check 字段迁移兼容：git_uncommitted = dirty || untracked
 			const dirty = ctx.gitDirty !== undefined ? ctx.gitDirty : isGitDirty();
-			const untracked = ctx.gitUntracked !== undefined ? ctx.gitUntracked : hasGitUntracked();
+			const untracked =
+				ctx.gitUntracked !== undefined ? ctx.gitUntracked : hasGitUntracked();
 			return dirty || untracked;
 		}
 	}

@@ -8,7 +8,10 @@
 
 /** 替换 ${ENV_VAR} 格式的环境变量 */
 function expandEnvVars(text: string): string {
-	return text.replace(/\$\{(\w+)\}/g, (_match, name: string) => process.env[name] ?? `\${${name}}`);
+	return text.replace(
+		/\$\{(\w+)\}/g,
+		(_match, name: string) => process.env[name] ?? `\${${name}}`,
+	);
 }
 
 /** 推入一条 shepherd 提示（自动加 ⚠️ shepherd: 前缀） */
@@ -22,12 +25,12 @@ export function notifySummary(text: string, labels?: string[]): string {
 	// 优先使用规则名（comment）列表
 	if (labels && labels.length > 0) {
 		const joined = labels.join("、");
-		return joined.length > 120 ? joined.slice(0, 117) + "..." : joined;
+		return joined.length > 120 ? `${joined.slice(0, 117)}...` : joined;
 	}
 	// fallback：截取第一个 --- 之前的内容
 	const idx = text.indexOf("\n---");
 	if (idx > 0) return text.slice(0, idx);
-	if (text.length > 120) return text.slice(0, 117) + "...";
+	if (text.length > 120) return `${text.slice(0, 117)}...`;
 	return text;
 }
 

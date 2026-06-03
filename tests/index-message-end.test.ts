@@ -4,23 +4,16 @@
  * 验证核心匹配逻辑：正则触发、不触发、action 类型、跳过条件。
  */
 
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-	describe,
-	it,
-	expect,
-	vi,
-	beforeEach,
-	afterEach,
-} from "vitest";
-import {
-	mockHints,
-	mockPushHint,
-	mockLoadRules,
-	mockIsSubagent,
-	makeMockPi,
-	makeAssistantMessage,
-	makeMsgEndRules,
 	fireMessageEnd,
+	makeAssistantMessage,
+	makeMockPi,
+	makeMsgEndRules,
+	mockHints,
+	mockIsSubagent,
+	mockLoadRules,
+	mockPushHint,
 } from "./helpers/message-end-helper";
 
 describe("message_end — 集成测试（基本功能）", () => {
@@ -152,10 +145,7 @@ describe("message_end — 集成测试（基本功能）", () => {
 			]),
 		);
 
-		await fireMessageEnd(
-			pi._handlers,
-			makeAssistantMessage(["任何内容"]),
-		);
+		await fireMessageEnd(pi._handlers, makeAssistantMessage(["任何内容"]));
 
 		expect(mockPushHint).not.toHaveBeenCalled();
 	});

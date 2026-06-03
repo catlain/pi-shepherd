@@ -18,7 +18,11 @@ function createMockPi() {
 
 	const pi = {
 		registerTool: vi.fn((def: any) => {
-			captured = { name: def.name, parameters: def.parameters, execute: def.execute };
+			captured = {
+				name: def.name,
+				parameters: def.parameters,
+				execute: def.execute,
+			};
 		}),
 	} as any;
 
@@ -68,10 +72,13 @@ describe("rules-tool 集成测试", () => {
 	});
 
 	it("list: 列出多条规则", async () => {
-		fs.writeFileSync(rulesPath, JSON.stringify([
-			{ comment: "规则A", reason: "r", action: "block", tool: "write" },
-			{ comment: "规则B", reason: "r", action: "notify", enabled: false },
-		]));
+		fs.writeFileSync(
+			rulesPath,
+			JSON.stringify([
+				{ comment: "规则A", reason: "r", action: "block", tool: "write" },
+				{ comment: "规则B", reason: "r", action: "notify", enabled: false },
+			]),
+		);
 		const result = await callExecute({ action: "list" });
 		const text = extractText(result);
 		expect(text).toContain("[global:0] 规则A — block on write");
@@ -121,9 +128,10 @@ describe("rules-tool 集成测试", () => {
 	});
 
 	it("update: 正常更新", async () => {
-		fs.writeFileSync(rulesPath, JSON.stringify([
-			{ comment: "旧", reason: "r", action: "block" },
-		]));
+		fs.writeFileSync(
+			rulesPath,
+			JSON.stringify([{ comment: "旧", reason: "r", action: "block" }]),
+		);
 		const result = await callExecute({
 			action: "update",
 			index: 0,
@@ -144,10 +152,13 @@ describe("rules-tool 集成测试", () => {
 	});
 
 	it("delete: 正常删除并返回名称", async () => {
-		fs.writeFileSync(rulesPath, JSON.stringify([
-			{ comment: "规则1", reason: "r" },
-			{ comment: "规则2", reason: "r" },
-		]));
+		fs.writeFileSync(
+			rulesPath,
+			JSON.stringify([
+				{ comment: "规则1", reason: "r" },
+				{ comment: "规则2", reason: "r" },
+			]),
+		);
 		const result = await callExecute({ action: "delete", index: 0 });
 		expect(extractText(result)).toBe("✅ 全局规则已删除: 规则1");
 		const written = JSON.parse(fs.readFileSync(rulesPath, "utf-8"));
@@ -156,7 +167,10 @@ describe("rules-tool 集成测试", () => {
 	});
 
 	it("delete: 编号越界拒绝", async () => {
-		fs.writeFileSync(rulesPath, JSON.stringify([{ comment: "X", reason: "r" }]));
+		fs.writeFileSync(
+			rulesPath,
+			JSON.stringify([{ comment: "X", reason: "r" }]),
+		);
 		const result = await callExecute({ action: "delete", index: 5 });
 		expect(extractText(result)).toContain("❌");
 		expect(extractText(result)).toContain("越界");
@@ -169,16 +183,30 @@ describe("rules-tool 集成测试", () => {
 		registerRulesEditorTool(pi, "/dummy/path");
 		const tool = getTool();
 		expect(tool.parameters.required).toContain("action");
-		expect(tool.parameters.properties.action.enum).toEqual(["list", "add", "update", "delete"]);
+		expect(tool.parameters.properties.action.enum).toEqual([
+			"list",
+			"add",
+			"update",
+			"delete",
+		]);
 	});
 
 	// ── list + index (单条完整查看) ──────────────────────
 
 	it("list index: 显示单条规则的完整 JSON", async () => {
-		fs.writeFileSync(rulesPath, JSON.stringify([
-			{ comment: "规则A", reason: "安全原因", action: "block", tool: "write", pattern: "settings\\.json$" },
-			{ comment: "规则B", reason: "提醒", action: "notify" },
-		]));
+		fs.writeFileSync(
+			rulesPath,
+			JSON.stringify([
+				{
+					comment: "规则A",
+					reason: "安全原因",
+					action: "block",
+					tool: "write",
+					pattern: "settings\\.json$",
+				},
+				{ comment: "规则B", reason: "提醒", action: "notify" },
+			]),
+		);
 		const result = await callExecute({ action: "list", index: 0 });
 		const text = extractText(result);
 		expect(text).toContain("[global:0]");
@@ -188,9 +216,10 @@ describe("rules-tool 集成测试", () => {
 	});
 
 	it("list index: 越界报错", async () => {
-		fs.writeFileSync(rulesPath, JSON.stringify([
-			{ comment: "规则A", reason: "r" },
-		]));
+		fs.writeFileSync(
+			rulesPath,
+			JSON.stringify([{ comment: "规则A", reason: "r" }]),
+		);
 		const result = await callExecute({ action: "list", index: 5 });
 		expect(extractText(result)).toContain("❌");
 		expect(extractText(result)).toContain("越界");
@@ -203,10 +232,15 @@ describe("rules-tool 集成测试", () => {
 	});
 
 	it("list index + scope=global: 正常工作", async () => {
-		fs.writeFileSync(rulesPath, JSON.stringify([
-			{ comment: "全局规则", reason: "r", action: "block" },
-		]));
-		const result = await callExecute({ action: "list", scope: "global", index: 0 });
+		fs.writeFileSync(
+			rulesPath,
+			JSON.stringify([{ comment: "全局规则", reason: "r", action: "block" }]),
+		);
+		const result = await callExecute({
+			action: "list",
+			scope: "global",
+			index: 0,
+		});
 		const text = extractText(result);
 		expect(text).toContain("[global:0]");
 		expect(text).toContain("全局规则");
@@ -215,10 +249,23 @@ describe("rules-tool 集成测试", () => {
 	// ── list + verbose ───────────────────────────────────
 
 	it("list verbose: 显示所有规则的完整字段", async () => {
-		fs.writeFileSync(rulesPath, JSON.stringify([
-			{ comment: "规则A", reason: "安全", action: "block", tool: "write", pattern: "foo" },
-		]));
-		const result = await callExecute({ action: "list", verbose: true, scope: "global" });
+		fs.writeFileSync(
+			rulesPath,
+			JSON.stringify([
+				{
+					comment: "规则A",
+					reason: "安全",
+					action: "block",
+					tool: "write",
+					pattern: "foo",
+				},
+			]),
+		);
+		const result = await callExecute({
+			action: "list",
+			verbose: true,
+			scope: "global",
+		});
 		const text = extractText(result);
 		expect(text).toContain("[global:0]");
 		expect(text).toContain("规则A");
@@ -227,7 +274,11 @@ describe("rules-tool 集成测试", () => {
 	});
 
 	it("list verbose: 空规则返回提示", async () => {
-		const result = await callExecute({ action: "list", verbose: true, scope: "global" });
+		const result = await callExecute({
+			action: "list",
+			verbose: true,
+			scope: "global",
+		});
 		expect(extractText(result)).toContain("暂无");
 	});
 });

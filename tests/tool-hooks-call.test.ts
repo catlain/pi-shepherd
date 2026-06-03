@@ -58,7 +58,10 @@ vi.mock("../shepherd/rules.js", () => ({
 	ruleMatches: mockedRuleMatches,
 	toolMatches: (ruleTool: string | undefined, eventTool: string) => {
 		if (!ruleTool) return true;
-		return ruleTool.split("|").map((t: string) => t.trim()).includes(eventTool);
+		return ruleTool
+			.split("|")
+			.map((t: string) => t.trim())
+			.includes(eventTool);
 	},
 	isSubagent: mockedIsSubagent,
 	isRtkAvailable: false,
@@ -89,7 +92,7 @@ describe("registerToolCall", () => {
 
 	it("edit/write 应该标记 hasEdits", async () => {
 		registerToolCall(pi as any, state);
-		const handler = pi.handlers["tool_call"];
+		const handler = pi.handlers.tool_call;
 
 		await handler({ toolName: "edit", input: { path: "foo.ts" } });
 		expect(state.hasEdits).toBe(true);
@@ -101,7 +104,7 @@ describe("registerToolCall", () => {
 
 	it("非 edit/write 不标记 hasEdits", async () => {
 		registerToolCall(pi as any, state);
-		const handler = pi.handlers["tool_call"];
+		const handler = pi.handlers.tool_call;
 
 		await handler({ toolName: "bash", input: { command: "ls" } });
 		expect(state.hasEdits).toBe(false);
@@ -122,9 +125,12 @@ describe("registerToolCall", () => {
 		mockedRuleMatches.mockReturnValue(true);
 
 		registerToolCall(pi as any, state);
-		const handler = pi.handlers["tool_call"];
+		const handler = pi.handlers.tool_call;
 
-		const result = await handler({ toolName: "edit", input: { path: "foo.ts" } });
+		const result = await handler({
+			toolName: "edit",
+			input: { path: "foo.ts" },
+		});
 		expect(result).toEqual({ block: true, reason: "⛔ shepherd: 禁止编辑" });
 	});
 
@@ -144,9 +150,12 @@ describe("registerToolCall", () => {
 		mockedRuleMatches.mockReturnValue(true);
 
 		registerToolCall(pi as any, state);
-		const handler = pi.handlers["tool_call"];
+		const handler = pi.handlers.tool_call;
 
-		const result = await handler({ toolName: "edit", input: { path: "foo.ts" } });
+		const result = await handler({
+			toolName: "edit",
+			input: { path: "foo.ts" },
+		});
 		expect(result).toBeUndefined();
 	});
 });

@@ -17,7 +17,9 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-	try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
+	try {
+		fs.rmSync(tmpDir, { recursive: true, force: true });
+	} catch {}
 });
 
 function writeRules(rules: object[]): void {
@@ -28,7 +30,11 @@ function writeRules(rules: object[]): void {
 
 describe("validateRule", () => {
 	it("合法规则通过校验", () => {
-		const result = validateRule({ comment: "test rule", reason: "test reason", pattern: "foo\\.bar" });
+		const result = validateRule({
+			comment: "test rule",
+			reason: "test reason",
+			pattern: "foo\\.bar",
+		});
 		expect(result.valid).toBe(true);
 	});
 
@@ -51,20 +57,30 @@ describe("validateRule", () => {
 	});
 
 	it("无效正则 pattern 报错", () => {
-		const result = validateRule({ comment: "bad regex", reason: "test", pattern: "[invalid" });
+		const result = validateRule({
+			comment: "bad regex",
+			reason: "test",
+			pattern: "[invalid",
+		});
 		expect(result.valid).toBe(false);
 		expect(result.errors[0]).toContain("正则");
 	});
 
 	it("无效 flags 报错", () => {
-		const result = validateRule({ comment: "bad flags", reason: "test", pattern: "foo", flags: "xyz" });
+		const result = validateRule({
+			comment: "bad flags",
+			reason: "test",
+			pattern: "foo",
+			flags: "xyz",
+		});
 		expect(result.valid).toBe(false);
 		expect(result.errors[0]).toContain("flags");
 	});
 
 	it("conditions 中无效正则报错", () => {
 		const result = validateRule({
-			comment: "bad cond", reason: "test",
+			comment: "bad cond",
+			reason: "test",
 			conditions: [{ field: "path", pattern: "[invalid" }],
 		});
 		expect(result.valid).toBe(false);
@@ -72,24 +88,40 @@ describe("validateRule", () => {
 	});
 
 	it("无 pattern 无 conditions 合法（agent_end check 类）", () => {
-		const result = validateRule({ comment: "check", reason: "提醒", hook: "agent_end", check: "git_uncommitted" });
+		const result = validateRule({
+			comment: "check",
+			reason: "提醒",
+			hook: "agent_end",
+			check: "git_uncommitted",
+		});
 		expect(result.valid).toBe(true);
 	});
 
 	it("非法 action 值报错", () => {
-		const result = validateRule({ comment: "bad action", reason: "test", action: "explode" });
+		const result = validateRule({
+			comment: "bad action",
+			reason: "test",
+			action: "explode",
+		});
 		expect(result.valid).toBe(false);
 		expect(result.errors[0]).toContain("action");
 	});
 
 	it("非法 hook 值报错", () => {
-		const result = validateRule({ comment: "bad hook", reason: "test", hook: "on_fire" });
+		const result = validateRule({
+			comment: "bad hook",
+			reason: "test",
+			hook: "on_fire",
+		});
 		expect(result.valid).toBe(false);
 		expect(result.errors[0]).toContain("hook");
 	});
 
 	it("disabled: true 归一化为 enabled: false", () => {
-		const rule = { comment: "test", reason: "test", disabled: true } as Record<string, unknown>;
+		const rule = { comment: "test", reason: "test", disabled: true } as Record<
+			string,
+			unknown
+		>;
 		const result = validateRule(rule);
 		expect(result.valid).toBe(true);
 		expect(rule.disabled).toBeUndefined();
@@ -97,7 +129,10 @@ describe("validateRule", () => {
 	});
 
 	it("disabled: false 归一化为 enabled: true", () => {
-		const rule = { comment: "test", reason: "test", disabled: false } as Record<string, unknown>;
+		const rule = { comment: "test", reason: "test", disabled: false } as Record<
+			string,
+			unknown
+		>;
 		const result = validateRule(rule);
 		expect(result.valid).toBe(true);
 		expect(rule.disabled).toBeUndefined();
@@ -105,7 +140,12 @@ describe("validateRule", () => {
 	});
 
 	it("disabled 不覆盖已有的 enabled", () => {
-		const rule = { comment: "test", reason: "test", enabled: true, disabled: true } as Record<string, unknown>;
+		const rule = {
+			comment: "test",
+			reason: "test",
+			enabled: true,
+			disabled: true,
+		} as Record<string, unknown>;
 		const result = validateRule(rule);
 		expect(result.valid).toBe(true);
 		expect(rule.disabled).toBeUndefined();
@@ -125,8 +165,21 @@ describe("listRules", () => {
 
 	it("正确列出所有规则含摘要", () => {
 		writeRules([
-			{ comment: "rule 1", tool: "bash", action: "block", pattern: "rm", reason: "danger", enabled: true },
-			{ comment: "rule 2", tool: "edit", action: "notify", pattern: "\\.py$", reason: "format" },
+			{
+				comment: "rule 1",
+				tool: "bash",
+				action: "block",
+				pattern: "rm",
+				reason: "danger",
+				enabled: true,
+			},
+			{
+				comment: "rule 2",
+				tool: "edit",
+				action: "notify",
+				pattern: "\\.py$",
+				reason: "format",
+			},
 		]);
 		const result = listRules(rulesPath);
 		expect(result.count).toBe(2);

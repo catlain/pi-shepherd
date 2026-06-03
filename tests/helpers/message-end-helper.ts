@@ -24,8 +24,7 @@ export const mockGetEffectiveConfig = vi.fn().mockReturnValue({
 });
 
 vi.mock("@pi-atelier/shared-utils", () => ({
-	getEffectiveConfig: (...args: unknown[]) =>
-		mockGetEffectiveConfig(...args),
+	getEffectiveConfig: (...args: unknown[]) => mockGetEffectiveConfig(...args),
 	pushHint: (...args: unknown[]) => mockPushHint(...args),
 	drainHints: (...args: unknown[]) => mockDrainHints(...args),
 	hasHints: (...args: unknown[]) => mockHasHints(...args),

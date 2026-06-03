@@ -11,11 +11,10 @@ import {
 	isSubagent,
 	type LoadRulesOptions,
 	loadRules,
-	type Rule,
 	ruleMatches,
 } from "./rules.js";
 import type { ToolState } from "./tool-hooks.js";
-import { getAvailableTools, toolsAvailable } from "./tool-hooks.js";
+import { toolsAvailable } from "./tool-hooks.js";
 
 // ── 文本提取 ──────────────────────────────────────────────────
 
@@ -62,7 +61,7 @@ export function registerMessageEnd(
 	rulesDir?: string,
 	rulesOptions?: LoadRulesOptions,
 ): void {
-	pi.on("message_end", async (event, ctx) => {
+	pi.on("message_end", async (event, _ctx) => {
 		// 只处理 assistant 消息
 		const message = event.message;
 		if (!message || (message as any).role !== "assistant") return;

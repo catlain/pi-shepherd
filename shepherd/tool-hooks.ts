@@ -10,6 +10,7 @@ interface ContentBlock {
 	text?: string;
 	[key: string]: unknown;
 }
+
 import { pushWarning } from "./ephemeral.js";
 import { checkLineCount } from "./line-count.js";
 import {
@@ -102,7 +103,7 @@ export function registerToolResult(
 	rulesDir?: string,
 	rulesOptions?: LoadRulesOptions,
 ): void {
-	pi.on("tool_result", async (event, ctx) => {
+	pi.on("tool_result", async (event, _ctx) => {
 		// 行数检查（edit/write/memory_update 后）
 		if (event.toolName === "edit" || event.toolName === "write") {
 			const filePath = (event.input as any)?.path as string;

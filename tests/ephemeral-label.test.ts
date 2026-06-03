@@ -103,7 +103,7 @@ describe("labels 消费同步", () => {
 		pushWarning("a", "r1");
 		drainHints();
 		// 无 hints 再 drain
-		const result = drainHints();
+		const _result = drainHints();
 		expect(peekLabels()).toEqual([]);
 	});
 });

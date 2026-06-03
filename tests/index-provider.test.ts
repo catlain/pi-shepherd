@@ -2,7 +2,7 @@
  * index.ts 测试 — before_provider_request
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // ── Mock 声明 ──
 const mockGetEffectiveConfig = vi.fn().mockReturnValue({
@@ -11,8 +11,7 @@ const mockGetEffectiveConfig = vi.fn().mockReturnValue({
 });
 
 vi.mock("@pi-atelier/shared-utils", () => ({
-	getEffectiveConfig: (...args: unknown[]) =>
-		mockGetEffectiveConfig(...args),
+	getEffectiveConfig: (...args: unknown[]) => mockGetEffectiveConfig(...args),
 }));
 
 const mockCheckWorktrees = vi.fn();
@@ -118,9 +117,7 @@ describe("before_provider_request", () => {
 		expect(result).not.toBe(payload);
 		expect(result.messages).toHaveLength(2);
 		expect(result.messages[1].role).toBe("user");
-		expect(result.messages[1].content[0].text).toContain(
-			"remember to commit",
-		);
+		expect(result.messages[1].content[0].text).toContain("remember to commit");
 		expect(ctx.ui.notify).toHaveBeenCalledWith(expect.any(String), "warning");
 	});
 

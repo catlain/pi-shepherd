@@ -2,7 +2,7 @@
  * index.ts 测试 — agent_end check 类型
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockGetEffectiveConfig = vi.fn().mockReturnValue({
 	config: { projectRulesPattern: "shepherd-rules-", maxWarnings: 5 },
@@ -10,8 +10,7 @@ const mockGetEffectiveConfig = vi.fn().mockReturnValue({
 });
 
 vi.mock("@pi-atelier/shared-utils", () => ({
-	getEffectiveConfig: (...args: unknown[]) =>
-		mockGetEffectiveConfig(...args),
+	getEffectiveConfig: (...args: unknown[]) => mockGetEffectiveConfig(...args),
 }));
 
 const mockHasGitUncommittedChanges = vi.fn().mockReturnValue(false);
@@ -101,10 +100,7 @@ function makeEvent(stopReason = "stop") {
 	};
 }
 
-async function fireAgentEnd(
-	handlers: Map<string, Function[]>,
-	event: unknown,
-) {
+async function fireAgentEnd(handlers: Map<string, Function[]>, event: unknown) {
 	const hs = handlers.get("agent_end")!;
 	for (const h of hs) await h(event, {});
 }
@@ -154,16 +150,17 @@ describe("agent_end — check 类型", () => {
 	it("check=git_dirty AND has_edits: 有更改 + 有编辑时触发", async () => {
 		mockHasGitUncommittedChanges.mockReturnValue(true);
 		mockLoadRules.mockReturnValue(
-			makeRules([{
-				conditions: [{ builtin: "git_dirty" }, { builtin: "has_edits" }],
-				conditionLogic: "and",
-				reason: "git dirty",
-			}]),
+			makeRules([
+				{
+					conditions: [{ builtin: "git_dirty" }, { builtin: "has_edits" }],
+					conditionLogic: "and",
+					reason: "git dirty",
+				},
+			]),
 		);
 		for (const h of pi._handlers.get("agent_start")!)
 			await h({}, { signal: new AbortController().signal });
-		for (const h of pi._handlers.get("tool_call")!)
-			await h({}, {});
+		for (const h of pi._handlers.get("tool_call")!) await h({}, {});
 
 		await fire(makeEvent("stop"));
 		expect(mockPushWarning).toHaveBeenCalledWith("git dirty", "test-rule");
@@ -171,9 +168,7 @@ describe("agent_end — check 类型", () => {
 
 	it("conditions git_dirty: 无更改时跳过", async () => {
 		mockHasGitUncommittedChanges.mockReturnValue(false);
-		mockLoadRules.mockReturnValue(
-			makeRules([{ check: "git_uncommitted" }]),
-		);
+		mockLoadRules.mockReturnValue(makeRules([{ check: "git_uncommitted" }]));
 		await fire(makeEvent("stop"));
 		expect(mockPushWarning).not.toHaveBeenCalled();
 	});
@@ -184,14 +179,10 @@ describe("agent_end — check 类型", () => {
 		);
 		for (const h of pi._handlers.get("agent_start")!)
 			await h({}, { signal: new AbortController().signal });
-		for (const h of pi._handlers.get("tool_call")!)
-			await h({}, {});
+		for (const h of pi._handlers.get("tool_call")!) await h({}, {});
 
 		await fire(makeEvent("stop"));
-		expect(mockPushWarning).toHaveBeenCalledWith(
-			"edit detected",
-			"test-rule",
-		);
+		expect(mockPushWarning).toHaveBeenCalledWith("edit detected", "test-rule");
 	});
 
 	it("check=has_edits: 无编辑时跳过", async () => {

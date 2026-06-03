@@ -2,7 +2,7 @@
  * index.ts 测试 — agent_start / input
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockGetEffectiveConfig = vi.fn().mockReturnValue({
 	config: { projectRulesPattern: "shepherd-rules-", maxWarnings: 5 },
@@ -10,8 +10,7 @@ const mockGetEffectiveConfig = vi.fn().mockReturnValue({
 });
 
 vi.mock("@pi-atelier/shared-utils", () => ({
-	getEffectiveConfig: (...args: unknown[]) =>
-		mockGetEffectiveConfig(...args),
+	getEffectiveConfig: (...args: unknown[]) => mockGetEffectiveConfig(...args),
 }));
 
 const mockHasGitUncommittedChanges = vi.fn().mockReturnValue(false);
@@ -75,10 +74,7 @@ describe("agent_start", () => {
 
 	it("重置 _aborted（未中断）", async () => {
 		const controller = new AbortController();
-		await getHandler(pi, "agent_start")(
-			{},
-			{ signal: controller.signal },
-		);
+		await getHandler(pi, "agent_start")({}, { signal: controller.signal });
 		// signal.aborted 为 false → _aborted = false
 		// 通过后续 agent_end 验证不跳过
 	});
@@ -86,10 +82,7 @@ describe("agent_start", () => {
 	it("检测 signal.aborted=true", async () => {
 		const controller = new AbortController();
 		controller.abort();
-		await getHandler(pi, "agent_start")(
-			{},
-			{ signal: controller.signal },
-		);
+		await getHandler(pi, "agent_start")({}, { signal: controller.signal });
 		// 后续 agent_end 应跳过 — 用另一测试文件验证
 	});
 

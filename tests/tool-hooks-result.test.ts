@@ -53,7 +53,10 @@ vi.mock("../shepherd/rules.js", () => ({
 	ruleMatches: mockedRuleMatches,
 	toolMatches: (ruleTool: string | undefined, eventTool: string) => {
 		if (!ruleTool) return true;
-		return ruleTool.split("|").map((t: string) => t.trim()).includes(eventTool);
+		return ruleTool
+			.split("|")
+			.map((t: string) => t.trim())
+			.includes(eventTool);
 	},
 	isSubagent: mockedIsSubagent,
 	isRtkAvailable: false,
@@ -84,7 +87,7 @@ describe("registerToolResult", () => {
 
 	it("edit 工具应调用 checkLineCount", async () => {
 		registerToolResult(pi as any, state);
-		const handler = pi.handlers["tool_result"];
+		const handler = pi.handlers.tool_result;
 
 		await handler({
 			toolName: "edit",
@@ -96,7 +99,7 @@ describe("registerToolResult", () => {
 
 	it("write 工具应调用 checkLineCount", async () => {
 		registerToolResult(pi as any, state);
-		const handler = pi.handlers["tool_result"];
+		const handler = pi.handlers.tool_result;
 
 		await handler({
 			toolName: "write",
@@ -108,7 +111,7 @@ describe("registerToolResult", () => {
 
 	it("memory_update 应从 result 文本提取路径并调用 checkLineCount", async () => {
 		registerToolResult(pi as any, state);
-		const handler = pi.handlers["tool_result"];
+		const handler = pi.handlers.tool_result;
 
 		await handler({
 			toolName: "memory_update",
@@ -120,7 +123,7 @@ describe("registerToolResult", () => {
 
 	it("非 edit/write/memory_update 不调用 checkLineCount", async () => {
 		registerToolResult(pi as any, state);
-		const handler = pi.handlers["tool_result"];
+		const handler = pi.handlers.tool_result;
 
 		await handler({
 			toolName: "bash",
@@ -149,7 +152,7 @@ describe("registerToolResult", () => {
 		mockedRuleMatches.mockReturnValue(true);
 
 		registerToolResult(pi as any, state);
-		const handler = pi.handlers["tool_result"];
+		const handler = pi.handlers.tool_result;
 
 		await handler({
 			toolName: "edit",
@@ -157,16 +160,13 @@ describe("registerToolResult", () => {
 			content: [{ type: "text", text: "OK" }],
 		});
 
-		expect(mockedPushWarning).toHaveBeenCalledWith(
-			"已编辑 0 次",
-			"edit-steer",
-		);
+		expect(mockedPushWarning).toHaveBeenCalledWith("已编辑 0 次", "edit-steer");
 		expect(state.tracker.markTriggered).toHaveBeenCalledWith("edit-steer");
 	});
 
 	it("tracker.update 应被调用记录工具结果", async () => {
 		registerToolResult(pi as any, state);
-		const handler = pi.handlers["tool_result"];
+		const handler = pi.handlers.tool_result;
 
 		await handler({
 			toolName: "bash",

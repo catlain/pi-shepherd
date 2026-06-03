@@ -2,14 +2,7 @@
  * index.ts 测试 — agent_end（基础场景）
  */
 
-import {
-	describe,
-	it,
-	expect,
-	vi,
-	beforeEach,
-	afterEach,
-} from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockGetEffectiveConfig = vi.fn().mockReturnValue({
 	config: { projectRulesPattern: "shepherd-rules-", maxWarnings: 5 },
@@ -17,8 +10,7 @@ const mockGetEffectiveConfig = vi.fn().mockReturnValue({
 });
 
 vi.mock("@pi-atelier/shared-utils", () => ({
-	getEffectiveConfig: (...args: unknown[]) =>
-		mockGetEffectiveConfig(...args),
+	getEffectiveConfig: (...args: unknown[]) => mockGetEffectiveConfig(...args),
 }));
 
 const mockHasWarnings = vi.fn().mockReturnValue(false);

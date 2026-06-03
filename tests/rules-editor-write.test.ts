@@ -19,7 +19,9 @@ beforeEach(() => {
 });
 
 afterEach(() => {
-	try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
+	try {
+		fs.rmSync(tmpDir, { recursive: true, force: true });
+	} catch {}
 });
 
 function writeRules(rules: object[]): void {
@@ -35,7 +37,12 @@ function readRulesFile(): object[] {
 describe("addRule", () => {
 	it("正常添加规则到空文件", () => {
 		writeRules([]);
-		const result = addRule(rulesPath, { comment: "new rule", reason: "safety", pattern: "rm -rf", action: "block" });
+		const result = addRule(rulesPath, {
+			comment: "new rule",
+			reason: "safety",
+			pattern: "rm -rf",
+			action: "block",
+		});
 		expect(result.success).toBe(true);
 		expect(result.index).toBe(0);
 		expect(readRulesFile()).toHaveLength(1);
@@ -44,7 +51,11 @@ describe("addRule", () => {
 
 	it("追加到已有规则末尾", () => {
 		writeRules([{ comment: "existing", reason: "test", tool: "bash" }]);
-		const result = addRule(rulesPath, { comment: "new", reason: "safety", tool: "write" });
+		const result = addRule(rulesPath, {
+			comment: "new",
+			reason: "safety",
+			tool: "write",
+		});
 		expect(result.success).toBe(true);
 		expect(result.index).toBe(1);
 		expect(readRulesFile()).toHaveLength(2);
@@ -67,7 +78,11 @@ describe("addRule", () => {
 
 	it("无效正则 pattern 拒绝", () => {
 		writeRules([]);
-		const result = addRule(rulesPath, { comment: "bad", reason: "test", pattern: "[invalid" });
+		const result = addRule(rulesPath, {
+			comment: "bad",
+			reason: "test",
+			pattern: "[invalid",
+		});
 		expect(result.success).toBe(false);
 		expect(result.error).toContain("正则");
 	});
@@ -99,7 +114,9 @@ describe("addRule", () => {
 
 describe("updateRule", () => {
 	it("部分更新：只改 reason", () => {
-		writeRules([{ comment: "r1", reason: "old", pattern: "foo", action: "block" }]);
+		writeRules([
+			{ comment: "r1", reason: "old", pattern: "foo", action: "block" },
+		]);
 		updateRule(rulesPath, 0, { reason: "new" });
 		const r = readRulesFile()[0] as any;
 		expect(r.reason).toBe("new");
@@ -142,7 +159,9 @@ describe("updateRule", () => {
 
 	it("更新 conditions 无效正则拒绝", () => {
 		writeRules([{ comment: "r1", reason: "test" }]);
-		const result = updateRule(rulesPath, 0, { conditions: [{ field: "path", pattern: "[broken" }] });
+		const result = updateRule(rulesPath, 0, {
+			conditions: [{ field: "path", pattern: "[broken" }],
+		});
 		expect(result.success).toBe(false);
 		expect(result.error).toContain("conditions");
 	});

@@ -212,9 +212,7 @@
 		"pattern": ".",
 		"flags": "s",
 		"reason": "推荐用 code-graph 替代 grep 搜代码——理解 AST 语义，按符号名、调用链、引用关系精准定位。选工具：①模糊搜索 → semantic_code_search；②精确符号 → get_ast_node；③引用 → find_references；④调用链 → get_call_graph；⑤模块结构 → module_overview。grep 仅适合字面量（TODO、配置值），搜字面量则忽略此提醒。**注意：刚编辑过的文件可能导致索引过期搜不到，此时调 setup_codegraph({ directory: \"项目路径\" }) 更新索引即可**（已索引目录重复调用仍有效）。",
-		"requiresTools": [
-			"code_graph_semantic_code_search"
-		],
+		"requiresTools": ["code_graph_semantic_code_search"],
 		"enabled": true
 	},
 	{
@@ -299,20 +297,6 @@
 		"enabled": true
 	},
 	{
-		"comment": "[settings] 禁止 edit/write settings.json — 必须用 patchSettingsSectionWithBackup",
-		"reason": "直接编辑 settings.json 曾导致配置丢失（119行变3行）。必须使用 settings_patch 工具（自动备份+文件锁+校验），或 settings_rollback 回滚。",
-		"tool": "edit|write",
-		"hook": "tool_call",
-		"action": "block",
-		"message": "⛔ 禁止直接 edit/write settings.json！使用 settings_patch 工具安全修改（支持全局 scope='global' 和项目级 scope='project'），或 settings_rollback 回滚。",
-		"conditions": [
-			{
-				"field": "path",
-				"pattern": "settings\\.json$|settings\\.json\\.bak"
-			}
-		]
-	},
-	{
 		"action": "block",
 		"comment": "[settings] 禁止 bash 直接修改 settings.json — 必须用 patchSettingsSectionWithBackup 或 settings_rollback",
 		"conditions": [
@@ -325,7 +309,8 @@
 		"hook": "tool_call",
 		"message": "⛔ 禁止通过 bash 修改 settings.json！使用 settings_patch 工具安全修改（支持全局 scope='global' 和项目级 scope='project'），或 settings_rollback 回滚。",
 		"reason": "禁止通过 bash 直接写入 settings.json（如 echo > / sed -i / python 写入），但允许 git 操作（status/diff/reset/checkout/restore/add/rm/log）和只读命令（grep/find/ls/cat/head/tail/diff/test/python3 解析读取）。必须使用 settings_patch 工具。",
-		"tool": "bash"
+		"tool": "bash",
+		"enabled": false
 	},
 	{
 		"comment": "[git] commit 成功后提醒 push",
@@ -381,5 +366,37 @@
 		"subagent": false,
 		"requireSuccess": true,
 		"enabled": true
+	},
+	{
+		"comment": "[code-graph] 编辑代码文件后提醒更新索引",
+		"hook": "tool_result",
+		"tool": "edit|write",
+		"action": "steer",
+		"conditions": [
+			{
+				"field": "path",
+				"pattern": "\\.(ts|js|py|rs)$"
+			}
+		],
+		"reason": "📝 编辑了代码文件，code-graph 索引可能已过期（新增/重命名/删除的符号不会被搜到）。如果接下来需要用 code-graph 搜索或分析，先调 setup_codegraph({ directory: \"项目路径\" }) 更新索引。如果只是编辑不再搜索，则忽略。",
+		"subagent": false,
+		"requireSuccess": true,
+		"enabled": true
+	},
+	{
+		"comment": "[settings] 禁止 edit/write settings.json — 必须用 patchSettingsSectionWithBackup",
+		"action": "block",
+		"hook": "tool_call",
+		"tool": "edit|write",
+		"conditions": [
+			{
+				"field": "path",
+				"pattern": "settings\\.json$",
+				"flags": "i"
+			}
+		],
+		"message": "⛔ shepherd: 直接编辑 settings.json 曾导致配置丢失（119行变3行）。必须使用 settings_patch 工具（自动备份+文件锁+校验），或 settings_rollback 回滚。",
+		"reason": "直接 edit/write settings.json 曾导致配置丢失（119行变3行）。必须使用 settings_patch 工具。",
+		"enabled": false
 	}
 ]

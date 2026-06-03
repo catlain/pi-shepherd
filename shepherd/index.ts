@@ -17,16 +17,16 @@ export {
 	resetMessageEndState,
 } from "./message-end";
 export {
-	type ConditionBuiltin,
 	type BuiltinContext,
 	CODE_EXT_RE,
 	type Condition,
+	type ConditionBuiltin,
 	compileRules,
 	getMatchTargets,
 	hasGitUncommittedChanges,
+	hasGitUntracked,
 	isGitDirty,
 	isGitDirtyOrUntracked,
-	hasGitUntracked,
 	isInWorktree,
 	isSubagent,
 	loadRules,

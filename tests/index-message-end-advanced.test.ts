@@ -4,23 +4,16 @@
  * 验证防重复触发、多条规则、steer 触发新 turn、agent_start 重置。
  */
 
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
-	describe,
-	it,
-	expect,
-	vi,
-	beforeEach,
-	afterEach,
-} from "vitest";
-import {
-	mockHints,
-	mockPushHint,
-	mockHasHints,
-	mockLoadRules,
-	makeMockPi,
-	makeAssistantMessage,
-	makeMsgEndRules,
 	fireMessageEnd,
+	makeAssistantMessage,
+	makeMockPi,
+	makeMsgEndRules,
+	mockHasHints,
+	mockHints,
+	mockLoadRules,
+	mockPushHint,
 } from "./helpers/message-end-helper";
 
 describe("message_end — 集成测试（高级场景）", () => {
@@ -140,10 +133,7 @@ describe("message_end — 集成测试（高级场景）", () => {
 		);
 
 		// 第一次触发
-		await fireMessageEnd(
-			pi._handlers,
-			makeAssistantMessage(["test message"]),
-		);
+		await fireMessageEnd(pi._handlers, makeAssistantMessage(["test message"]));
 		expect(mockPushHint).toHaveBeenCalledTimes(1);
 
 		// agent_start 重置
@@ -154,10 +144,7 @@ describe("message_end — 集成测试（高级场景）", () => {
 		}
 
 		// 重置后可再次触发
-		await fireMessageEnd(
-			pi._handlers,
-			makeAssistantMessage(["test again"]),
-		);
+		await fireMessageEnd(pi._handlers, makeAssistantMessage(["test again"]));
 		expect(mockPushHint).toHaveBeenCalledTimes(2);
 	});
 });

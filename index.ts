@@ -17,9 +17,9 @@
  * 修改规则文件后 /reload 即可生效，无需重启 pi。
  */
 
+import { dirname } from "node:path";
+import { fileURLToPath } from "node:url";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { dirname, join } from "path";
-import { fileURLToPath } from "url";
 
 /** pi payload 消息结构的最小类型 */
 interface PayloadMessage {
@@ -163,7 +163,9 @@ export default function shepherdExtension(pi: ExtensionAPI) {
 		const lastAssistant = [...event.messages]
 			.reverse()
 			.find((m: PayloadMessage) => m.role === "assistant");
-		const stopReason: string | undefined = (lastAssistant as PayloadMessage | undefined)?.stopReason as string | undefined;
+		const stopReason: string | undefined = (
+			lastAssistant as PayloadMessage | undefined
+		)?.stopReason as string | undefined;
 		let pushed = false;
 
 		for (const rule of rules) {

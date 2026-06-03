@@ -1,55 +1,55 @@
 {
-  "name": "pi-shepherd",
-  "version": "0.1.2",
-  "description": "Line count guard and behavior rules extension for pi-coding-agent",
-  "main": "index.ts",
-  "scripts": {
-    "test": "vitest run",
-    "lint": "biome check lib tests index.ts tool-hooks.ts",
-    "typecheck": "tsc --noEmit"
-  },
-  "dependencies": {
-    "@pi-atelier/shared-utils": "^1.0.0",
-    "ignore": "^7.0.5"
-  },
-  "peerDependencies": {
-    "@earendil-works/pi-coding-agent": ">=0.9.0"
-  },
-  "peerDependenciesMeta": {
-    "@earendil-works/pi-coding-agent": {
-      "optional": true
-    }
-  },
-  "pi": {
-    "extensions": [
-      "."
-    ]
-  },
-  "devDependencies": {
-    "@biomejs/biome": "^2.4.15",
-    "@vitest/coverage-v8": "^3.2.4",
-    "vitest": "^3.0.0"
-  },
-  "files": [
-    "index.ts",
-    "shepherd/",
-    "rules.json",
-    "README.md",
-    "README.en.md",
-    "tsconfig.json",
-    "vitest.config.ts",
-    "package.json"
-  ],
-  "keywords": [
-    "pi-package"
-  ],
-  "homepage": "https://catlain.github.io/pi-atelier/",
-  "repository": {
-    "type": "git",
-    "url": "git+ssh://git@github.com/catlain/pi-shepherd.git"
-  },
-  "bugs": {
-    "url": "https://github.com/catlain/pi-shepherd/issues"
-  },
-  "license": "MIT"
+	"name": "pi-shepherd",
+	"version": "0.1.2",
+	"description": "Line count guard and behavior rules extension for pi-coding-agent",
+	"main": "index.ts",
+	"scripts": {
+		"test": "vitest run",
+		"lint": "biome check lib tests index.ts tool-hooks.ts",
+		"typecheck": "tsc --noEmit"
+	},
+	"dependencies": {
+		"@pi-atelier/shared-utils": "^1.0.0",
+		"ignore": "^7.0.5"
+	},
+	"peerDependencies": {
+		"@earendil-works/pi-coding-agent": ">=0.9.0"
+	},
+	"peerDependenciesMeta": {
+		"@earendil-works/pi-coding-agent": {
+			"optional": true
+		}
+	},
+	"pi": {
+		"extensions": [
+			"."
+		]
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.4.15",
+		"@vitest/coverage-v8": "^3.2.4",
+		"vitest": "^3.0.0"
+	},
+	"files": [
+		"index.ts",
+		"shepherd/",
+		"rules.json",
+		"README.md",
+		"README.en.md",
+		"tsconfig.json",
+		"vitest.config.ts",
+		"package.json"
+	],
+	"keywords": [
+		"pi-package"
+	],
+	"homepage": "https://catlain.github.io/pi-atelier/",
+	"repository": {
+		"type": "git",
+		"url": "git+ssh://git@github.com/catlain/pi-shepherd.git"
+	},
+	"bugs": {
+		"url": "https://github.com/catlain/pi-shepherd/issues"
+	},
+	"license": "MIT"
 }

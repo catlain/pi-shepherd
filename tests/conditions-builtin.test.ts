@@ -9,7 +9,7 @@
  * - matchBuiltinCondition()：各 builtin 条件的判断逻辑
  */
 
-import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // mock child_process 的 execSync
 const mockExecSync = vi.fn();
@@ -40,7 +40,7 @@ describe("isGitDirty — 只检查已跟踪文件变更", () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		// 默认 cwd mock
-		process.chdir = process.chdir; // noop
+		// noop: no cwd mock override needed by default
 	});
 
 	it("有已跟踪文件修改 → true", () => {

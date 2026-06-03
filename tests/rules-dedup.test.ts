@@ -38,7 +38,11 @@ function readRulesFile(): object[] {
 
 describe("dedupKey", () => {
 	it("基本三元组 tool+hook+pattern 生成 key", () => {
-		const key = dedupKey({ tool: "bash", hook: "tool_call", pattern: "rm -rf" });
+		const key = dedupKey({
+			tool: "bash",
+			hook: "tool_call",
+			pattern: "rm -rf",
+		});
 		expect(key).toBe("bash|tool_call|rm -rf|");
 	});
 
@@ -75,7 +79,9 @@ describe("dedupKey", () => {
 
 describe("findDuplicateBySignature", () => {
 	it("空数组返回 null", () => {
-		expect(findDuplicateBySignature([], { tool: "bash", pattern: "rm" })).toBeNull();
+		expect(
+			findDuplicateBySignature([], { tool: "bash", pattern: "rm" }),
+		).toBeNull();
 	});
 
 	it("找到签名相同的规则返回 index", () => {
@@ -83,13 +89,19 @@ describe("findDuplicateBySignature", () => {
 			{ comment: "r1", reason: "a", tool: "bash", pattern: "rm -rf" },
 			{ comment: "r2", reason: "b", tool: "write", pattern: "\\.env" },
 		];
-		expect(findDuplicateBySignature(rules, { tool: "bash", pattern: "rm -rf" })).toBe(0);
-		expect(findDuplicateBySignature(rules, { tool: "write", pattern: "\\.env" })).toBe(1);
+		expect(
+			findDuplicateBySignature(rules, { tool: "bash", pattern: "rm -rf" }),
+		).toBe(0);
+		expect(
+			findDuplicateBySignature(rules, { tool: "write", pattern: "\\.env" }),
+		).toBe(1);
 	});
 
 	it("签名不同返回 null", () => {
 		const rules = [{ comment: "r1", reason: "a", tool: "bash", pattern: "rm" }];
-		expect(findDuplicateBySignature(rules, { tool: "bash", pattern: "ls" })).toBeNull();
+		expect(
+			findDuplicateBySignature(rules, { tool: "bash", pattern: "ls" }),
+		).toBeNull();
 	});
 
 	it("conditions 规则去重", () => {
@@ -134,7 +146,12 @@ describe("findDuplicateBySignature", () => {
 describe("addRule 去重覆盖", () => {
 	it("新规则正常追加", () => {
 		writeRules([{ comment: "existing", reason: "test" }]);
-		const result = addRule(rulesPath, { comment: "new", reason: "safety", tool: "bash", pattern: "rm" });
+		const result = addRule(rulesPath, {
+			comment: "new",
+			reason: "safety",
+			tool: "bash",
+			pattern: "rm",
+		});
 		expect(result.success).toBe(true);
 		expect(result.index).toBe(1);
 		expect(readRulesFile()).toHaveLength(2);
@@ -142,7 +159,13 @@ describe("addRule 去重覆盖", () => {
 
 	it("签名重复时覆盖而非追加", () => {
 		writeRules([
-			{ comment: "old comment", reason: "old reason", tool: "bash", pattern: "rm -rf", action: "block" },
+			{
+				comment: "old comment",
+				reason: "old reason",
+				tool: "bash",
+				pattern: "rm -rf",
+				action: "block",
+			},
 			{ comment: "other", reason: "test", tool: "write", pattern: "\\.env" },
 		]);
 		const result = addRule(rulesPath, {
@@ -163,7 +186,13 @@ describe("addRule 去重覆盖", () => {
 
 	it("签名部分匹配不算重复（不同 action 不覆盖）", () => {
 		writeRules([
-			{ comment: "block", reason: "r", tool: "bash", pattern: "rm", action: "block" },
+			{
+				comment: "block",
+				reason: "r",
+				tool: "bash",
+				pattern: "rm",
+				action: "block",
+			},
 		]);
 		const result = addRule(rulesPath, {
 			comment: "notify",
@@ -179,7 +208,13 @@ describe("addRule 去重覆盖", () => {
 
 	it("check 规则去重", () => {
 		writeRules([
-			{ comment: "old", reason: "r", hook: "agent_end", check: "git_uncommitted", action: "notify" },
+			{
+				comment: "old",
+				reason: "r",
+				hook: "agent_end",
+				check: "git_uncommitted",
+				action: "notify",
+			},
 		]);
 		const result = addRule(rulesPath, {
 			comment: "new",

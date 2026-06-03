@@ -71,7 +71,7 @@ describe("pushWarning", () => {
 		expect(hint).toContain("${NONEXISTENT_VAR_12345}");
 	});
 
-	it("不包含 \${} 的文本原样通过", () => {
+	it("不包含 ${} 的文本原样通过", () => {
 		pushWarning("plain text no vars");
 		const hint = drainHints();
 		expect(hint).toContain("plain text no vars");

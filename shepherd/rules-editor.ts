@@ -11,8 +11,9 @@
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { validateRule } from "./rules-validate";
-export { validateRule } from "./rules-validate";
+
 export type { ValidationResult } from "./rules-validate";
+export { validateRule } from "./rules-validate";
 
 // ── 类型 ──────────────────────────────────────────────────
 
@@ -65,7 +66,10 @@ function readFile(filePath: string): FileData {
 		const raw = fs.readFileSync(filePath, "utf-8");
 		const parsed = JSON.parse(raw);
 		if (!Array.isArray(parsed)) {
-			return { rules: [], error: `顶层必须是 JSON 数组，当前是 ${typeof parsed}` };
+			return {
+				rules: [],
+				error: `顶层必须是 JSON 数组，当前是 ${typeof parsed}`,
+			};
 		}
 		return { rules: parsed };
 	} catch (e: unknown) {
@@ -73,7 +77,10 @@ function readFile(filePath: string): FileData {
 	}
 }
 
-function safeWrite(filePath: string, rules: Record<string, unknown>[]): WriteResult {
+function safeWrite(
+	filePath: string,
+	rules: Record<string, unknown>[],
+): WriteResult {
 	const backupPath = `${filePath}.bak`;
 	if (fs.existsSync(filePath)) fs.copyFileSync(filePath, backupPath);
 	const dir = path.dirname(filePath);
@@ -109,7 +116,9 @@ export function dedupKey(rule: Record<string, unknown>): string {
 	const action = (rule.action as string) || "";
 	let trigger: string;
 	if (Array.isArray(rule.conditions) && rule.conditions.length > 0) {
-		trigger = normalizeConditions(rule.conditions as Array<Record<string, unknown>>);
+		trigger = normalizeConditions(
+			rule.conditions as Array<Record<string, unknown>>,
+		);
 	} else if (rule.pattern) {
 		trigger = rule.pattern as string;
 	} else if (rule.check) {
@@ -160,18 +169,26 @@ export function listRulesDetail(filePath: string): ListDetailResult {
 	};
 }
 
-export function getRuleDetail(filePath: string, index: number): RuleDetail | { error: string } {
+export function getRuleDetail(
+	filePath: string,
+	index: number,
+): RuleDetail | { error: string } {
 	const { rules, error } = readFile(filePath);
 	if (error) return { error };
-	if (index < 0 || index >= rules.length) return { error: `编号越界: ${index}（共 ${rules.length} 条）` };
+	if (index < 0 || index >= rules.length)
+		return { error: `编号越界: ${index}（共 ${rules.length} 条）` };
 	return { index, ...rules[index] };
 }
 
-export function addRule(filePath: string, rule: Record<string, unknown>): WriteResult {
+export function addRule(
+	filePath: string,
+	rule: Record<string, unknown>,
+): WriteResult {
 	const { rules, error } = readFile(filePath);
 	if (error) return { success: false, error };
 	const validation = validateRule(rule);
-	if (!validation.valid) return { success: false, error: validation.errors.join("; ") };
+	if (!validation.valid)
+		return { success: false, error: validation.errors.join("; ") };
 	// 去重检测：签名相同则覆盖
 	const dupIdx = findDuplicateBySignature(rules, rule);
 	if (dupIdx !== null) {
@@ -183,7 +200,9 @@ export function addRule(filePath: string, rule: Record<string, unknown>): WriteR
 	}
 	rules.push(rule);
 	const writeResult = safeWrite(filePath, rules);
-	return writeResult.success ? { success: true, index: rules.length - 1 } : writeResult;
+	return writeResult.success
+		? { success: true, index: rules.length - 1 }
+		: writeResult;
 }
 
 export function updateRule(
@@ -194,10 +213,15 @@ export function updateRule(
 	if (index < 0) return { success: false, error: `编号越界: ${index}` };
 	const { rules, error } = readFile(filePath);
 	if (error) return { success: false, error };
-	if (index >= rules.length) return { success: false, error: `编号越界: ${index}（共 ${rules.length} 条）` };
+	if (index >= rules.length)
+		return {
+			success: false,
+			error: `编号越界: ${index}（共 ${rules.length} 条）`,
+		};
 	const merged = { ...rules[index], ...changes };
 	const validation = validateRule(merged);
-	if (!validation.valid) return { success: false, error: validation.errors.join("; ") };
+	if (!validation.valid)
+		return { success: false, error: validation.errors.join("; ") };
 	rules[index] = merged;
 	return safeWrite(filePath, rules);
 }
@@ -206,10 +230,17 @@ export function deleteRule(filePath: string, index: number): WriteResult {
 	if (index < 0) return { success: false, error: `编号越界: ${index}` };
 	const { rules, error } = readFile(filePath);
 	if (error) return { success: false, error };
-	if (index >= rules.length) return { success: false, error: `编号越界: ${index}（共 ${rules.length} 条）` };
+	if (index >= rules.length)
+		return {
+			success: false,
+			error: `编号越界: ${index}（共 ${rules.length} 条）`,
+		};
 	const deleted = rules.splice(index, 1)[0];
 	const writeResult = safeWrite(filePath, rules);
 	return writeResult.success
-		? { success: true, deleted: { comment: (deleted.comment as string) || "", ...deleted } }
+		? {
+				success: true,
+				deleted: { comment: (deleted.comment as string) || "", ...deleted },
+			}
 		: writeResult;
 }

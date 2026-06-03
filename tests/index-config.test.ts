@@ -2,7 +2,7 @@
  * index.ts 测试 — 扩展注册、config、ephemeral:hint
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 // ── Mock 声明 ──
 const mockGetEffectiveConfig = vi.fn().mockReturnValue({
@@ -11,8 +11,7 @@ const mockGetEffectiveConfig = vi.fn().mockReturnValue({
 });
 
 vi.mock("@pi-atelier/shared-utils", () => ({
-	getEffectiveConfig: (...args: unknown[]) =>
-		mockGetEffectiveConfig(...args),
+	getEffectiveConfig: (...args: unknown[]) => mockGetEffectiveConfig(...args),
 }));
 
 const mockCheckWorktrees = vi.fn();
@@ -161,10 +160,7 @@ describe("shepherdExtension 注册 & config", () => {
 			mockDrainHints.mockReturnValue("");
 			const ctx = { ui: { notify: vi.fn() } };
 			const hs = pi._handlers.get("before_provider_request")!;
-			await hs[0](
-				{ payload: { messages: [] } },
-				ctx,
-			);
+			await hs[0]({ payload: { messages: [] } }, ctx);
 
 			expect(ctx.ui.notify).toHaveBeenCalled();
 		});

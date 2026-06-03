@@ -8,10 +8,10 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { addRule, deleteRule, updateRule } from "./rules-editor";
 import {
-	type Scope,
 	checkCrossScopeDuplicate,
 	ensureProjectDir,
 	getRulesFilePath,
+	type Scope,
 } from "./rules-tool-helpers";
 import {
 	handleListByIndex,
@@ -21,7 +21,11 @@ import {
 	textResult,
 } from "./rules-tool-list";
 
-export function registerRulesEditorTool(pi: ExtensionAPI, rulesDir: string, cwd?: string) {
+export function registerRulesEditorTool(
+	pi: ExtensionAPI,
+	rulesDir: string,
+	cwd?: string,
+) {
 	const effectiveCwd = cwd || process.cwd();
 
 	pi.registerTool({
@@ -85,7 +89,12 @@ export function registerRulesEditorTool(pi: ExtensionAPI, rulesDir: string, cwd?
 				case "list": {
 					// index 指定 → 显示单条完整 JSON
 					if (params.index !== undefined) {
-						return handleListByIndex(scope, params.index, rulesDir, effectiveCwd);
+						return handleListByIndex(
+							scope,
+							params.index,
+							rulesDir,
+							effectiveCwd,
+						);
 					}
 					// verbose=true → 显示所有规则的完整信息
 					if (params.verbose === true) {
@@ -97,7 +106,11 @@ export function registerRulesEditorTool(pi: ExtensionAPI, rulesDir: string, cwd?
 				case "add": {
 					if (!params.rule) return textResult("❌ add 需要 rule 参数");
 					const targetScope = scope || "global";
-					const filePath = getRulesFilePath(targetScope, rulesDir, effectiveCwd);
+					const filePath = getRulesFilePath(
+						targetScope,
+						rulesDir,
+						effectiveCwd,
+					);
 					if (targetScope === "project") ensureProjectDir(effectiveCwd);
 					const result = addRule(filePath, params.rule);
 					if (!result.success) return textResult(`❌ ${result.error}`);
@@ -107,26 +120,40 @@ export function registerRulesEditorTool(pi: ExtensionAPI, rulesDir: string, cwd?
 						effectiveCwd,
 						params.rule,
 					);
-					const overwrittenMsg = result.overwritten ? " (覆盖已有同签名规则)" : "";
+					const overwrittenMsg = result.overwritten
+						? " (覆盖已有同签名规则)"
+						: "";
 					const warningMsg = warning ? `\n${warning}` : "";
 					return textResult(
 						`✅ ${scopeLabel(targetScope)}规则已添加 [${targetScope}:${result.index}]${overwrittenMsg}${warningMsg}`,
 					);
 				}
 				case "update": {
-					if (params.index === undefined) return textResult("❌ update 需要 index 参数");
+					if (params.index === undefined)
+						return textResult("❌ update 需要 index 参数");
 					if (!params.changes) return textResult("❌ update 需要 changes 参数");
 					const targetScope = scope || "global";
-					const filePath = getRulesFilePath(targetScope, rulesDir, effectiveCwd);
+					const filePath = getRulesFilePath(
+						targetScope,
+						rulesDir,
+						effectiveCwd,
+					);
 					const result = updateRule(filePath, params.index, params.changes);
 					return result.success
-						? textResult(`✅ ${scopeLabel(targetScope)}规则 [${targetScope}:${params.index}] 已更新`)
+						? textResult(
+								`✅ ${scopeLabel(targetScope)}规则 [${targetScope}:${params.index}] 已更新`,
+							)
 						: textResult(`❌ ${result.error}`);
 				}
 				case "delete": {
-					if (params.index === undefined) return textResult("❌ delete 需要 index 参数");
+					if (params.index === undefined)
+						return textResult("❌ delete 需要 index 参数");
 					const targetScope = scope || "global";
-					const filePath = getRulesFilePath(targetScope, rulesDir, effectiveCwd);
+					const filePath = getRulesFilePath(
+						targetScope,
+						rulesDir,
+						effectiveCwd,
+					);
 					const result = deleteRule(filePath, params.index);
 					return result.success
 						? textResult(

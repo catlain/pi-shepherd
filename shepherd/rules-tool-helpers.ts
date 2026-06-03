@@ -4,10 +4,9 @@
  * scope 路径推导、合并列表、跨 scope 去重检测。
  */
 
-import * as path from "node:path";
 import * as fs from "node:fs";
-import { listRules } from "./rules-editor";
-import { findDuplicateBySignature } from "./rules-editor";
+import * as path from "node:path";
+import { findDuplicateBySignature, listRules } from "./rules-editor";
 
 /** 项目级规则文件名 */
 const PROJECT_RULES_FILE = "shepherd-rules.json";

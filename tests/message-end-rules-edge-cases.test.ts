@@ -8,31 +8,36 @@
  * 测试各种边缘场景，确保正则匹配准确、误报可控。
  */
 
-import { describe, it, expect } from "vitest";
+import { describe, expect, it } from "vitest";
 
 // ── 实际规则的正则（从 shepherd-rules.json 复制）──
 
 const RULE_ATTRIBUTION = /可能/;
-const RULE_TOOLCHAIN = /(可能|应该|估计).{0,30}(缓存|jiti|vitest|proxy|模块解析|工具链)/;
+const RULE_TOOLCHAIN =
+	/(可能|应该|估计).{0,30}(缓存|jiti|vitest|proxy|模块解析|工具链)/;
 
 // ── 辅助 ──
 
-function matchAttribution(text: string) { return RULE_ATTRIBUTION.test(text); }
-function matchToolchain(text: string) { return RULE_TOOLCHAIN.test(text); }
+function matchAttribution(text: string) {
+	return RULE_ATTRIBUTION.test(text);
+}
+function matchToolchain(text: string) {
+	return RULE_TOOLCHAIN.test(text);
+}
 
 // ── 测试 ──
 
 describe("message_end 规则边缘情况", () => {
-
 	describe("规则 1：归因猜测提醒", () => {
-
 		// ✅ 应该匹配（宽匹配：含'可能'即触发）
 		it("匹配：可能是缓存导致的问题", () => {
 			expect(matchAttribution("这个错误可能是缓存导致的")).toBe(true);
 		});
 
 		it("匹配：可能截图是黑的", () => {
-			expect(matchAttribution("可能截图是黑的（渲染管线还没完成就截了）")).toBe(true);
+			expect(matchAttribution("可能截图是黑的（渲染管线还没完成就截了）")).toBe(
+				true,
+			);
 		});
 
 		it("匹配：默认视口可能只有几百像素高", () => {
@@ -44,15 +49,21 @@ describe("message_end 规则边缘情况", () => {
 		});
 
 		it("匹配：问题可能出在 FixedVertical", () => {
-			expect(matchAttribution("问题可能出在 FixedVertical + Projection")).toBe(true);
+			expect(matchAttribution("问题可能出在 FixedVertical + Projection")).toBe(
+				true,
+			);
 		});
 
 		it("匹配：可能是 Startup 阶段", () => {
-			expect(matchAttribution("问题可能是 Startup 阶段的系统执行顺序")).toBe(true);
+			expect(matchAttribution("问题可能是 Startup 阶段的系统执行顺序")).toBe(
+				true,
+			);
 		});
 
 		it("匹配：可能是死循环", () => {
-			expect(matchAttribution("可能是 test_interaction.rs 里有死循环")).toBe(true);
+			expect(matchAttribution("可能是 test_interaction.rs 里有死循环")).toBe(
+				true,
+			);
 		});
 
 		it("匹配：可能被遮挡了", () => {
@@ -61,16 +72,19 @@ describe("message_end 规则边缘情况", () => {
 
 		// ❌ 不应匹配
 		it("不匹配：纯分析无可能", () => {
-			expect(matchAttribution("根据日志可以看到这个函数在处理空值时没有做检查")).toBe(false);
+			expect(
+				matchAttribution("根据日志可以看到这个函数在处理空值时没有做检查"),
+			).toBe(false);
 		});
 
 		it("不匹配：明确陈述事实", () => {
-			expect(matchAttribution("测试失败了，错误信息是 expected true received false")).toBe(false);
+			expect(
+				matchAttribution("测试失败了，错误信息是 expected true received false"),
+			).toBe(false);
 		});
 	});
 
 	describe("规则 2：工具链猜测拦截", () => {
-
 		// ✅ 应该匹配
 		it("匹配：可能是缓存问题", () => {
 			expect(matchToolchain("可能是缓存问题")).toBe(true);
@@ -102,11 +116,14 @@ describe("message_end 规则边缘情况", () => {
 		});
 
 		it("不匹配：工具名中包含关键词但不是猜测", () => {
-			expect(matchToolchain("运行 npx vitest run --reporter=verbose")).toBe(false);
+			expect(matchToolchain("运行 npx vitest run --reporter=verbose")).toBe(
+				false,
+			);
 		});
 
 		it("不匹配：中间超过 30 字符", () => {
-			const text = "可能是某某某某某某某某某某某某某某某某某某某某某某某某某某某某某某某某某某某某某某缓存";
+			const text =
+				"可能是某某某某某某某某某某某某某某某某某某某某某某某某某某某某某某某某某某某某某某缓存";
 			// 计算中间距离
 			const mid = text.length - 2 - 2; // 去掉"可能"和"缓存"
 			expect(mid > 30).toBe(true);
@@ -123,7 +140,6 @@ describe("message_end 规则边缘情况", () => {
 	});
 
 	describe("两条规则交叉场景", () => {
-
 		it("同时触发两条：'可能是缓存导致的问题'", () => {
 			const text = "可能是缓存导致的问题";
 			expect(matchAttribution(text)).toBe(true);
@@ -149,7 +165,8 @@ describe("message_end 规则边缘情况", () => {
 		});
 
 		it("都不触发：明确陈述事实", () => {
-			const text = "测试失败了，错误信息是 'expected true, received false'。我来看看断言条件。";
+			const text =
+				"测试失败了，错误信息是 'expected true, received false'。我来看看断言条件。";
 			expect(matchAttribution(text)).toBe(false);
 			expect(matchToolchain(text)).toBe(false);
 		});

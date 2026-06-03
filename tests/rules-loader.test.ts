@@ -20,7 +20,7 @@ import {
 	loadRulesFromFile,
 	type Rule,
 } from "@pi-atelier/shepherd";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 
 // ── 测试临时目录 ──────────────────────────────────────────
 

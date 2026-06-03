@@ -36,7 +36,11 @@ function writeGlobalRules(rules: object[]): void {
 }
 
 function writeProjectRules(rules: object[]): void {
-	fs.writeFileSync(projectRulesPath, JSON.stringify(rules, null, "\t"), "utf-8");
+	fs.writeFileSync(
+		projectRulesPath,
+		JSON.stringify(rules, null, "\t"),
+		"utf-8",
+	);
 }
 
 function readGlobalRules(): object[] {
@@ -57,12 +61,16 @@ describe("getRulesFilePath", () => {
 
 	it("scope=project 返回项目级路径", async () => {
 		const { getRulesFilePath } = await import("../shepherd/rules-tool-helpers");
-		expect(getRulesFilePath("project", globalDir, tmpDir)).toBe(projectRulesPath);
+		expect(getRulesFilePath("project", globalDir, tmpDir)).toBe(
+			projectRulesPath,
+		);
 	});
 
 	it("scope 未传时默认 global", async () => {
 		const { getRulesFilePath } = await import("../shepherd/rules-tool-helpers");
-		expect(getRulesFilePath(undefined, globalDir, tmpDir)).toBe(globalRulesPath);
+		expect(getRulesFilePath(undefined, globalDir, tmpDir)).toBe(
+			globalRulesPath,
+		);
 	});
 });
 
@@ -79,8 +87,16 @@ describe("listRulesByScope", () => {
 		const { listRulesByScope } = await import("../shepherd/rules-tool-helpers");
 		const result = listRulesByScope(globalDir, tmpDir);
 		expect(result).toHaveLength(2);
-		expect(result[0]).toMatchObject({ comment: "global rule 1", scope: "global", index: 0 });
-		expect(result[1]).toMatchObject({ comment: "project rule 1", scope: "project", index: 0 });
+		expect(result[0]).toMatchObject({
+			comment: "global rule 1",
+			scope: "global",
+			index: 0,
+		});
+		expect(result[1]).toMatchObject({
+			comment: "project rule 1",
+			scope: "project",
+			index: 0,
+		});
 	});
 
 	it("scope=global 只返回全局规则", async () => {
@@ -119,7 +135,12 @@ describe("addRule scope 分发", () => {
 		const { getRulesFilePath } = await import("../shepherd/rules-tool-helpers");
 		const filePath = getRulesFilePath("global", globalDir, tmpDir);
 		const { addRule } = await import("../shepherd/rules-editor");
-		const result = addRule(filePath, { comment: "test", reason: "r", tool: "bash", pattern: "rm" });
+		const result = addRule(filePath, {
+			comment: "test",
+			reason: "r",
+			tool: "bash",
+			pattern: "rm",
+		});
 		expect(result.success).toBe(true);
 		expect(readGlobalRules()).toHaveLength(1);
 	});
@@ -130,7 +151,12 @@ describe("addRule scope 分发", () => {
 		const dir = path.dirname(filePath);
 		if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
 		const { addRule } = await import("../shepherd/rules-editor");
-		const result = addRule(filePath, { comment: "test", reason: "r", tool: "write", pattern: "\\.env" });
+		const result = addRule(filePath, {
+			comment: "test",
+			reason: "r",
+			tool: "write",
+			pattern: "\\.env",
+		});
 		expect(result.success).toBe(true);
 		expect(readProjectRules()).toHaveLength(1);
 	});
@@ -144,11 +170,13 @@ describe("跨 scope 去重 warning", () => {
 			{ comment: "existing", reason: "r", tool: "bash", pattern: "rm -rf" },
 		]);
 		writeProjectRules([]);
-		const { checkCrossScopeDuplicate } = await import("../shepherd/rules-tool-helpers");
-		const warning = checkCrossScopeDuplicate(
-			"project", globalDir, tmpDir,
-			{ tool: "bash", pattern: "rm -rf" },
+		const { checkCrossScopeDuplicate } = await import(
+			"../shepherd/rules-tool-helpers"
 		);
+		const warning = checkCrossScopeDuplicate("project", globalDir, tmpDir, {
+			tool: "bash",
+			pattern: "rm -rf",
+		});
 		expect(warning).toContain("全局已有相似规则");
 	});
 
@@ -157,22 +185,28 @@ describe("跨 scope 去重 warning", () => {
 		writeProjectRules([
 			{ comment: "existing", reason: "r", tool: "bash", pattern: "rm -rf" },
 		]);
-		const { checkCrossScopeDuplicate } = await import("../shepherd/rules-tool-helpers");
-		const warning = checkCrossScopeDuplicate(
-			"global", globalDir, tmpDir,
-			{ tool: "bash", pattern: "rm -rf" },
+		const { checkCrossScopeDuplicate } = await import(
+			"../shepherd/rules-tool-helpers"
 		);
+		const warning = checkCrossScopeDuplicate("global", globalDir, tmpDir, {
+			tool: "bash",
+			pattern: "rm -rf",
+		});
 		expect(warning).toContain("项目级已有相似规则");
 	});
 
 	it("另一 scope 无重复时返回 null", async () => {
-		writeGlobalRules([{ comment: "g", reason: "r", tool: "bash", pattern: "ls" }]);
+		writeGlobalRules([
+			{ comment: "g", reason: "r", tool: "bash", pattern: "ls" },
+		]);
 		writeProjectRules([]);
-		const { checkCrossScopeDuplicate } = await import("../shepherd/rules-tool-helpers");
-		const warning = checkCrossScopeDuplicate(
-			"project", globalDir, tmpDir,
-			{ tool: "bash", pattern: "rm" },
+		const { checkCrossScopeDuplicate } = await import(
+			"../shepherd/rules-tool-helpers"
 		);
+		const warning = checkCrossScopeDuplicate("project", globalDir, tmpDir, {
+			tool: "bash",
+			pattern: "rm",
+		});
 		expect(warning).toBeNull();
 	});
 });

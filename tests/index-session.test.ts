@@ -2,7 +2,7 @@
  * index.ts 测试 — session_start / session_shutdown
  */
 
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mockGetEffectiveConfig = vi.fn().mockReturnValue({
 	config: { projectRulesPattern: "shepherd-rules-", maxWarnings: 5 },
@@ -10,8 +10,7 @@ const mockGetEffectiveConfig = vi.fn().mockReturnValue({
 });
 
 vi.mock("@pi-atelier/shared-utils", () => ({
-	getEffectiveConfig: (...args: unknown[]) =>
-		mockGetEffectiveConfig(...args),
+	getEffectiveConfig: (...args: unknown[]) => mockGetEffectiveConfig(...args),
 }));
 
 const mockCheckWorktrees = vi.fn();
@@ -62,9 +61,7 @@ function getHandler(
 	return hs[0];
 }
 
-function shutdownRules(
-	arr: Array<{ check?: string; reason?: string }>,
-) {
+function shutdownRules(arr: Array<{ check?: string; reason?: string }>) {
 	return arr.map(({ check, ...rest }) => {
 		const base: Record<string, unknown> = {
 			hook: "session_shutdown",
@@ -127,10 +124,7 @@ describe("session_shutdown", () => {
 		);
 		const ctx = { ui: { notify: vi.fn() } };
 		await getHandler(pi, "session_shutdown")({}, ctx);
-		expect(ctx.ui.notify).toHaveBeenCalledWith(
-			"⚠️ shepherd: bye",
-			"warning",
-		);
+		expect(ctx.ui.notify).toHaveBeenCalledWith("⚠️ shepherd: bye", "warning");
 	});
 
 	it("check=git_uncommitted 有未提交时触发（含 ⚠️ shepherd: 前缀）", async () => {

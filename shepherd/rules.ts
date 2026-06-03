@@ -2,18 +2,18 @@
  * Guard 规则类型定义 + 规则加载/编译/匹配
  */
 
-// git 相关函数从 git.ts re-export，保持向后兼容
-export {
-	isGitDirty,
-	hasGitUntracked,
-	isGitDirtyOrUntracked,
-	hasGitUncommittedChanges,
-	isInWorktree,
-} from "./git";
+export type { BuiltinContext } from "./conditions";
 
 // 条件匹配从 conditions.ts re-export
 export { matchBuiltinCondition } from "./conditions";
-export type { BuiltinContext } from "./conditions";
+// git 相关函数从 git.ts re-export，保持向后兼容
+export {
+	hasGitUncommittedChanges,
+	hasGitUntracked,
+	isGitDirty,
+	isGitDirtyOrUntracked,
+	isInWorktree,
+} from "./git";
 
 /** 当前是否在子代理环境中 */
 export const isSubagent = () =>
@@ -21,12 +21,13 @@ export const isSubagent = () =>
 
 /** 代码文件扩展名正则（glob 或文件名末尾） */
 export const CODE_EXT_RE = /\.(py|rs|ts|js|toml|json)(\*|"|')?$/;
+
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { pushRuleError } from "./ephemeral.js";
-import type { ResettableRule, StateCondition } from "./state-tracker.js";
-import type { ToolEvent } from "./tool-event-types.js";
 import { matchBuiltinCondition } from "./conditions";
+import { pushRuleError } from "./ephemeral.js";
+import type { StateCondition } from "./state-tracker.js";
+import type { ToolEvent } from "./tool-event-types.js";
 
 // ── 类型定义 ──────────────────────────────────────────────────
 
@@ -46,7 +47,13 @@ export type { ConditionBuiltin } from "./conditions";
 
 export interface Rule {
 	comment: string;
-	hook?: "tool_call" | "tool_result" | "agent_end" | "session_end" | "session_shutdown" | "message_end"; // 默认 "tool_call"
+	hook?:
+		| "tool_call"
+		| "tool_result"
+		| "agent_end"
+		| "session_end"
+		| "session_shutdown"
+		| "message_end"; // 默认 "tool_call"
 	tool?: string; // 默认 "bash"，支持 "|" 分隔多值匹配（如 "edit|write"）
 	// 单条件模式（向后兼容）：pattern 匹配 command（bash）或 path（edit/write）
 	pattern?: string;
@@ -159,7 +166,10 @@ export function loadRules(
 	const projectExtDir = path.join(process.cwd(), ".pi", "extensions");
 	if (fs.existsSync(projectExtDir)) {
 		for (const file of fs.readdirSync(projectExtDir).sort()) {
-			if (file.endsWith(".json") && (file.startsWith(prefix) || file === "shepherd-rules.json")) {
+			if (
+				file.endsWith(".json") &&
+				(file.startsWith(prefix) || file === "shepherd-rules.json")
+			) {
 				const result = loadRulesFromFile(path.join(projectExtDir, file));
 				allRules.push(...result.rules);
 				if (result.error) errors.push(result.error);
@@ -219,9 +229,7 @@ export function getMatchTargets(
 	if (tool === "edit") {
 		const edits = (event.input as any)?.edits;
 		if (Array.isArray(edits)) {
-			text = edits
-				.map((e: { newText?: string }) => e.newText || "")
-				.join("\n");
+			text = edits.map((e: { newText?: string }) => e.newText || "").join("\n");
 		}
 	} else if (tool === "write") {
 		text = (event.input as any)?.content || "";
@@ -297,9 +305,15 @@ function matchCondition(
 }
 
 /** tool 字段匹配：支持 "|" 分隔的多值（如 "edit|write"） */
-export function toolMatches(ruleTool: string | undefined, eventTool: string): boolean {
+export function toolMatches(
+	ruleTool: string | undefined,
+	eventTool: string,
+): boolean {
 	if (!ruleTool) return true; // 未指定 tool 时默认匹配所有（由 hook 类型决定范围）
-	return ruleTool.split("|").map((t) => t.trim()).includes(eventTool);
+	return ruleTool
+		.split("|")
+		.map((t) => t.trim())
+		.includes(eventTool);
 }
 
 /** rtk 可用性（模块加载时检测） */

@@ -5,6 +5,7 @@
 
 import { join } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { StateTracker } from "../shepherd/state-tracker";
 import type { ToolState } from "../shepherd/tool-hooks";
 import {
 	getAvailableTools,
@@ -12,7 +13,6 @@ import {
 	registerToolResult,
 	toolsAvailable,
 } from "../shepherd/tool-hooks";
-import type { StateTracker } from "../shepherd/state-tracker";
 
 // Mock ephemeral 模块的 pushWarning
 vi.mock("../shepherd/ephemeral.js", () => ({
@@ -36,13 +36,16 @@ vi.mock("../shepherd/rules.js", () => ({
 	ruleMatches: (...args: any[]) => mockedRuleMatches(...args),
 	toolMatches: (ruleTool: string | undefined, eventTool: string) => {
 		if (!ruleTool) return true;
-		return ruleTool.split("|").map((t: string) => t.trim()).includes(eventTool);
+		return ruleTool
+			.split("|")
+			.map((t: string) => t.trim())
+			.includes(eventTool);
 	},
 }));
 
 import { pushWarning } from "../shepherd/ephemeral.js";
 import { checkLineCount } from "../shepherd/line-count.js";
-import { loadRules, isSubagent, getMatchTargets as realGetMatchTargets, ruleMatches as realRuleMatches } from "../shepherd/rules.js";
+import { isSubagent, loadRules } from "../shepherd/rules.js";
 
 const mockedPushWarning = vi.mocked(pushWarning);
 const mockedCheckLineCount = vi.mocked(checkLineCount);
@@ -98,7 +101,7 @@ describe("tool-hooks", () => {
 
 		it("edit/write 应该标记 hasEdits", async () => {
 			registerToolCall(pi as any, state);
-			const handler = pi.handlers["tool_call"];
+			const handler = pi.handlers.tool_call;
 
 			await handler({ toolName: "edit", input: { path: "foo.ts" } });
 			expect(state.hasEdits).toBe(true);
@@ -110,7 +113,7 @@ describe("tool-hooks", () => {
 
 		it("非 edit/write 不标记 hasEdits", async () => {
 			registerToolCall(pi as any, state);
-			const handler = pi.handlers["tool_call"];
+			const handler = pi.handlers.tool_call;
 
 			await handler({ toolName: "bash", input: { command: "ls" } });
 			expect(state.hasEdits).toBe(false);
@@ -131,9 +134,12 @@ describe("tool-hooks", () => {
 			mockedRuleMatches.mockReturnValue(true);
 
 			registerToolCall(pi as any, state);
-			const handler = pi.handlers["tool_call"];
+			const handler = pi.handlers.tool_call;
 
-			const result = await handler({ toolName: "edit", input: { path: "foo.ts" } });
+			const result = await handler({
+				toolName: "edit",
+				input: { path: "foo.ts" },
+			});
 			expect(result).toEqual({ block: true, reason: "⛔ shepherd: 禁止编辑" });
 		});
 
@@ -151,9 +157,12 @@ describe("tool-hooks", () => {
 			]);
 
 			registerToolCall(pi as any, state);
-			const handler = pi.handlers["tool_call"];
+			const handler = pi.handlers.tool_call;
 
-			const result = await handler({ toolName: "edit", input: { path: "foo.ts" } });
+			const result = await handler({
+				toolName: "edit",
+				input: { path: "foo.ts" },
+			});
 			expect(result).toBeUndefined();
 		});
 	});
@@ -170,7 +179,7 @@ describe("tool-hooks", () => {
 
 		it("edit 后应该调用 checkLineCount", async () => {
 			registerToolResult(pi as any, state);
-			const handler = pi.handlers["tool_result"];
+			const handler = pi.handlers.tool_result;
 
 			await handler({
 				toolName: "edit",
@@ -184,14 +193,12 @@ describe("tool-hooks", () => {
 
 		it("memory_update 后应从结果文本提取路径并检查行数", async () => {
 			registerToolResult(pi as any, state);
-			const handler = pi.handlers["tool_result"];
+			const handler = pi.handlers.tool_result;
 
 			await handler({
 				toolName: "memory_update",
 				input: { fileName: "test.md" },
-				content: [
-					{ type: "text", text: "已写入 `memory/test--kw1,kw2.md`" },
-				],
+				content: [{ type: "text", text: "已写入 `memory/test--kw1,kw2.md`" }],
 			});
 			expect(mockedCheckLineCount).toHaveBeenCalledWith(
 				"memory/test--kw1,kw2.md",
@@ -200,7 +207,7 @@ describe("tool-hooks", () => {
 
 		it("应该更新 tracker 状态", async () => {
 			registerToolResult(pi as any, state);
-			const handler = pi.handlers["tool_result"];
+			const handler = pi.handlers.tool_result;
 			const text = "file1\nfile2";
 
 			await handler({
@@ -236,7 +243,7 @@ describe("tool-hooks", () => {
 			}));
 
 			registerToolResult(pi as any, state);
-			const handler = pi.handlers["tool_result"];
+			const handler = pi.handlers.tool_result;
 
 			await handler({
 				toolName: "bash",

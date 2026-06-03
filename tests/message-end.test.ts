@@ -8,7 +8,7 @@
  * - 防重复触发
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 
 // ── 模拟 AgentMessage 结构 ──
 
@@ -145,7 +145,9 @@ describe("message_end hook", () => {
 		const RULE_ENGLISH: SimMessageEndRule = {
 			comment: "语言提醒：检测到英文回复",
 			hook: "message_end",
-			conditions: [{ field: "text", pattern: "\\b(I will|Let me|I'm going to)\\b" }],
+			conditions: [
+				{ field: "text", pattern: "\\b(I will|Let me|I'm going to)\\b" },
+			],
 			action: "notify",
 			reason: "检测到英文回复，请使用中文",
 		};
@@ -273,15 +275,9 @@ describe("message_end hook", () => {
 		it("多条规则同时触发", () => {
 			const msg: SimAssistantMessage = {
 				role: "assistant",
-				content: [
-					{ type: "text", text: "I will fix the TODO in the code." },
-				],
+				content: [{ type: "text", text: "I will fix the TODO in the code." }],
 			};
-			const result = simulateMessageEnd(
-				state,
-				[RULE_ENGLISH, RULE_STEER],
-				msg,
-			);
+			const result = simulateMessageEnd(state, [RULE_ENGLISH, RULE_STEER], msg);
 			expect(result.warnings).toHaveLength(1);
 			expect(result.hints).toHaveLength(1);
 		});
