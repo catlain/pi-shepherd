@@ -212,7 +212,9 @@
 		"pattern": ".",
 		"flags": "s",
 		"reason": "推荐用 code-graph 替代 grep 搜代码——理解 AST 语义，按符号名、调用链、引用关系精准定位。选工具：①模糊搜索 → semantic_code_search；②精确符号 → get_ast_node；③引用 → find_references；④调用链 → get_call_graph；⑤模块结构 → module_overview。grep 仅适合字面量（TODO、配置值），搜字面量则忽略此提醒。**注意：刚编辑过的文件可能导致索引过期搜不到，此时调 setup_codegraph({ directory: \"项目路径\" }) 更新索引即可**（已索引目录重复调用仍有效）。",
-		"requiresTools": ["code_graph_semantic_code_search"],
+		"requiresTools": [
+			"code_graph_semantic_code_search"
+		],
 		"enabled": true
 	},
 	{
@@ -397,6 +399,15 @@
 		],
 		"message": "⛔ shepherd: 直接编辑 settings.json 曾导致配置丢失（119行变3行）。必须使用 settings_patch 工具（自动备份+文件锁+校验），或 settings_rollback 回滚。",
 		"reason": "直接 edit/write settings.json 曾导致配置丢失（119行变3行）。必须使用 settings_patch 工具。",
+		"enabled": false
+	},
+	{
+		"comment": "[code-graph] code-graph 工具返回空/报错时提醒检查索引",
+		"hook": "tool_result",
+		"tool": "code_graph_semantic_code_search|code_graph_get_ast_node|code_graph_module_overview|code_graph_project_map|code_graph_get_call_graph|code_graph_find_references|code_graph_ast_search",
+		"action": "steer",
+		"reason": "🔍 code-graph 返回了空结果或报错。可能原因：\n1. **目标目录没有被索引** — 用 `code_graph_project_map()` 查看当前索引了哪些目录。如果目标目录不在索引范围内，调用 `setup_codegraph({ directory: \"目标目录绝对路径\" })` 一键建索引（创建软链接 + 增量索引）。\n2. **路径用了绝对路径** — code-graph 工具的 path 参数要用**相对路径**（相对于 CWD），不能用绝对路径。\n3. **索引过期** — 刚编辑/新增的文件可能还没被索引到，调 `setup_codegraph({ directory: \"项目路径\" })` 更新索引。\n如果 code-graph 已正确索引且路径正确但确实没有结果，则忽略此提醒。",
+		"subagent": false,
 		"enabled": false
 	}
 ]
