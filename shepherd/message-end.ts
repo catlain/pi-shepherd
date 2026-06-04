@@ -106,8 +106,8 @@ export function registerMessageEnd(
 			if (rule.action === "steer") {
 				pushWarning(rule.reason, rule.comment);
 			} else if (rule.action === "notify" || !rule.action) {
-				// 默认 notify
-				pushWarning(rule.reason, rule.comment);
+				// notify：只弹通知气泡，不走 pushWarning，避免 agent_end 误触发空 turn
+				_ctx.ui?.notify?.(`⚠️ shepherd: ${rule.reason}`, "warning");
 			}
 		}
 

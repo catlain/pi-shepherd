@@ -90,6 +90,7 @@ export function registerToolCall(
 			}
 
 			if (rule.action === "notify") {
+				// tool_call notify：在 turn 内部触发，before_provider_request 会在同 turn 内消费
 				pushWarning(rule.reason, rule.comment);
 			}
 		}
@@ -171,7 +172,8 @@ export function registerToolResult(
 					.replace("{chars}", String(Math.round(stats.chars / 1000)));
 				pushWarning(reason, rule.comment);
 			} else if (rule.action === "notify") {
-				pushWarning(rule.reason, rule.comment);
+				// notify：只弹通知气泡，不走 pushWarning，避免 agent_end 误触发空 turn
+				_ctx?.ui?.notify?.(`⚠️ shepherd: ${rule.reason}`, "warning");
 			}
 		}
 	});

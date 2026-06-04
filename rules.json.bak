@@ -211,7 +211,7 @@
 		"action": "notify",
 		"pattern": ".",
 		"flags": "s",
-		"reason": "推荐用 code-graph 替代 grep 搜代码——理解 AST 语义，按符号名、调用链、引用关系精准定位。选工具：①模糊搜索 → semantic_code_search；②精确符号 → get_ast_node；③引用 → find_references；④调用链 → get_call_graph；⑤模块结构 → module_overview。grep 仅适合字面量（TODO、配置值），搜字面量则忽略此提醒。**注意：刚编辑过的文件可能导致索引过期搜不到，此时调 setup_codegraph({ directory: \"项目路径\" }) 更新索引即可**（已索引目录重复调用仍有效）。",
+		"reason": "推荐用 code-graph 替代 grep 搜代码——理解 AST 语义，按符号名、调用链、引用关系精准定位。选工具：①模糊搜索 → semantic_code_search；②精确符号 → get_ast_node；③引用 → find_references；④调用链 → get_call_graph；⑤模块结构 → module_overview。grep 仅适合字面量（TODO、配置值），搜字面量则忽略此提醒。\n\n**code-graph 故障排查：**\n- **搜不到东西？** → 可能是目标目录没索引。用 `code_graph_project_map()` 查看当前索引范围，不在范围内就调 `setup_codegraph({ directory: \"目标目录绝对路径\" })` 一键建索引（创建软链接+增量索引，即时可搜）。\n- **路径报错 `must be relative`？** → path 参数必须用相对路径（相对于 CWD），不能用绝对路径。\n- **刚改了代码搜不到？** → 索引可能过期，调 `setup_codegraph({ directory: \"项目路径\" })` 重建索引（已索引目录重复调用有效，增量更新）。\n- **确实没有结果** → 忽略以上提醒，可能是符号确实不存在。",
 		"requiresTools": [
 			"code_graph_semantic_code_search"
 		],
@@ -224,7 +224,7 @@
 		"action": "notify",
 		"pattern": "\\b(grep|rg)\\b.*\\.(py|rs|ts|js|toml)(?=[\\s'\"|)]|$)",
 		"flags": "",
-		"reason": "💡 bash grep 搜代码文件不如用 pi 内置 grep 工具或 code-graph MCP 工具——code-graph 理解 AST 语义，能精准匹配符号名和调用关系。选工具：①模糊搜索 → semantic_code_search；②精确符号 → get_ast_node；③引用追踪 → find_references；④调用链 → get_call_graph。如果搜的是字面量字符串（TODO、配置值）则忽略。如果目标目录没有被 code-graph 索引，调用 setup_codegraph({ directory: \"目标目录路径\" }) 一键建索引。",
+		"reason": "💡 bash grep 搜代码文件不如用 pi 内置 grep 工具或 code-graph MCP 工具——code-graph 理解 AST 语义，能精准匹配符号名和调用关系。选工具：①模糊搜索 → semantic_code_search；②精确符号 → get_ast_node；③引用追踪 → find_references；④调用链 → get_call_graph。如果搜的是字面量字符串（TODO、配置值）则忽略。\n\n**code-graph 故障排查：**\n- **搜不到东西？** → 可能是目标目录没索引。用 `code_graph_project_map()` 查看当前索引范围，不在范围内就调 `setup_codegraph({ directory: \"目标目录绝对路径\" })` 一键建索引。\n- **路径报错？** → path 参数必须用相对路径（相对于 CWD），不能用绝对路径。\n- **刚改了代码搜不到？** → 调 `setup_codegraph({ directory: \"项目路径\" })` 重建索引。",
 		"enabled": true
 	},
 	{
@@ -238,7 +238,7 @@
 				"pattern": "\\.(ts|js|py|rs)$"
 			}
 		],
-		"reason": "💡 搜代码文件推荐用 code-graph。如果 code-graph 返回空结果，可能是目标目录没有被索引。调用 setup_codegraph({ directory: \"目标目录路径\" }) 一键建索引（软链接+增量索引，当前会话即刻可搜）。用法参考 code-graph 技能：semantic_code_search（模糊搜索）、get_ast_node（精确符号）、get_call_graph（调用链）、module_overview（模块结构）。",
+		"reason": "💡 搜代码文件推荐用 code-graph。如果 code-graph 搜不到，排查步骤：\n1. `code_graph_project_map()` 查看当前索引了哪些目录\n2. 不在范围内 → `setup_codegraph({ directory: \"目标目录绝对路径\" })` 建索引\n3. 路径报错 → 用相对路径，不用绝对路径\n4. 刚改过代码 → `setup_codegraph({ directory: \"项目路径\" })` 重建索引\n用法：semantic_code_search（模糊搜索）、get_ast_node（精确符号）、get_call_graph（调用链）、module_overview（模块结构）。",
 		"enabled": true
 	},
 	{
@@ -311,7 +311,8 @@
 		"hook": "tool_call",
 		"message": "⛔ 禁止通过 bash 修改 settings.json！使用 settings_patch 工具安全修改（支持全局 scope='global' 和项目级 scope='project'），或 settings_rollback 回滚。",
 		"reason": "禁止通过 bash 直接写入 settings.json（如 echo > / sed -i / python 写入），但允许 git 操作（status/diff/reset/checkout/restore/add/rm/log）和只读命令（grep/find/ls/cat/head/tail/diff/test/python3 解析读取）。必须使用 settings_patch 工具。",
-		"tool": "bash"
+		"tool": "bash",
+		"enabled": false
 	},
 	{
 		"comment": "[git] commit 成功后提醒 push",
@@ -379,7 +380,7 @@
 				"pattern": "\\.(ts|js|py|rs)$"
 			}
 		],
-		"reason": "📝 编辑了代码文件，code-graph 索引可能已过期（新增/重命名/删除的符号不会被搜到）。如果接下来需要用 code-graph 搜索或分析，先调 setup_codegraph({ directory: \"项目路径\" }) 更新索引。如果只是编辑不再搜索，则忽略。",
+		"reason": "📝 编辑了代码文件，code-graph 索引可能已过期（新增/重命名/删除的符号不会被搜到）。如果接下来需要用 code-graph 搜索，先调 `setup_codegraph({ directory: \"项目路径\" })` 重建索引。如果只是编辑不再搜索，则忽略。",
 		"subagent": false,
 		"requireSuccess": true,
 		"enabled": true
@@ -398,6 +399,15 @@
 		],
 		"message": "⛔ shepherd: 直接编辑 settings.json 曾导致配置丢失（119行变3行）。必须使用 settings_patch 工具（自动备份+文件锁+校验），或 settings_rollback 回滚。",
 		"reason": "直接 edit/write settings.json 曾导致配置丢失（119行变3行）。必须使用 settings_patch 工具。",
-		"disabled": true
+		"enabled": false
+	},
+	{
+		"comment": "[code-graph] code-graph 工具返回空/报错时提醒检查索引",
+		"hook": "tool_result",
+		"tool": "code_graph_semantic_code_search|code_graph_get_ast_node|code_graph_module_overview|code_graph_project_map|code_graph_get_call_graph|code_graph_find_references|code_graph_ast_search",
+		"action": "steer",
+		"reason": "🔍 code-graph 返回了空结果或报错。可能原因：\n1. **目标目录没有被索引** — 用 `code_graph_project_map()` 查看当前索引了哪些目录。如果目标目录不在索引范围内，调用 `setup_codegraph({ directory: \"目标目录绝对路径\" })` 一键建索引（创建软链接 + 增量索引）。\n2. **路径用了绝对路径** — code-graph 工具的 path 参数要用**相对路径**（相对于 CWD），不能用绝对路径。\n3. **索引过期** — 刚编辑/新增的文件可能还没被索引到，调 `setup_codegraph({ directory: \"项目路径\" })` 更新索引。\n如果 code-graph 已正确索引且路径正确但确实没有结果，则忽略此提醒。",
+		"subagent": false,
+		"enabled": false
 	}
 ]

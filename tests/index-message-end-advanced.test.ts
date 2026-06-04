@@ -14,6 +14,7 @@ import {
 	mockHints,
 	mockLoadRules,
 	mockPushHint,
+	mockUiNotify,
 } from "./helpers/message-end-helper";
 
 describe("message_end — 集成测试（高级场景）", () => {
@@ -51,13 +52,14 @@ describe("message_end — 集成测试（高级场景）", () => {
 			pi._handlers,
 			makeAssistantMessage(["this is a test message"]),
 		);
-		expect(mockPushHint).toHaveBeenCalledTimes(1);
+		// notify 动作走 UI 通知
+		expect(mockUiNotify).toHaveBeenCalledTimes(1);
 
 		await fireMessageEnd(
 			pi._handlers,
 			makeAssistantMessage(["another test here"]),
 		);
-		expect(mockPushHint).toHaveBeenCalledTimes(1);
+		expect(mockUiNotify).toHaveBeenCalledTimes(1); // 重复触发不生效
 	});
 
 	it("多条规则可同时触发", async () => {
@@ -81,14 +83,15 @@ describe("message_end — 集成测试（高级场景）", () => {
 			makeAssistantMessage(["I will fix the TODO later"]),
 		);
 
-		expect(mockPushHint).toHaveBeenCalledTimes(2);
-		expect(mockPushHint).toHaveBeenCalledWith(
+		// notify 动作走 UI 通知，两条各触发一次
+		expect(mockUiNotify).toHaveBeenCalledTimes(2);
+		expect(mockUiNotify).toHaveBeenCalledWith(
 			expect.stringContaining("英文提醒"),
-			"english-check",
+			"warning",
 		);
-		expect(mockPushHint).toHaveBeenCalledWith(
+		expect(mockUiNotify).toHaveBeenCalledWith(
 			expect.stringContaining("TODO 提醒"),
-			"todo-check",
+			"warning",
 		);
 	});
 
@@ -134,7 +137,7 @@ describe("message_end — 集成测试（高级场景）", () => {
 
 		// 第一次触发
 		await fireMessageEnd(pi._handlers, makeAssistantMessage(["test message"]));
-		expect(mockPushHint).toHaveBeenCalledTimes(1);
+		expect(mockUiNotify).toHaveBeenCalledTimes(1);
 
 		// agent_start 重置
 		const hs = pi._handlers.get("agent_start");
@@ -145,6 +148,6 @@ describe("message_end — 集成测试（高级场景）", () => {
 
 		// 重置后可再次触发
 		await fireMessageEnd(pi._handlers, makeAssistantMessage(["test again"]));
-		expect(mockPushHint).toHaveBeenCalledTimes(2);
+		expect(mockUiNotify).toHaveBeenCalledTimes(2);
 	});
 });

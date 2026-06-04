@@ -14,6 +14,7 @@ import {
 	mockIsSubagent,
 	mockLoadRules,
 	mockPushHint,
+	mockUiNotify,
 } from "./helpers/message-end-helper";
 
 describe("message_end — 集成测试（基本功能）", () => {
@@ -58,9 +59,10 @@ describe("message_end — 集成测试（基本功能）", () => {
 			makeAssistantMessage(["I will fix the bug now."]),
 		);
 
-		expect(mockPushHint).toHaveBeenCalledWith(
+		// notify 不再走 pushWarning，改为 UI 通知
+		expect(mockUiNotify).toHaveBeenCalledWith(
 			expect.stringContaining("检测到英文回复"),
-			"lang-check",
+			"warning",
 		);
 	});
 
@@ -169,9 +171,10 @@ describe("message_end — 集成测试（基本功能）", () => {
 			),
 		);
 
-		expect(mockPushHint).toHaveBeenCalledWith(
+		// notify 不再走 pushWarning，改为 UI 通知
+		expect(mockUiNotify).toHaveBeenCalledWith(
 			expect.stringContaining("找到 hello"),
-			"text-only",
+			"warning",
 		);
 	});
 

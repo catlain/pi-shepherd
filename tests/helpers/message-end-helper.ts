@@ -113,6 +113,12 @@ export function makeMsgEndRules(
 	}));
 }
 
+export const mockUiNotify = vi.fn();
+
+export function makeCtx() {
+	return { ui: { notify: mockUiNotify } };
+}
+
 export async function fireMessageEnd(
 	handlers: Map<string, Function[]>,
 	message: Record<string, unknown>,
@@ -121,6 +127,6 @@ export async function fireMessageEnd(
 	const hs = handlers.get("message_end");
 	expect(hs).toBeDefined();
 	for (const h of hs!) {
-		await h({ message }, ctx ?? {});
+		await h({ message }, ctx ?? makeCtx());
 	}
 }

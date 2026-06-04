@@ -156,7 +156,8 @@ describe("registerToolResult — 高级", () => {
 		expect(mockedPushWarning).not.toHaveBeenCalled();
 	});
 
-	it("notify action 应 pushWarning", async () => {
+	it("notify action 应走 UI 通知", async () => {
+		const mockNotify = vi.fn();
 		mockedLoadRules.mockReturnValue([
 			{
 				hook: "tool_result",
@@ -169,12 +170,16 @@ describe("registerToolResult — 高级", () => {
 		mockedGetMatchTargets.mockReturnValue({ command: "ls" });
 		mockedRuleMatches.mockReturnValue(true);
 		registerToolResult(pi as any, state);
-		await pi.handlers.tool_result({
-			toolName: "bash",
-			input: { command: "ls" },
-			content: [{ type: "text", text: "ok" }],
-		});
-		expect(mockedPushWarning).toHaveBeenCalledWith("注意", "alert");
+		await pi.handlers.tool_result(
+			{
+				toolName: "bash",
+				input: { command: "ls" },
+				content: [{ type: "text", text: "ok" }],
+			},
+			{ ui: { notify: mockNotify } },
+		);
+		expect(mockNotify).toHaveBeenCalledWith("⚠️ shepherd: 注意", "warning");
+		expect(mockedPushWarning).not.toHaveBeenCalled();
 	});
 
 	it("state 条件中 isTriggered 为 true 时调用 nextThreshold", async () => {
