@@ -156,8 +156,7 @@ describe("registerToolResult — 高级", () => {
 		expect(mockedPushWarning).not.toHaveBeenCalled();
 	});
 
-	it("notify action 应走 UI 通知", async () => {
-		const mockNotify = vi.fn();
+	it("notify action 应走 pushWarning 注入到 LLM payload", async () => {
 		mockedLoadRules.mockReturnValue([
 			{
 				hook: "tool_result",
@@ -176,10 +175,9 @@ describe("registerToolResult — 高级", () => {
 				input: { command: "ls" },
 				content: [{ type: "text", text: "ok" }],
 			},
-			{ ui: { notify: mockNotify } },
+			{ ui: { notify: vi.fn() } },
 		);
-		expect(mockNotify).toHaveBeenCalledWith("⚠️ shepherd: 注意", "warning");
-		expect(mockedPushWarning).not.toHaveBeenCalled();
+		expect(mockedPushWarning).toHaveBeenCalledWith("注意", "alert");
 	});
 
 	it("state 条件中 isTriggered 为 true 时调用 nextThreshold", async () => {

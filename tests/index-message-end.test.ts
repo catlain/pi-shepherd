@@ -59,10 +59,9 @@ describe("message_end — 集成测试（基本功能）", () => {
 			makeAssistantMessage(["I will fix the bug now."]),
 		);
 
-		// notify 不再走 pushWarning，改为 UI 通知
-		expect(mockUiNotify).toHaveBeenCalledWith(
+		expect(mockPushHint).toHaveBeenCalledWith(
 			expect.stringContaining("检测到英文回复"),
-			"warning",
+			"lang-check",
 		);
 	});
 
@@ -171,10 +170,9 @@ describe("message_end — 集成测试（基本功能）", () => {
 			),
 		);
 
-		// notify 不再走 pushWarning，改为 UI 通知
-		expect(mockUiNotify).toHaveBeenCalledWith(
+		expect(mockPushHint).toHaveBeenCalledWith(
 			expect.stringContaining("找到 hello"),
-			"warning",
+			"text-only",
 		);
 	});
 
