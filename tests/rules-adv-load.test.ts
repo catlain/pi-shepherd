@@ -34,16 +34,14 @@ describe("loadRules 项目级规则", () => {
 	afterEach(() => rmTmp());
 	afterAll(() => rmTmp());
 
-	it("从 .pi/extensions/ 加载 shepherd-rules-*.json", () => {
+	it("从 .pi/extensions/shepherd-rules.json 加载项目级规则", () => {
 		fs.mkdirSync(tmpDir, { recursive: true });
 		fs.writeFileSync(
-			path.join(tmpDir, "shepherd-rules-block.json"),
+			path.join(tmpDir, "shepherd-rules.json"),
 			JSON.stringify([{ comment: "proj", pattern: "danger" }]),
 			"utf-8",
 		);
-		const rules = loadRules(undefined, {
-			projectRulesPattern: "shepherd-rules-",
-		});
+		const rules = loadRules(undefined);
 		expect(rules).toHaveLength(1);
 		expect(rules[0].comment).toBe("proj");
 	});
@@ -51,8 +49,8 @@ describe("loadRules 项目级规则", () => {
 	it("同时加载全局和项目级规则", () => {
 		fs.mkdirSync(tmpDir, { recursive: true });
 		fs.writeFileSync(
-			path.join(tmpDir, "shepherd-rules-extra.json"),
-			JSON.stringify([{ comment: "extra", pattern: "test" }]),
+			path.join(tmpDir, "shepherd-rules.json"),
+			JSON.stringify([{ comment: "proj", pattern: "test" }]),
 			"utf-8",
 		);
 		const globalDir = path.join(process.cwd(), "__test_global_rules");
@@ -62,11 +60,9 @@ describe("loadRules 项目级规则", () => {
 			JSON.stringify([{ comment: "global", pattern: "g" }]),
 			"utf-8",
 		);
-		const rules = loadRules(globalDir, {
-			projectRulesPattern: "shepherd-rules-",
-		});
+		const rules = loadRules(globalDir);
 		expect(rules).toHaveLength(2);
-		expect(rules.map((r) => r.comment).sort()).toEqual(["extra", "global"]);
+		expect(rules.map((r) => r.comment).sort()).toEqual(["global", "proj"]);
 		fs.rmSync(globalDir, { recursive: true, force: true });
 	});
 

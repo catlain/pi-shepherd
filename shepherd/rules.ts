@@ -143,7 +143,7 @@ export function compileRules(rules: Rule[]): Rule[] {
 
 /** 加载所有规则并校验格式，返回编译后的规则列表 */
 export interface LoadRulesOptions {
-	/** 项目级规则文件前缀，默认 "shepherd-rules-" */
+	/** 已弃用，保留以兼容旧调用方 */
 	projectRulesPattern?: string;
 }
 
@@ -153,28 +153,20 @@ export function loadRules(
 ): Rule[] {
 	const allRules: Rule[] = [];
 	const errors: string[] = [];
-	const prefix = options?.projectRulesPattern || "shepherd-rules-";
 
-	// 1. 全局规则：由消费者传入规则文件所在目录
+	// 1. 全局规则：rules.json
 	if (rulesDir) {
 		const result = loadRulesFromFile(path.join(rulesDir, "rules.json"));
 		allRules.push(...result.rules);
 		if (result.error) errors.push(result.error);
 	}
 
-	// 2. 项目级规则（<cwd>/.pi/extensions/{prefix}*.json 或 shepherd-rules.json）
-	const projectExtDir = path.join(process.cwd(), ".pi", "extensions");
-	if (fs.existsSync(projectExtDir)) {
-		for (const file of fs.readdirSync(projectExtDir).sort()) {
-			if (
-				file.endsWith(".json") &&
-				(file.startsWith(prefix) || file === "shepherd-rules.json")
-			) {
-				const result = loadRulesFromFile(path.join(projectExtDir, file));
-				allRules.push(...result.rules);
-				if (result.error) errors.push(result.error);
-			}
-		}
+	// 2. 项目级规则：<cwd>/.pi/extensions/shepherd-rules.json
+	const projectRulesPath = path.join(process.cwd(), ".pi", "extensions", "shepherd-rules.json");
+	if (fs.existsSync(projectRulesPath)) {
+		const result = loadRulesFromFile(projectRulesPath);
+		allRules.push(...result.rules);
+		if (result.error) errors.push(result.error);
 	}
 
 	// 格式校验失败时推入 shepherd 提示缓冲区
