@@ -173,3 +173,125 @@ describe("matchBuiltinCondition — 内置条件判断", () => {
 		expect(true).toBe(true);
 	});
 });
+
+describe("not_question_ending — AI 不以问句结尾时才触发", () => {
+	it("纯陈述句 → 返回 true（允许触发）", () => {
+		expect(
+			matchBuiltinCondition("not_question_ending", {
+				lastAssistantText: "好的，我来帮你修改这个文件。",
+			}),
+		).toBe(true);
+	});
+
+	it("以中文问号结尾 → 返回 false（抑制触发）", () => {
+		expect(
+			matchBuiltinCondition("not_question_ending", {
+				lastAssistantText: "你觉得这个方案怎么样？",
+			}),
+		).toBe(false);
+	});
+
+	it("以英文问号结尾 → 返回 false", () => {
+		expect(
+			matchBuiltinCondition("not_question_ending", {
+				lastAssistantText: "What do you think?",
+			}),
+		).toBe(false);
+	});
+
+	it("以\"吗\"结尾 → 返回 false（抑制触发）", () => {
+		expect(
+			matchBuiltinCondition("not_question_ending", {
+				lastAssistantText: "要我直接改吗？",
+			}),
+		).toBe(false);
+	});
+
+	it("以\"呢\"结尾 → 返回 false（抑制触发）", () => {
+		expect(
+			matchBuiltinCondition("not_question_ending", {
+				lastAssistantText: "还是先讨论下呢",
+			}),
+		).toBe(false);
+	});
+
+	it("以\"吧\"结尾 → 返回 false", () => {
+		expect(
+			matchBuiltinCondition("not_question_ending", {
+				lastAssistantText: "先这样吧",
+			}),
+		).toBe(false);
+	});
+
+	it("以\"嘛\"结尾 → 返回 false", () => {
+		expect(
+			matchBuiltinCondition("not_question_ending", {
+				lastAssistantText: "这样也可以嘛",
+			}),
+		).toBe(false);
+	});
+
+	it("以\"么\"结尾 → 返回 false", () => {
+		expect(
+			matchBuiltinCondition("not_question_ending", {
+				lastAssistantText: "要不要这样做么",
+			}),
+		).toBe(false);
+		expect(
+			matchBuiltinCondition("not_question_ending", {
+				lastAssistantText: "是这样么",
+			}),
+		).toBe(false);
+	});
+
+	it("空文本 → 返回 true（不抑制）", () => {
+		expect(
+			matchBuiltinCondition("not_question_ending", {
+				lastAssistantText: "",
+			}),
+		).toBe(true);
+		expect(
+			matchBuiltinCondition("not_question_ending", {}),
+		).toBe(true);
+	});
+
+	it("问号后有尾随空格/换行 → 返回 false（抑制触发）", () => {
+		expect(
+			matchBuiltinCondition("not_question_ending", {
+				lastAssistantText: "你觉得呢？  \n  ",
+			}),
+		).toBe(false);
+	});
+
+	it("问号后有空行再无内容 → 返回 false", () => {
+		expect(
+			matchBuiltinCondition("not_question_ending", {
+				lastAssistantText: "要我先讨论下？\n\n",
+			}),
+		).toBe(false);
+	});
+
+	it("中间有问号但末尾是陈述句 → 返回 true（允许触发）", () => {
+		expect(
+			matchBuiltinCondition("not_question_ending", {
+				lastAssistantText: "这个方案有几个问题？首先...\n好的，我来实现。",
+			}),
+		).toBe(true);
+	});
+
+	it("多行文本，最后一行是问句 → 返回 false", () => {
+		expect(
+			matchBuiltinCondition("not_question_ending", {
+				lastAssistantText: "好的，方案已确认。\n\n你觉得这个方向 OK 吗？",
+			}),
+		).toBe(false);
+	});
+
+	it("引用块内包含问句 → 返回 false（宽松方案也检测引用块）", () => {
+		expect(
+			matchBuiltinCondition("not_question_ending", {
+				lastAssistantText: "> 那要拆成两个工具吗？",
+			}),
+		).toBe(false);
+	});
+})

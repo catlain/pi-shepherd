@@ -5,7 +5,7 @@
 export type { BuiltinContext } from "./conditions";
 
 // 条件匹配从 conditions.ts re-export
-export { matchBuiltinCondition } from "./conditions";
+export { isQuestionEnding, matchBuiltinCondition } from "./conditions";
 // git 相关函数从 git.ts re-export，保持向后兼容
 export {
 	hasGitUncommittedChanges,

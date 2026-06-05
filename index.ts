@@ -55,7 +55,7 @@ import {
 	StateTracker,
 	type ToolState,
 } from "./shepherd";
-import { ruleMatches } from "./shepherd/rules";
+import { isQuestionEnding, ruleMatches } from "./shepherd/rules";
 import { registerRulesEditorTool } from "./shepherd/rules-tool";
 
 /** 本地 hints 缓冲区（收集 pi.events.emit("ephemeral:hint") 的数据） */
@@ -166,18 +166,37 @@ export default function shepherdExtension(pi: ExtensionAPI) {
 		const stopReason: string | undefined = (
 			lastAssistant as PayloadMessage | undefined
 		)?.stopReason as string | undefined;
+
+		// 提取最后一条 assistant 消息的文本内容（用于 not_question_ending 条件）
+		let lastAssistantText = "";
+		if (lastAssistant) {
+			const parts = (lastAssistant as PayloadMessage).content;
+			if (Array.isArray(parts)) {
+				lastAssistantText = parts
+					.filter((p: { type?: string }) => p.type === "text")
+					.map((p: { text?: string }) => p.text ?? "")
+					.join("");
+			} else if (typeof parts === "string") {
+				lastAssistantText = parts;
+			}
+		}
 		let pushed = false;
+
+		// 如果 AI 在问用户问题（等待回复），跳过所有 agent_end 提醒
+		const isQuestion = isQuestionEnding(lastAssistantText);
 
 		for (const rule of rules) {
 			const allowedReasons = rule.stopReason ?? ["stop"];
 			if (!allowedReasons.includes(stopReason ?? "")) continue;
 			if (_agentEndFired.has(rule.comment)) continue;
+			if (isQuestion) continue; // AI 在问问题，跳过收尾提醒
 
 			// 统一条件匹配：通过 ruleMatches 检查 conditions（含 builtin）
 			const ctx: BuiltinContext = {
 				hasEdits: _toolState.hasEdits,
 				gitDirty: hasGitUncommittedChanges(),
 				gitUntracked: hasGitUntracked(),
+				lastAssistantText,
 			};
 			const shouldNotify = ruleMatches(rule, {}, ctx);
 			if (ctx.gitDirty) _wasDirty = true;

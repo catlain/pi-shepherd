@@ -192,4 +192,53 @@ describe("agent_end — check 类型", () => {
 		await fire(makeEvent("stop"));
 		expect(mockPushWarning).not.toHaveBeenCalled();
 	});
+
+	// ── 问句跳过测试 ──
+	it("问句结尾时跳过 agent_end 通知", async () => {
+		mockLoadRules.mockReturnValue(makeRules([{ check: "always" }]));
+		const questionEvent = {
+			messages: [
+				{ role: "user", content: "hi" },
+				{ role: "assistant", content: "你觉得这个方案OK吗？", stopReason: "stop" },
+			],
+		};
+		await fire(questionEvent);
+		expect(mockPushWarning).not.toHaveBeenCalled();
+	});
+
+	it("英文问号结尾时也跳过", async () => {
+		mockLoadRules.mockReturnValue(makeRules([{ check: "always" }]));
+		const questionEvent = {
+			messages: [
+				{ role: "user", content: "hi" },
+				{ role: "assistant", content: "What do you think?", stopReason: "stop" },
+			],
+		};
+		await fire(questionEvent);
+		expect(mockPushWarning).not.toHaveBeenCalled();
+	});
+
+	it("非问句结尾时正常触发", async () => {
+		mockLoadRules.mockReturnValue(makeRules([{ check: "always" }]));
+		const normalEvent = {
+			messages: [
+				{ role: "user", content: "hi" },
+				{ role: "assistant", content: "好的，已经完成修改。", stopReason: "stop" },
+			],
+		};
+		await fire(normalEvent);
+		expect(mockPushWarning).toHaveBeenCalled();
+	});
+
+	it("问句后缀模式也跳过（要不要、可以吗、你觉得）", async () => {
+		mockLoadRules.mockReturnValue(makeRules([{ check: "always" }]));
+		const questionEvent = {
+			messages: [
+				{ role: "user", content: "hi" },
+				{ role: "assistant", content: "这个方向你要不要试试看", stopReason: "stop" },
+			],
+		};
+		await fire(questionEvent);
+		expect(mockPushWarning).not.toHaveBeenCalled();
+	});
 });
