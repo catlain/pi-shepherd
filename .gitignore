@@ -4,5 +4,4 @@ dist/
 package-lock.json
 .code-graph/
 coverage/
-rules.json
 rules.json.bak
