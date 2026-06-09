@@ -20,6 +20,9 @@
 			"optional": true
 		}
 	},
+	"optionalDependencies": {
+		"@earendil-works/pi-coding-agent": "^0.76.0"
+	},
 	"pi": {
 		"extensions": [
 			"."
