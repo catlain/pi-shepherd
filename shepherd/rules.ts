@@ -147,10 +147,42 @@ export interface LoadRulesOptions {
 	projectRulesPattern?: string;
 }
 
+/** loadRules 缓存：基于文件 mtime 的自动失效 */
+let _cacheKey = "";
+let _cacheValue: Rule[] = [];
+
+function buildCacheKey(rulesDir?: string): string {
+	const parts: string[] = [];
+	if (rulesDir) {
+		const globalPath = path.join(rulesDir, "rules.json");
+		try {
+			parts.push(`${globalPath}:${fs.statSync(globalPath).mtimeMs}`);
+		} catch {
+			parts.push(`${globalPath}:none`);
+		}
+	}
+	const projectPath = path.join(process.cwd(), ".pi", "extensions", "shepherd-rules.json");
+	try {
+		parts.push(`${projectPath}:${fs.statSync(projectPath).mtimeMs}`);
+	} catch {
+		parts.push(`${projectPath}:none`);
+	}
+	return parts.join("|");
+}
+
+/** 清除 loadRules 缓存（规则文件变更后调用） */
+export function invalidateRulesCache(): void {
+	_cacheKey = "";
+	_cacheValue = [];
+}
+
 export function loadRules(
 	rulesDir?: string,
 	options?: LoadRulesOptions,
 ): Rule[] {
+	const key = buildCacheKey(rulesDir);
+	if (key === _cacheKey) return _cacheValue;
+
 	const allRules: Rule[] = [];
 	const errors: string[] = [];
 
@@ -176,7 +208,9 @@ export function loadRules(
 		pushRuleError(msg);
 	}
 
-	return compileRules(allRules);
+	_cacheKey = key;
+	_cacheValue = compileRules(allRules);
+	return _cacheValue;
 }
 
 /** 从事件中提取匹配目标（多字段）
@@ -308,12 +342,15 @@ export function toolMatches(
 		.includes(eventTool);
 }
 
-/** rtk 可用性（模块加载时检测） */
-export const isRtkAvailable: boolean = (() => {
+/** rtk 可用性（懒加载 + 缓存，避免模块加载时 2s timeout） */
+let _rtkAvailable: boolean | undefined;
+export function isRtkAvailable(): boolean {
+	if (_rtkAvailable !== undefined) return _rtkAvailable;
 	try {
 		execSync("which rtk", { timeout: 2000, stdio: "pipe" });
-		return true;
+		_rtkAvailable = true;
 	} catch {
-		return false;
+		_rtkAvailable = false;
 	}
-})();
+	return _rtkAvailable;
+}
