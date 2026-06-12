@@ -4,14 +4,8 @@
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
-/** pi 工具结果中的 content block 类型 */
-interface ContentBlock {
-	type: string;
-	text?: string;
-	[key: string]: unknown;
-}
-
 import { pushWarning } from "./ephemeral.js";
+import { extractResultText } from "./tool-event-types.js";
 import { checkLineCount } from "./line-count.js";
 import {
 	getMatchTargets,
@@ -113,21 +107,13 @@ export function registerToolResult(
 			}
 		} else if (event.toolName === "memory_update") {
 			// memory_update 工具内部写文件，从 tool_result 文本中提取路径
-			const resultText =
-				event.content
-					?.filter((c: ContentBlock) => c.type === "text")
-					?.map((c: ContentBlock) => c.text)
-					.join("") ?? "";
-			const pathMatch = resultText.match(/(?:写入|更新|创建).*?`([^`]+\.md)`/);
+			const memResultText = extractResultText(event);
+			const pathMatch = memResultText.match(/(?:写入|更新|创建).*?`([^`]+\.md)`/);
 			if (pathMatch?.[1]) checkLineCount(pathMatch[1]);
 		}
 
 		// 状态更新
-		const resultText =
-			event.content
-				?.filter((c: ContentBlock) => c.type === "text")
-				?.map((c: ContentBlock) => c.text)
-				.join("") ?? "";
+		const resultText = extractResultText(event);
 		state.tracker.update(event.toolName, resultText.length, !!event.isError);
 
 		const allRules = loadRules(rulesDir, rulesOptions);

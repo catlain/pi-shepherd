@@ -45,7 +45,7 @@ describe("grep scope filtering", () => {
 			input: { path: process.cwd(), pattern: "TODO", glob: "*.md" },
 		};
 		const result = getMatchTargets("grep", event);
-		assert.ok(Object.keys(result).length === 0);
+		assert.ok(Object.keys(result).length === 1 && "result" in result);
 	});
 });
 

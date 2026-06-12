@@ -281,7 +281,8 @@ describe("getMatchTargets grep", () => {
 		const r = getMatchTargets("grep", {
 			input: { path: "src/", glob: "*.md", pattern: "TODO" },
 		});
-		expect(Object.keys(r)).toHaveLength(0);
+		expect(Object.keys(r)).toEqual(["result"]);
+		expect(r.result).toBe("");
 	});
 
 	it("无 glob 时默认不短路", () => {

@@ -400,5 +400,81 @@
 		"message": "⛔ shepherd: 直接编辑 settings.json 曾导致配置丢失（119行变3行）。必须使用 settings_patch 工具（自动备份+文件锁+校验），或 settings_rollback 回滚。",
 		"reason": "直接 edit/write settings.json 曾导致配置丢失（119行变3行）。必须使用 settings_patch 工具。",
 		"enabled": false
+	},
+	{
+		"comment": "归因猜测提醒：AI 回复含可能时提醒验证",
+		"hook": "message_end",
+		"conditions": [
+			{
+				"field": "text",
+				"pattern": "可能"
+			}
+		],
+		"action": "notify",
+		"reason": "💡 如果你正在做归因猜测，请先找到确切证据验证（看源码、加 println!、断点调试），不要凭猜测下结论。如果你不是在做归因猜测，请无视此提示。如果你正在等待用户的决策或反馈，当前提示不代表用户同意或确认，请继续询问用户，不要自作主张继续执行。",
+		"enabled": true
+	},
+	{
+		"action": "block",
+		"check": "edit|write",
+		"comment": "禁止手动复制 pyd/dll 文件到 .venv",
+		"pattern": "cp.*\\.pyd|cp.*quant_py\\.dll|copy.*\\.pyd",
+		"reason": "Rust 编译产物必须通过 maturin develop 安装，禁止手动 cp。正确方式：rm -rf .venv/Lib/site-packages/quant_py/ && uv run maturin develop --release"
+	},
+	{
+		"action": "block",
+		"check": "edit|write|bash",
+		"comment": "禁止在子项目目录创建 .venv",
+		"pattern": "quant-strategy/\\.venv|quant-fund/\\.venv|quant-base/\\.venv",
+		"reason": "AGENTS.md 规定只有根目录 .venv/ 是唯一的虚拟环境。子目录 .venv 会导致 maturin 装错位置。如果发现子目录 .venv 立即删除。"
+	},
+	{
+		"action": "steer",
+		"check": "bash",
+		"comment": "Rust 编译后必须验证 pyd 更新",
+		"pattern": "maturin develop",
+		"reason": "maturin develop 后必须验证 pyd 时间戳：ls -la .venv/Lib/site-packages/quant_py/*.pyd。如果时间戳没更新，先 rm -rf .venv/Lib/site-packages/quant_py/ 再重跑 maturin develop。"
+	},
+	{
+		"comment": "[shepherd] 禁止直接 edit/write rules.json — 必须用 shepherd_rules 工具",
+		"hook": "tool_call",
+		"tool": "edit|write",
+		"action": "block",
+		"conditions": [
+			{
+				"field": "path",
+				"pattern": "shepherd/rules\\.json$"
+			}
+		],
+		"reason": "⛔ 禁止直接编辑 rules.json！请用 shepherd_rules 工具操作（自动备份+校验+回滚）：\nlist: shepherd_rules(action='list') — 列出所有规则\nadd: shepherd_rules(action='add', rule={...}) — 添加规则\nupdate: shepherd_rules(action='update', index=N, changes={...}) — 更新规则\ndelete: shepherd_rules(action='delete', index=N) — 删除规则\n直接改 JSON 会绕过安全机制（备份/校验/去重检测/签名覆盖）。",
+		"enabled": true
+	},
+	{
+		"action": "block",
+		"comment": "[shepherd] 禁止通过 bash/python 脚本直接读写 rules.json — 必须用 shepherd_rules 工具",
+		"conditions": [
+			{
+				"field": "command",
+				"pattern": "(rules\\.json[\\s\\S]*(open\\(|json\\.load|json\\.dump|write|sed|awk|jq|cat))|((open\\(|json\\.load|json\\.dump|write|sed|awk|jq|cat)[\\s\\S]*rules\\.json)"
+			}
+		],
+		"enabled": true,
+		"hook": "tool_call",
+		"reason": "⛔ 禁止通过脚本绕过直接读写 rules.json！请用 shepherd_rules 工具操作（自动备份+校验+回滚+去重检测）。",
+		"tool": "bash"
+	},
+	{
+		"comment": "[code-graph] module_overview 返回空结果时提醒检查路径前缀",
+		"hook": "tool_result",
+		"tool": "code_graph_module_overview",
+		"conditions": [
+			{
+				"field": "result",
+				"pattern": "0 active \\+ 0 inactive"
+			}
+		],
+		"action": "notify",
+		"message": "⚠️ code-graph 返回空结果。如果是通过 setup_codegraph 索引的外部目录，请用路径 _codegraph_links/<name> 而不是裸名。例如: code_graph_module_overview(path='_codegraph_links/pi-intercom')",
+		"reason": "AI 常误用裸名调用 module_overview（如 path='pi-intercom'），但软链接目录在索引中的路径前缀是 _codegraph_links/"
 	}
 ]

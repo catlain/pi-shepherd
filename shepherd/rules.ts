@@ -28,11 +28,12 @@ import { matchBuiltinCondition } from "./conditions";
 import { pushRuleError } from "./ephemeral.js";
 import type { StateCondition } from "./state-tracker.js";
 import type { ToolEvent } from "./tool-event-types.js";
+import { extractResultText } from "./tool-event-types.js";
 
 // ── 类型定义 ──────────────────────────────────────────────────
 
 export interface Condition {
-	field: "path" | "text" | "glob";
+	field: "path" | "text" | "glob" | "result";
 	pattern: string;
 	flags?: string;
 	/** true 时取反：正则不匹配才算通过 */
@@ -216,25 +217,30 @@ export function loadRules(
 /** 从事件中提取匹配目标（多字段）
  * @param phase 调用阶段："tool_call" 时 git commit 会被短路（避免 commit message 误触发 block 规则），
  *              "tool_result" 时不短路（允许 git commit 后的 steer/notify 规则触发）
+ *              "tool_result" 时额外注入 result 字段（工具输出文本）
  */
 export function getMatchTargets(
 	tool: string,
 	event: ToolEvent,
 	phase?: string,
 ): Record<string, string> {
+	// result 字段：仅 tool_result 阶段提取工具输出文本
+	const result = phase === "tool_result" ? extractResultText(event) : "";
+
 	if (tool === "bash") {
 		const command = (event.input as any)?.command || "";
 		// git commit 的 message 可能包含 sed -i / echo >> 等关键词，跳过匹配
 		// 注意：命令可能是 "cd xxx && git commit ..." 格式
 		// 但仅在 tool_call 阶段短路——tool_result 阶段需要匹配 git commit 后的 steer 规则
 		if (phase === "tool_call" && /(^|&&|;)\s*git\s+commit\b/.test(command)) {
-			return {} as Record<string, string>;
+			return { result } as Record<string, string>;
 		}
 		return {
 			command,
 			path: "",
 			text: "",
 			glob: "",
+			result,
 		};
 	}
 	// grep 工具：提取 glob（文件过滤）、path（搜索目录）、text（搜索模式）
@@ -245,9 +251,9 @@ export function getMatchTargets(
 
 		// 有 glob 时必须是代码扩展名，无 glob 时默认全搜（也触发提醒）
 		if (globVal && !CODE_EXT_RE.test(globVal)) {
-			return {} as Record<string, string>;
+			return { result } as Record<string, string>;
 		}
-		return { path: pathVal, text: patternVal, command: "", glob: globVal };
+		return { path: pathVal, text: patternVal, command: "", glob: globVal, result };
 	}
 	// edit / write / 其他工具
 	const pathVal = (event.input as any)?.path || "";
@@ -266,7 +272,7 @@ export function getMatchTargets(
 			text = JSON.stringify(input);
 		}
 	}
-	return { path: pathVal, text, command: "", glob: "" };
+	return { path: pathVal, text, command: "", glob: "", result };
 }
 
 /** 判断规则是否匹配事件

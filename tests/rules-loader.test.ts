@@ -182,16 +182,18 @@ describe("isSubagent", () => {
 // ── getMatchTargets bash 短路 ─────────────────────────────
 
 describe("getMatchTargets bash 短路", () => {
-	it("git commit 在 tool_call 阶段返回空 targets", () => {
+	it("git commit 在 tool_call 阶段返回仅 result 字段", () => {
 		const event = { input: { command: "git commit -m 'fix: update deps'" } };
 		const result = getMatchTargets("bash", event, "tool_call");
-		expect(Object.keys(result)).toHaveLength(0);
+		expect(Object.keys(result)).toEqual(["result"]);
+		expect(result.result).toBe("");
 	});
 
 	it("cd xxx && git commit 格式也短路", () => {
 		const event = { input: { command: "cd repo && git commit -m 'update'" } };
 		const result = getMatchTargets("bash", event, "tool_call");
-		expect(Object.keys(result)).toHaveLength(0);
+		expect(Object.keys(result)).toEqual(["result"]);
+		expect(result.result).toBe("");
 	});
 
 	it("git status 不短路（不是 git commit）", () => {
