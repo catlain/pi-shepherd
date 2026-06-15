@@ -37,6 +37,7 @@ export function registerRulesEditorTool(
 			"scope='project' 操作当前项目规则 (<cwd>/.pi/extensions/shepherd-rules.json)。" +
 			"写入前自动校验必填字段和正则合法性，写入后回读验证，失败自动从备份恢复。" +
 			"同签名规则（tool+hook+pattern/check+action）自动覆盖而非追加。",
+		promptSnippet: "编辑 shepherd 防护规则",
 		parameters: {
 			type: "object",
 			properties: {
