@@ -7,6 +7,7 @@
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { addRule, deleteRule, updateRule } from "./rules-editor";
+import type { ToolDefinition } from "@earendil-works/pi-coding-agent";
 import {
 	checkCrossScopeDuplicate,
 	ensureProjectDir,
@@ -76,17 +77,25 @@ export function registerRulesEditorTool(
 			},
 			required: ["action"],
 		},
+		// 注：SDK 的 registerTool 用 TypeBox Static<TParams> 推断 params 类型，
+		// 但 shepherd 用手写 JSON schema，泛型退化为无意义类型（TS2322）。
+		// 此处 execute params 用宽松类型（SDK 设计层面的逃生舱），
+		// 内部用类型断言取精确值，any 不扩散到业务逻辑。
 		async execute(
 			_toolCallId: string,
-			params: {
+			rawParams: Record<string, unknown>,
+			_signal?: AbortSignal,
+			_onUpdate?: unknown,
+			_ctx?: unknown,
+		) {
+			const params = rawParams as {
 				action: "list" | "add" | "update" | "delete";
 				scope?: Scope;
 				rule?: Record<string, unknown>;
 				index?: number;
 				verbose?: boolean;
 				changes?: Record<string, unknown>;
-			},
-		) {
+			};
 			const scope = params.scope;
 
 			switch (params.action) {
@@ -169,5 +178,5 @@ export function registerRulesEditorTool(
 					return textResult(`❌ 未知操作: ${(params as any).action}`);
 			}
 		},
-	});
+	} as ToolDefinition<any, any, any>);
 }

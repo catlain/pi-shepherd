@@ -60,7 +60,8 @@ export function validateRule(rule: Record<string, unknown>): ValidationResult {
 		try {
 			new RegExp(rule.pattern as string, (rule.flags as string) || "");
 		} catch (e: unknown) {
-			errors.push(`pattern 正则编译失败: ${e.message}`);
+			const msg = e instanceof Error ? e.message : String(e);
+			errors.push(`pattern 正则编译失败: ${msg}`);
 		}
 	}
 	if (Array.isArray(rule.conditions)) {
@@ -76,7 +77,8 @@ export function validateRule(rule: Record<string, unknown>): ValidationResult {
 				try {
 					new RegExp(cond.pattern as string, (cond.flags as string) || "");
 				} catch (e: unknown) {
-					errors.push(`conditions[${i}].pattern 正则编译失败: ${e.message}`);
+					const msg = e instanceof Error ? e.message : String(e);
+					errors.push(`conditions[${i}].pattern 正则编译失败: ${msg}`);
 				}
 			}
 		}

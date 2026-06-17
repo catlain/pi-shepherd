@@ -2,10 +2,11 @@
  * Guard 规则类型定义 + 规则加载/编译/匹配
  */
 
-export type { BuiltinContext } from "./conditions";
+import type { BuiltinContext, ConditionBuiltin } from "./conditions";
 
 // 条件匹配从 conditions.ts re-export
 export { isQuestionEnding, matchBuiltinCondition } from "./conditions";
+export type { BuiltinContext, ConditionBuiltin } from "./conditions";
 // git 相关函数从 git.ts re-export，保持向后兼容
 export {
 	hasGitUncommittedChanges,
@@ -24,6 +25,7 @@ export const CODE_EXT_RE = /\.(py|rs|ts|js|toml|json)(\*|"|')?$/;
 
 import * as fs from "node:fs";
 import * as path from "node:path";
+import { execSync } from "node:child_process";
 import { matchBuiltinCondition } from "./conditions";
 import { pushRuleError } from "./ephemeral.js";
 import type { StateCondition } from "./state-tracker.js";
@@ -33,8 +35,8 @@ import { extractResultText } from "./tool-event-types.js";
 // ── 类型定义 ──────────────────────────────────────────────────
 
 export interface Condition {
-	field: "path" | "text" | "glob" | "result";
-	pattern: string;
+	field?: "path" | "text" | "glob" | "result";
+	pattern?: string;
 	flags?: string;
 	/** true 时取反：正则不匹配才算通过 */
 	negate?: boolean;
@@ -43,8 +45,8 @@ export interface Condition {
 	_compiled?: RegExp;
 }
 
-// ConditionBuiltin 类型定义移到 conditions.ts，这里 re-export
-export type { ConditionBuiltin } from "./conditions";
+// ConditionBuiltin 类型定义移到 conditions.ts，这里 import + re-export
+// （上方已 import type 到本地作用域，此处仅对外导出）
 
 export interface Rule {
 	comment: string;
@@ -109,9 +111,10 @@ export function loadRulesFromFile(filePath: string): {
 		}
 		return { rules: parsed };
 	} catch (e: unknown) {
-		if (e.code === "ENOENT") return { rules: [] };
+		if (e instanceof Error && "code" in e && e.code === "ENOENT") return { rules: [] };
 		const fileName = path.basename(filePath);
-		return { rules: [], error: `${fileName}: JSON 解析失败 — ${e.message}` };
+		const msg = e instanceof Error ? e.message : String(e);
+		return { rules: [], error: `${fileName}: JSON 解析失败 — ${msg}` };
 	}
 }
 
@@ -123,7 +126,7 @@ export function compileRules(rules: Rule[]): Rule[] {
 		// 多条件模式：编译每个 condition
 		if (rule.conditions && rule.conditions.length > 0) {
 			for (const cond of rule.conditions) {
-				cond._compiled = new RegExp(cond.pattern, cond.flags || "");
+					cond._compiled = new RegExp(cond.pattern ?? "", cond.flags || "");
 			}
 		} else if (rule.pattern) {
 			// 单条件模式：编译 pattern（向后兼容）
@@ -331,7 +334,8 @@ function matchCondition(
 		return cond.negate ? !result : result;
 	}
 	// 正则条件
-	const target = targets[cond.field] || "";
+	const field = cond.field ?? "path";
+	const target = targets[field] || "";
 	const matched = cond._compiled?.test(target) ?? false;
 	return cond.negate ? !matched : matched;
 }

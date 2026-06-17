@@ -4,6 +4,7 @@ import { hasGitUntracked, isGitDirty } from "./git";
 export type ConditionBuiltin =
 	| "git_dirty" // git 有已跟踪文件的未提交改动（M/A/D/R）
 	| "git_untracked" // git 有未跟踪文件（??）
+	| "git_uncommitted" // 旧 check 字段迁移兼容：dirty || untracked
 	| "has_edits" // 本轮调用过 edit/write
 	| "not_question_ending" // AI 最后一条消息不以问句结尾（用于抑制"等待回复"场景的 agent_end 提醒）
 	| "always"; // 始终匹配

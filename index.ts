@@ -56,6 +56,7 @@ import {
 	type ToolState,
 } from "./shepherd";
 import { isQuestionEnding, ruleMatches } from "./shepherd/rules";
+import type { BuiltinContext } from "./shepherd/conditions";
 import { registerRulesEditorTool } from "./shepherd/rules-tool";
 
 /** 本地 hints 缓冲区（收集 pi.events.emit("ephemeral:hint") 的数据） */
@@ -73,7 +74,7 @@ const _toolState: ToolState = {
 
 export default function shepherdExtension(pi: ExtensionAPI) {
 	// ── 读取配置（三层合并：defaults → 全局 settings → 项目 settings）──
-	const shepherdConfig = getEffectiveConfig<{
+	const { config: shepherdConfig } = getEffectiveConfig<{
 		projectRulesPattern: string;
 		maxWarnings: number;
 	}>(
@@ -162,15 +163,15 @@ export default function shepherdExtension(pi: ExtensionAPI) {
 
 		const lastAssistant = [...event.messages]
 			.reverse()
-			.find((m: PayloadMessage) => m.role === "assistant");
+			.find((m) => m.role === "assistant");
 		const stopReason: string | undefined = (
-			lastAssistant as PayloadMessage | undefined
+			lastAssistant as unknown as PayloadMessage | undefined
 		)?.stopReason as string | undefined;
 
 		// 提取最后一条 assistant 消息的文本内容（用于 not_question_ending 条件）
 		let lastAssistantText = "";
 		if (lastAssistant) {
-			const parts = (lastAssistant as PayloadMessage).content;
+			const parts = (lastAssistant as unknown as PayloadMessage).content;
 			if (Array.isArray(parts)) {
 				lastAssistantText = parts
 					.filter((p: { type?: string }) => p.type === "text")
@@ -187,7 +188,7 @@ export default function shepherdExtension(pi: ExtensionAPI) {
 
 		for (const rule of rules) {
 			const allowedReasons = rule.stopReason ?? ["stop"];
-			if (!allowedReasons.includes(stopReason ?? "")) continue;
+			if (!allowedReasons.includes((stopReason ?? "") as never)) continue;
 			if (_agentEndFired.has(rule.comment)) continue;
 			if (isQuestion) continue; // AI 在问问题，跳过收尾提醒
 

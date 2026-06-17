@@ -5,19 +5,13 @@
 
 import type {
 	BashToolCallEvent,
-	BashToolResultEvent,
 	CustomToolCallEvent,
-	CustomToolResultEvent,
 	EditToolCallEvent,
-	EditToolResultEvent,
 	GrepToolCallEvent,
-	GrepToolResultEvent,
 	LsToolCallEvent,
-	LsToolResultEvent,
 	ReadToolCallEvent,
-	ReadToolResultEvent,
+	ToolResultEvent,
 	WriteToolCallEvent,
-	WriteToolResultEvent,
 } from "@earendil-works/pi-coding-agent";
 
 
@@ -41,16 +35,10 @@ export function extractResultText(event: ToolEvent): string {
 /** getMatchTargets 接收的事件类型（tool_call 或 tool_result） */
 export type ToolEvent =
 	| BashToolCallEvent
-	| BashToolResultEvent
 	| CustomToolCallEvent
-	| CustomToolResultEvent
 	| EditToolCallEvent
-	| EditToolResultEvent
 	| GrepToolCallEvent
-	| GrepToolResultEvent
 	| LsToolCallEvent
-	| LsToolResultEvent
 	| ReadToolCallEvent
-	| ReadToolResultEvent
 	| WriteToolCallEvent
-	| WriteToolResultEvent;
+	| ToolResultEvent;

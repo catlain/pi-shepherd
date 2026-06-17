@@ -119,13 +119,13 @@ describe("shepherdExtension 注册 & config", () => {
 			pi,
 			expect.objectContaining({ hasEdits: false, cachedTools: null }),
 			expect.any(String),
-			expect.objectContaining({ projectRulesPattern: undefined }),
+			expect.objectContaining({ projectRulesPattern: "shepherd-rules-" }),
 		);
 		expect(mockRegisterToolResult).toHaveBeenCalledWith(
 			pi,
 			expect.objectContaining({ hasEdits: false, cachedTools: null }),
 			expect.any(String),
-			expect.objectContaining({ projectRulesPattern: undefined }),
+			expect.objectContaining({ projectRulesPattern: "shepherd-rules-" }),
 		);
 	});
 

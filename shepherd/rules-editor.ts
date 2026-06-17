@@ -73,7 +73,8 @@ function readFile(filePath: string): FileData {
 		}
 		return { rules: parsed };
 	} catch (e: unknown) {
-		return { rules: [], error: `JSON 解析失败: ${e.message}` };
+		const msg = e instanceof Error ? e.message : String(e);
+		return { rules: [], error: `JSON 解析失败: ${msg}` };
 	}
 }
 
@@ -104,7 +105,10 @@ function normalizeConditions(
 	conditions: Array<Record<string, unknown>>,
 ): string {
 	const normalized = conditions
-		.map((c) => ({ f: c.field || "", p: c.pattern || "" }))
+		.map((c) => ({
+			f: (c.field as string) || "",
+			p: (c.pattern as string) || "",
+		}))
 		.sort((a, b) => (a.f + a.p).localeCompare(b.f + b.p));
 	return JSON.stringify(normalized);
 }
