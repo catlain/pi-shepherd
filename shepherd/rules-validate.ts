@@ -39,9 +39,17 @@ export function validateRule(rule: Record<string, unknown>): ValidationResult {
 		errors.push("缺少必填字段: reason");
 	}
 	if (rule.action && !VALID_ACTIONS.includes(rule.action as any)) {
-		errors.push(
-			`action 值 "${rule.action}" 不合法，可选: ${VALID_ACTIONS.join(", ")}`,
-		);
+		let msg = `action 值 "${rule.action}" 不合法，可选: ${VALID_ACTIONS.join(", ")}`;
+		// 常见误用：试图用 skip/disable/off 等新增规则去"关闭"某条提示。
+		// action 表示规则匹配后的执行动作，不是"关闭"操作；正确做法是 update + enabled:false。
+		const actionStr = String(rule.action).toLowerCase();
+		if (/skip|disable|off|close|stop|mute/.test(actionStr)) {
+			msg +=
+				"。action 是规则匹配后的执行动作，无法用来「关闭」规则。" +
+				"想临时关闭某条已存在的规则请用 update(index=N, changes={enabled:false})（保留规则，日后改 enabled:true 恢复）；彻底删除用 delete(index=N)。" +
+				"操作前先 list 找到目标规则的 index。";
+		}
+		errors.push(msg);
 	}
 	if (rule.hook && !VALID_HOOKS.includes(rule.hook as any)) {
 		errors.push(

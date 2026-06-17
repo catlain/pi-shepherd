@@ -36,7 +36,10 @@ export function registerRulesEditorTool(
 			"scope='global' 操作全局规则 (~/.pi/agent/extensions/shepherd/rules.json)；" +
 			"scope='project' 操作当前项目规则 (<cwd>/.pi/extensions/shepherd-rules.json)。" +
 			"写入前自动校验必填字段和正则合法性，写入后回读验证，失败自动从备份恢复。" +
-			"同签名规则（tool+hook+pattern/check+action）自动覆盖而非追加。",
+			"同签名规则（tool+hook+pattern/check+action）自动覆盖而非追加。" +
+			"\n\n⚠️ 关闭/禁用规则：action 是规则匹配后的执行动作（block/notify/rewrite/steer），不能用来关闭规则。" +
+			"想临时关掉某条提示请用 update(index=N, changes={enabled:false})（保留规则，以后改 enabled:true 恢复）；" +
+			"彻底删除用 delete(index=N)。操作前先 list(verbose=true) 找到目标规则 index。",
 		promptSnippet: "编辑 shepherd 防护规则",
 		parameters: {
 			type: "object",

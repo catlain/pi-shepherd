@@ -107,6 +107,31 @@ describe("validateRule", () => {
 		expect(result.errors[0]).toContain("action");
 	});
 
+	it("action 为 skip/disable/off/mute 等关闭意图时附带禁用引导", () => {
+		for (const bad of ["skip", "disable", "off", "mute", "close", "stop"]) {
+			const result = validateRule({
+				comment: "想关闭规则",
+				reason: "test",
+				action: bad,
+			});
+			expect(result.valid).toBe(false);
+			const msg = result.errors.find((e) => e.includes("action"))!;
+			expect(msg).toContain("enabled:false");
+			expect(msg).toContain("update");
+		}
+	});
+
+	it("action 为普通非法值时不附带禁用引导（避免误引导）", () => {
+		const result = validateRule({
+			comment: "bad",
+			reason: "test",
+			action: "explode",
+		});
+		expect(result.valid).toBe(false);
+		const msg = result.errors.find((e) => e.includes("action"))!;
+		expect(msg).not.toContain("enabled:false");
+	});
+
 	it("非法 hook 值报错", () => {
 		const result = validateRule({
 			comment: "bad hook",
