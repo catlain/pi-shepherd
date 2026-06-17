@@ -2,13 +2,15 @@
 	"extends": "../tsconfig.base.json",
 	"compilerOptions": {
 		"strict": true,
-		"noImplicitAny": false,
 		"types": ["node"],
 		"outDir": "dist",
 		"rootDir": ".",
 		"paths": {
 			"@pi-atelier/shared-utils": [
 				"./node_modules/@pi-atelier/shared-utils/src/index.ts"
+			],
+			"@earendil-works/pi-coding-agent": [
+				"../_sdk-link/dist/index.d.ts"
 			]
 		}
 	},
