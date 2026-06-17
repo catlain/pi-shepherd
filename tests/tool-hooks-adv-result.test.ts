@@ -4,6 +4,10 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { registerToolResult } from "../shepherd/tool-hooks";
+import {
+	createMockToolState as makeToolState,
+	createMockPi as makePi,
+} from "./helpers/tool-hooks-mock";
 
 const {
 	mockedLoadRules,
@@ -11,37 +15,12 @@ const {
 	mockedRuleMatches,
 	mockedPushWarning,
 	mockedCheckLineCount,
-	makeToolState,
-	makePi,
 } = vi.hoisted(() => ({
-	mockedLoadRules: vi.fn(() => []),
+	mockedLoadRules: vi.fn((): any[] => []),
 	mockedGetMatchTargets: vi.fn(() => ({})),
 	mockedRuleMatches: vi.fn(() => false),
 	mockedPushWarning: vi.fn(),
 	mockedCheckLineCount: vi.fn(),
-	makeToolState: () => ({
-		hasEdits: false,
-		tracker: {
-			update: vi.fn(),
-			resetIf: vi.fn(),
-			isTriggered: vi.fn(() => false),
-			nextThreshold: vi.fn((n: number) => n),
-			getStats: vi.fn(() => ({ count: 0, chars: 0, errors: 0 })),
-			matches: vi.fn(() => false),
-			markTriggered: vi.fn(),
-		},
-		cachedTools: null,
-	}),
-	makePi: () => {
-		const handlers: Record<string, Function> = {};
-		return {
-			handlers,
-			on: vi.fn((event: string, handler: Function) => {
-				handlers[event] = handler;
-			}),
-			getActiveTools: vi.fn(() => ["edit", "write", "bash", "read", "grep"]),
-		};
-	},
 }));
 
 vi.mock("../shepherd/rules.js", () => ({

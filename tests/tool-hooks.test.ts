@@ -6,6 +6,7 @@
 import { join } from "node:path";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { StateTracker } from "../shepherd/state-tracker";
+import type { Rule } from "../shepherd/rules";
 import type { ToolState } from "../shepherd/tool-hooks";
 import {
 	getAvailableTools,
@@ -122,6 +123,7 @@ describe("tool-hooks", () => {
 		it("block 规则应该返回 block 结果", async () => {
 			mockedLoadRules.mockReturnValue([
 				{
+					comment: "test-rule",
 					hook: "tool_call",
 					tool: "edit",
 					action: "block",
@@ -147,6 +149,7 @@ describe("tool-hooks", () => {
 			mockedIsSubagent.mockReturnValue(true);
 			mockedLoadRules.mockReturnValue([
 				{
+					comment: "test-rule",
 					hook: "tool_call",
 					tool: "edit",
 					action: "block",
@@ -274,8 +277,8 @@ describe("tool-hooks", () => {
 		});
 
 		it("rule 不需要工具时 toolsAvailable 返回 true", () => {
-			expect(toolsAvailable({}, pi as any, state)).toBe(true);
-			expect(toolsAvailable({ requiresTools: [] }, pi as any, state)).toBe(
+			expect(toolsAvailable({} as Rule, pi as any, state)).toBe(true);
+			expect(toolsAvailable({ requiresTools: [] } as unknown as Rule, pi as any, state)).toBe(
 				true,
 			);
 		});
@@ -283,7 +286,7 @@ describe("tool-hooks", () => {
 		it("rule 需要的工具不可用时返回 false", () => {
 			expect(
 				toolsAvailable(
-					{ requiresTools: ["edit", "nonexistent_tool"] },
+					{ requiresTools: ["edit", "nonexistent_tool"] } as Rule,
 					pi as any,
 					state,
 				),

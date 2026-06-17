@@ -8,6 +8,11 @@ import {
 	registerToolCall,
 	toolsAvailable,
 } from "../shepherd/tool-hooks";
+import {
+	createMockToolState as makeToolState,
+	createMockPi as makePi,
+} from "./helpers/tool-hooks-mock";
+import type { Rule } from "../shepherd/rules";
 
 // vi.hoisted 确保 mock 函数在 vi.mock factory 里可用
 const {
@@ -17,39 +22,13 @@ const {
 	mockedIsSubagent,
 	mockedPushWarning,
 	mockedCheckLineCount,
-	makeToolState,
-	makePi,
 } = vi.hoisted(() => ({
-	mockedLoadRules: vi.fn(() => []),
+	mockedLoadRules: vi.fn((): any[] => []),
 	mockedGetMatchTargets: vi.fn(() => ({})),
 	mockedRuleMatches: vi.fn(() => false),
 	mockedIsSubagent: vi.fn(() => false),
 	mockedPushWarning: vi.fn(),
 	mockedCheckLineCount: vi.fn(),
-
-	makeToolState: () => ({
-		hasEdits: false,
-		tracker: {
-			update: vi.fn(),
-			resetIf: vi.fn(),
-			isTriggered: vi.fn(() => false),
-			nextThreshold: vi.fn((n: number) => n),
-			getStats: vi.fn(() => ({ count: 0, chars: 0, errors: 0 })),
-			matches: vi.fn(() => false),
-			markTriggered: vi.fn(),
-		},
-		cachedTools: null,
-	}),
-	makePi: () => {
-		const handlers: Record<string, Function> = {};
-		return {
-			handlers,
-			on: vi.fn((event: string, handler: Function) => {
-				handlers[event] = handler;
-			}),
-			getActiveTools: vi.fn(() => ["edit", "write", "bash", "read", "grep"]),
-		};
-	},
 }));
 
 vi.mock("../shepherd/rules.js", () => ({
@@ -176,8 +155,8 @@ describe("getAvailableTools & toolsAvailable", () => {
 	it("rule 不需要工具时 toolsAvailable 返回 true", () => {
 		const state = makeToolState();
 		const pi = makePi();
-		expect(toolsAvailable({}, pi as any, state)).toBe(true);
-		expect(toolsAvailable({ requiresTools: [] }, pi as any, state)).toBe(true);
+		expect(toolsAvailable({} as Rule, pi as any, state)).toBe(true);
+		expect(toolsAvailable({ requiresTools: [] } as Rule, pi as any, state)).toBe(true);
 	});
 
 	it("rule 需要的工具不可用时返回 false", () => {
@@ -185,7 +164,7 @@ describe("getAvailableTools & toolsAvailable", () => {
 		const pi = makePi();
 		expect(
 			toolsAvailable(
-				{ requiresTools: ["edit", "nonexistent_tool"] },
+				{ requiresTools: ["edit", "nonexistent_tool"] } as Rule,
 				pi as any,
 				state,
 			),

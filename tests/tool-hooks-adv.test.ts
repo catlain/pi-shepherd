@@ -20,6 +20,10 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { registerToolCall, registerToolResult } from "../shepherd/tool-hooks";
+import {
+	createMockToolState as makeToolState,
+	createMockPi as makePi,
+} from "./helpers/tool-hooks-mock";
 
 const {
 	mockedLoadRules,
@@ -28,39 +32,13 @@ const {
 	mockedIsSubagent,
 	mockedPushWarning,
 	mockedCheckLineCount,
-	makeToolState,
-	makePi,
 } = vi.hoisted(() => ({
-	mockedLoadRules: vi.fn(() => []),
+	mockedLoadRules: vi.fn((): any[] => []),
 	mockedGetMatchTargets: vi.fn(() => ({})),
 	mockedRuleMatches: vi.fn(() => false),
 	mockedIsSubagent: vi.fn(() => false),
 	mockedPushWarning: vi.fn(),
 	mockedCheckLineCount: vi.fn(),
-
-	makeToolState: () => ({
-		hasEdits: false,
-		tracker: {
-			update: vi.fn(),
-			resetIf: vi.fn(),
-			isTriggered: vi.fn(() => false),
-			nextThreshold: vi.fn((n: number) => n),
-			getStats: vi.fn(() => ({ count: 0, chars: 0, errors: 0 })),
-			matches: vi.fn(() => false),
-			markTriggered: vi.fn(),
-		},
-		cachedTools: null,
-	}),
-	makePi: () => {
-		const handlers: Record<string, Function> = {};
-		return {
-			handlers,
-			on: vi.fn((event: string, handler: Function) => {
-				handlers[event] = handler;
-			}),
-			getActiveTools: vi.fn(() => ["edit", "write", "bash", "read", "grep"]),
-		};
-	},
 }));
 
 // isRtkAvailable 不能动态 mock（模块级常量），只测试 isRtkAvailable=false 的分支
