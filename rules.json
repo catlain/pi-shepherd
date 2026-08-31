@@ -416,24 +416,24 @@
 	},
 	{
 		"action": "block",
-		"check": "edit|write",
+		"check": null,
 		"comment": "禁止手动复制 pyd/dll 文件到 .venv",
 		"pattern": "cp.*\\.pyd|cp.*quant_py\\.dll|copy.*\\.pyd",
 		"reason": "Rust 编译产物必须通过 maturin develop 安装，禁止手动 cp。正确方式：rm -rf .venv/Lib/site-packages/quant_py/ && uv run maturin develop --release"
 	},
 	{
 		"action": "block",
-		"check": "edit|write|bash",
+		"check": null,
 		"comment": "禁止在子项目目录创建 .venv",
 		"pattern": "quant-strategy/\\.venv|quant-fund/\\.venv|quant-base/\\.venv",
 		"reason": "AGENTS.md 规定只有根目录 .venv/ 是唯一的虚拟环境。子目录 .venv 会导致 maturin 装错位置。如果发现子目录 .venv 立即删除。"
 	},
 	{
 		"action": "steer",
-		"check": "bash",
+		"check": null,
 		"comment": "Rust 编译后必须验证 pyd 更新",
 		"pattern": "maturin develop",
-		"reason": "maturin develop 后必须验证 pyd 时间戳：ls -la .venv/Lib/site-packages/quant_py/*.pyd。如果时间戳没更新，先 rm -rf .venv/Lib/site-packages/quant_py/ 再重跑 maturin develop。"
+		"reason": "maturin develop 后必须验证 .pyd 时间戳+字节：ls -la --time-style=long-iso .venv/Lib/site-packages/quant_py/*.pyd（编译后查一次，跑完 uv run 再查一次）。pyd 过期有三种根因症状相同：① 目录错（必须根目录+uv run maturin develop）；② uv run 按 uv.lock 同步把新 pyd 覆盖回旧产物（字节 3066880→2920960 实证，须 --no-sync）；③ 改完 Rust 忘重编译。时间戳没更新 → rm -rf .venv/Lib/site-packages/quant_py/ 再重跑 maturin develop（禁止手动 cp pyd）。详见记忆 rust-comprehensive。"
 	},
 	{
 		"comment": "[shepherd] 禁止直接 edit/write rules.json — 必须用 shepherd_rules 工具",
@@ -476,5 +476,13 @@
 		"action": "notify",
 		"message": "⚠️ code-graph 返回空结果。如果是通过 setup_codegraph 索引的外部目录，请用路径 _codegraph_links/<name> 而不是裸名。例如: code_graph_module_overview(path='_codegraph_links/pi-intercom')",
 		"reason": "AI 常误用裸名调用 module_overview（如 path='pi-intercom'），但软链接目录在索引中的路径前缀是 _codegraph_links/"
+	},
+	{
+		"action": "steer",
+		"check": null,
+		"comment": "纯查询优先走 ro_query 助手（锁感知只读）",
+		"flags": "",
+		"pattern": "DataStore\\s*\\(\\s*\\)",
+		"reason": "检测到内联 DataStore() 默认（RW）构造做纯查询——历史撞锁事故高发模式（会话 a89c 连续撞锁 2 次）。纯查询请改用锁感知助手：uv run python quant-base/scripts/ro_query.py --sql \"...\"（RO+限时重试+持锁 PID 诊断+查完即关，支持 --db 指定 live.duckdb）。若确需 RW 写操作或 DataStore.reader() 网络服务场景，继续即可。"
 	}
 ]

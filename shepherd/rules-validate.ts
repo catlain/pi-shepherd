@@ -67,7 +67,7 @@ export function validateRule(rule: Record<string, unknown>): ValidationResult {
 	if (Array.isArray(rule.conditions)) {
 		for (let i = 0; i < rule.conditions.length; i++) {
 			const cond = rule.conditions[i] as Record<string, unknown>;
-			const validFields = ["path", "text", "glob", "result"];
+			const validFields = ["path", "text", "glob", "result", "command"];
 			if (cond.field && !validFields.includes(cond.field as string)) {
 				errors.push(
 					`conditions[${i}].field 值无效: "${cond.field}"，合法值: ${validFields.join(", ")}`,
