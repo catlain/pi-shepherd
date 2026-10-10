@@ -49,6 +49,7 @@ import {
 	notifySummary,
 	pushWarning,
 	registerMessageEnd,
+	registerSessionCompact,
 	registerToolCall,
 	registerToolResult,
 	resetMessageEndState,
@@ -254,6 +255,7 @@ export default function shepherdExtension(pi: ExtensionAPI) {
 	registerToolCall(pi, _toolState, RULES_DIR, _rulesOpts);
 	registerToolResult(pi, _toolState, RULES_DIR, _rulesOpts);
 	registerMessageEnd(pi, _toolState, RULES_DIR, _rulesOpts);
+	registerSessionCompact(pi, _toolState, RULES_DIR, _rulesOpts);
 
 	// ── shepherd_rules 工具：规则文件安全编辑 ───────────────────
 	registerRulesEditorTool(pi, RULES_DIR, process.cwd());

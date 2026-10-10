@@ -35,7 +35,7 @@ import { extractResultText } from "./tool-event-types.js";
 // ── 类型定义 ──────────────────────────────────────────────────
 
 export interface Condition {
-	field?: "path" | "text" | "glob" | "result" | "command";
+	field?: "path" | "text" | "glob" | "result" | "command" | "reason";
 	pattern?: string;
 	flags?: string;
 	/** true 时取反：正则不匹配才算通过 */
@@ -56,7 +56,8 @@ export interface Rule {
 		| "agent_end"
 		| "session_end"
 		| "session_shutdown"
-		| "message_end"; // 默认 "tool_call"
+		| "message_end"
+		| "session_compact"; // 默认 "tool_call"
 	tool?: string; // 默认 "bash"，支持 "|" 分隔多值匹配（如 "edit|write"）
 	// 单条件模式（向后兼容）：pattern 匹配 command（bash）或 path（edit/write）
 	pattern?: string;

@@ -3,6 +3,7 @@
  */
 
 export { hasWarnings, notifySummary, pushWarning } from "./ephemeral";
+export { registerSessionCompact } from "./compaction";
 export {
 	drainHints,
 	hasHints,
