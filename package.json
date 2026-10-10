@@ -1,6 +1,6 @@
 {
 	"name": "pi-shepherd",
-	"version": "0.1.2",
+	"version": "0.2.0",
 	"description": "Line count guard and behavior rules extension for pi-coding-agent",
 	"main": "index.ts",
 	"scripts": {
