@@ -37,7 +37,6 @@ Shepherd inserts hooks at 6 key points in the AI workflow:
 | `tool_result` | After tool execution | Check results, trigger follow-up actions |
 | `agent_end` | When AI voluntarily stops | Remind to commit git, update memory |
 | `message_end` | After each AI response | Detect problematic patterns in responses |
-| `session_end` | When session ends | Session-level cleanup |
 | `session_shutdown` | When session shuts down | Resource cleanup |
 
 ### Actions

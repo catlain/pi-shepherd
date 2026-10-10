@@ -37,7 +37,6 @@ Shepherd 在 AI 工作流的 6 个关键节点插入钩子：
 | `tool_result` | 工具执行完成后 | 检查结果、触发后续动作 |
 | `agent_end` | AI 主动结束时 | 提醒提交 git、更新记忆 |
 | `message_end` | AI 每条回复完成后 | 检测回复中的问题模式 |
-| `session_end` | 会话结束时 | 会话级收尾 |
 | `session_shutdown` | 会话关闭时 | 清理资源 |
 
 ### 动作（Action）

@@ -54,7 +54,6 @@ export interface Rule {
 		| "tool_call"
 		| "tool_result"
 		| "agent_end"
-		| "session_end"
 		| "session_shutdown"
 		| "message_end"
 		| "session_compact"; // 默认 "tool_call"
