@@ -156,7 +156,7 @@ describe("getAvailableTools & toolsAvailable", () => {
 		const state = makeToolState();
 		const pi = makePi();
 		expect(toolsAvailable({} as Rule, pi as any, state)).toBe(true);
-		expect(toolsAvailable({ requiresTools: [] } as Rule, pi as any, state)).toBe(true);
+		expect(toolsAvailable({ requiresTools: [] as string[] } as Rule, pi as any, state)).toBe(true);
 	});
 
 	it("rule 需要的工具不可用时返回 false", () => {

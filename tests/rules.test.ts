@@ -7,6 +7,7 @@ import { execSync } from "node:child_process";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import { getMatchTargets, toolMatches } from "@pi-atelier/shepherd";
+import type { ToolEvent } from "@pi-atelier/shepherd";
 import { describe, it } from "vitest";
 
 const RULES_PATH = path.resolve(
@@ -27,7 +28,7 @@ describe("grep scope filtering", () => {
 	it("in-scope path + code glob → non-empty targets", () => {
 		const event = {
 			input: { path: process.cwd(), pattern: "myFunction", glob: "*.py" },
-		};
+		} as ToolEvent;
 		const result = getMatchTargets("grep", event);
 		assert.ok(Object.keys(result).length > 0);
 	});
@@ -35,7 +36,7 @@ describe("grep scope filtering", () => {
 	it("any path + code glob → non-empty targets (path filtering removed)", () => {
 		const event = {
 			input: { path: "/tmp/some/dir", pattern: "myFunction", glob: "*.py" },
-		};
+		} as ToolEvent;
 		const result = getMatchTargets("grep", event);
 		assert.ok(Object.keys(result).length > 0);
 	});
@@ -43,7 +44,7 @@ describe("grep scope filtering", () => {
 	it("non-code glob (.md) → empty targets", () => {
 		const event = {
 			input: { path: process.cwd(), pattern: "TODO", glob: "*.md" },
-		};
+		} as ToolEvent;
 		const result = getMatchTargets("grep", event);
 		assert.ok(Object.keys(result).length === 1 && "result" in result);
 	});

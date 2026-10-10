@@ -3,6 +3,7 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 // ── Mock 声明 ──
 const mockGetEffectiveConfig = vi.fn().mockReturnValue({
@@ -91,7 +92,7 @@ function getHandler(
 
 // ── 测试 ──
 describe("before_provider_request", () => {
-	let shepherdExtension: (pi: ReturnType<typeof makeMockPi>) => void;
+	let shepherdExtension: (pi: ExtensionAPI) => void;
 	let pi: ReturnType<typeof makeMockPi>;
 
 	beforeEach(async () => {
@@ -100,7 +101,7 @@ describe("before_provider_request", () => {
 		const mod = await import("../index");
 		shepherdExtension = mod.default;
 		pi = makeMockPi();
-		shepherdExtension(pi);
+		shepherdExtension(pi as unknown as ExtensionAPI);
 	});
 
 	it("有 hints 时注入到 payload 并通知", async () => {

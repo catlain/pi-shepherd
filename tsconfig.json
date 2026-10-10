@@ -11,6 +11,9 @@
 			],
 			"@earendil-works/pi-coding-agent": [
 				"../_sdk-link/dist/index.d.ts"
+			],
+			"@pi-atelier/shepherd": [
+				"./shepherd/index.ts"
 			]
 		}
 	},

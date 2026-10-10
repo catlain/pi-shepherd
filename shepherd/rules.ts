@@ -35,7 +35,7 @@ import { extractResultText } from "./tool-event-types.js";
 // ── 类型定义 ──────────────────────────────────────────────────
 
 export interface Condition {
-	field?: "path" | "text" | "glob" | "result";
+	field?: "path" | "text" | "glob" | "result" | "command";
 	pattern?: string;
 	flags?: string;
 	/** true 时取反：正则不匹配才算通过 */

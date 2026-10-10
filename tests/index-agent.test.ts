@@ -3,6 +3,7 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 const mockGetEffectiveConfig = vi.fn().mockReturnValue({
 	config: { projectRulesPattern: "shepherd-rules-", maxWarnings: 5 },
@@ -60,7 +61,7 @@ function getHandler(
 
 // ── agent_start ──
 describe("agent_start", () => {
-	let shepherdExtension: (pi: ReturnType<typeof makeMockPi>) => void;
+	let shepherdExtension: (pi: ExtensionAPI) => void;
 	let pi: ReturnType<typeof makeMockPi>;
 
 	beforeEach(async () => {
@@ -69,7 +70,7 @@ describe("agent_start", () => {
 		const mod = await import("../index");
 		shepherdExtension = mod.default;
 		pi = makeMockPi();
-		shepherdExtension(pi);
+		shepherdExtension(pi as unknown as ExtensionAPI);
 	});
 
 	it("重置 _aborted（未中断）", async () => {
@@ -117,7 +118,7 @@ describe("agent_start", () => {
 
 // ── input ──
 describe("input 事件", () => {
-	let shepherdExtension: (pi: ReturnType<typeof makeMockPi>) => void;
+	let shepherdExtension: (pi: ExtensionAPI) => void;
 	let pi: ReturnType<typeof makeMockPi>;
 
 	beforeEach(async () => {
@@ -126,7 +127,7 @@ describe("input 事件", () => {
 		const mod = await import("../index");
 		shepherdExtension = mod.default;
 		pi = makeMockPi();
-		shepherdExtension(pi);
+		shepherdExtension(pi as unknown as ExtensionAPI);
 	});
 
 	it("已注册 input 事件处理器", () => {

@@ -3,6 +3,8 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { Rule } from "@pi-atelier/shepherd";
 
 const mockGetEffectiveConfig = vi.fn().mockReturnValue({
 	config: { projectRulesPattern: "shepherd-rules-", maxWarnings: 5 },
@@ -55,15 +57,7 @@ function makeMockPi() {
 	};
 }
 
-function makeRules(
-	arr: Array<{
-		check?: string;
-		action?: string;
-		comment?: string;
-		reason?: string;
-		stopReason?: string[];
-	}>,
-) {
+function makeRules(arr: Array<Partial<Rule>>) {
 	return arr.map(({ check, ...rest }) => {
 		const base: Record<string, unknown> = {
 			hook: "agent_end",
@@ -90,7 +84,7 @@ async function fireAgentEnd(
 }
 
 describe("agent_end — 基础场景", () => {
-	let shepherdExtension: (pi: ReturnType<typeof makeMockPi>) => void;
+	let shepherdExtension: (pi: ExtensionAPI) => void;
 	let pi: ReturnType<typeof makeMockPi>;
 
 	beforeEach(async () => {
@@ -100,7 +94,7 @@ describe("agent_end — 基础场景", () => {
 		const mod = await import("../index");
 		shepherdExtension = mod.default;
 		pi = makeMockPi();
-		shepherdExtension(pi);
+		shepherdExtension(pi as unknown as ExtensionAPI);
 	});
 
 	afterEach(() => {
@@ -135,7 +129,7 @@ describe("agent_end — 基础场景", () => {
 	});
 
 	it("stopReason 不匹配时跳过", async () => {
-		mockLoadRules.mockReturnValue(makeRules([{ stopReason: ["end_turn"] }]));
+		mockLoadRules.mockReturnValue(makeRules([{ stopReason: ["end_turn"] } as unknown as Partial<Rule>]));
 		await fire(makeEvent("stop"));
 		expect(mockPushWarning).not.toHaveBeenCalled();
 	});
@@ -176,7 +170,7 @@ describe("agent_end — 基础场景", () => {
 	});
 
 	it("无 stopReason 的 assistant 视为空串，若规则允许空串则匹配", async () => {
-		mockLoadRules.mockReturnValue(makeRules([{ stopReason: [""] }]));
+		mockLoadRules.mockReturnValue(makeRules([{ stopReason: [""] } as unknown as Partial<Rule>]));
 		await fire({
 			messages: [
 				{ role: "user", content: "hi" },

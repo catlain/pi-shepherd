@@ -10,7 +10,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import type { ToolEvent } from "../shepherd/event-types";
+import type { ToolEvent } from "../shepherd/tool-event-types";
 import type { Rule } from "../shepherd/rules";
 import { compileRules, getMatchTargets, ruleMatches } from "../shepherd/rules";
 

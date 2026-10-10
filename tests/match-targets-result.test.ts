@@ -7,7 +7,7 @@
 import { describe, expect, it } from "vitest";
 import type { ToolEvent } from "../shepherd/tool-event-types";
 import { getMatchTargets, ruleMatches } from "../shepherd/rules";
-import type { Rule } from "../shepherd/types";
+import type { Rule } from "../shepherd/rules";
 
 /** 构造 tool_call 事件（无 content） */
 function makeCallEvent(
@@ -21,7 +21,7 @@ function makeCallEvent(
 function makeResultEvent(
 	toolName: string,
 	input: Record<string, unknown>,
-	content: Array<{ type: string; text?: string }>,
+	content: Array<{ type: string; text?: string; data?: string }>,
 ): ToolEvent {
 	return {
 		type: "tool_result",

@@ -5,6 +5,7 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import {
 	fireMessageEnd,
 	makeAssistantMessage,
@@ -18,7 +19,7 @@ import {
 } from "./helpers/message-end-helper";
 
 describe("message_end — 集成测试（高级场景）", () => {
-	let shepherdExtension: (pi: ReturnType<typeof makeMockPi>) => void;
+	let shepherdExtension: (pi: ExtensionAPI) => void;
 	let pi: ReturnType<typeof makeMockPi>;
 
 	beforeEach(async () => {
@@ -30,7 +31,7 @@ describe("message_end — 集成测试（高级场景）", () => {
 		const mod = await import("../index");
 		shepherdExtension = mod.default;
 		pi = makeMockPi();
-		shepherdExtension(pi);
+		shepherdExtension(pi as unknown as ExtensionAPI);
 	});
 
 	afterEach(() => {

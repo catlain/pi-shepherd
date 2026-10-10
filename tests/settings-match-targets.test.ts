@@ -5,7 +5,7 @@
  */
 
 import { describe, expect, it } from "vitest";
-import type { ToolEvent } from "../shepherd/event-types";
+import type { ToolEvent } from "../shepherd/tool-event-types";
 import { getMatchTargets } from "../shepherd/rules";
 
 function makeEvent(

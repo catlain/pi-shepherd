@@ -3,6 +3,8 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { Rule } from "@pi-atelier/shepherd";
 
 const mockGetEffectiveConfig = vi.fn().mockReturnValue({
 	config: { projectRulesPattern: "shepherd-rules-", maxWarnings: 5 },
@@ -61,7 +63,7 @@ function getHandler(
 	return hs[0];
 }
 
-function shutdownRules(arr: Array<{ check?: string; reason?: string }>) {
+function shutdownRules(arr: Array<Partial<Rule>>) {
 	return arr.map(({ check, ...rest }) => {
 		const base: Record<string, unknown> = {
 			hook: "session_shutdown",
@@ -79,7 +81,7 @@ function shutdownRules(arr: Array<{ check?: string; reason?: string }>) {
 
 // ── session_start ──
 describe("session_start", () => {
-	let shepherdExtension: (pi: ReturnType<typeof makeMockPi>) => void;
+	let shepherdExtension: (pi: ExtensionAPI) => void;
 	let pi: ReturnType<typeof makeMockPi>;
 
 	beforeEach(async () => {
@@ -88,7 +90,7 @@ describe("session_start", () => {
 		const mod = await import("../index");
 		shepherdExtension = mod.default;
 		pi = makeMockPi();
-		shepherdExtension(pi);
+		shepherdExtension(pi as unknown as ExtensionAPI);
 	});
 
 	it("应调用 checkWorktrees", async () => {
@@ -100,7 +102,7 @@ describe("session_start", () => {
 
 // ── session_shutdown ──
 describe("session_shutdown", () => {
-	let shepherdExtension: (pi: ReturnType<typeof makeMockPi>) => void;
+	let shepherdExtension: (pi: ExtensionAPI) => void;
 	let pi: ReturnType<typeof makeMockPi>;
 
 	beforeEach(async () => {
@@ -109,7 +111,7 @@ describe("session_shutdown", () => {
 		const mod = await import("../index");
 		shepherdExtension = mod.default;
 		pi = makeMockPi();
-		shepherdExtension(pi);
+		shepherdExtension(pi as unknown as ExtensionAPI);
 	});
 
 	it("无 session_shutdown 规则时跳过", async () => {

@@ -24,10 +24,10 @@ export const mockGetEffectiveConfig = vi.fn().mockReturnValue({
 });
 
 vi.mock("@pi-atelier/shared-utils", () => ({
-	getEffectiveConfig: (...args: unknown[]) => mockGetEffectiveConfig(...args),
-	pushHint: (...args: unknown[]) => mockPushHint(...args),
-	drainHints: (...args: unknown[]) => mockDrainHints(...args),
-	hasHints: (...args: unknown[]) => mockHasHints(...args),
+	getEffectiveConfig: mockGetEffectiveConfig,
+	pushHint: mockPushHint,
+	drainHints: mockDrainHints,
+	hasHints: mockHasHints,
 	peekHints: vi.fn(() => mockHints.map((h) => h.text)),
 	peekLabels: vi.fn(() => mockHints.map((h) => h.label).filter(Boolean)),
 }));

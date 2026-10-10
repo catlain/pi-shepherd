@@ -13,6 +13,7 @@ import {
 	ruleMatches,
 } from "@pi-atelier/shepherd";
 import { afterAll, afterEach, beforeAll, describe, expect, it } from "vitest";
+import type { ToolEvent } from "@pi-atelier/shepherd";
 
 const tmpDir = path.join(process.cwd(), ".pi", "extensions");
 
@@ -38,7 +39,7 @@ describe("loadRules 项目级规则", () => {
 		fs.mkdirSync(tmpDir, { recursive: true });
 		fs.writeFileSync(
 			path.join(tmpDir, "shepherd-rules.json"),
-			JSON.stringify([{ comment: "proj", pattern: "danger" }]),
+			JSON.stringify([{ comment: "proj", reason: "test", pattern: "danger" }]),
 			"utf-8",
 		);
 		const rules = loadRules(undefined);
@@ -50,14 +51,14 @@ describe("loadRules 项目级规则", () => {
 		fs.mkdirSync(tmpDir, { recursive: true });
 		fs.writeFileSync(
 			path.join(tmpDir, "shepherd-rules.json"),
-			JSON.stringify([{ comment: "proj", pattern: "test" }]),
+			JSON.stringify([{ comment: "proj", reason: "test", pattern: "test" }]),
 			"utf-8",
 		);
 		const globalDir = path.join(process.cwd(), "__test_global_rules");
 		fs.mkdirSync(globalDir, { recursive: true });
 		fs.writeFileSync(
 			path.join(globalDir, "rules.json"),
-			JSON.stringify([{ comment: "global", pattern: "g" }]),
+			JSON.stringify([{ comment: "global", reason: "test", pattern: "g" }]),
 			"utf-8",
 		);
 		const rules = loadRules(globalDir);
@@ -72,7 +73,7 @@ describe("loadRules 项目级规则", () => {
 		fs.mkdirSync(globalDir, { recursive: true });
 		fs.writeFileSync(
 			path.join(globalDir, "rules.json"),
-			JSON.stringify([{ comment: "only-global", pattern: "g" }]),
+			JSON.stringify([{ comment: "only-global", reason: "test", pattern: "g" }]),
 			"utf-8",
 		);
 		const rules = loadRules(globalDir);
@@ -92,7 +93,7 @@ describe("loadRules 项目级规则", () => {
 		fs.mkdirSync(globalDir, { recursive: true });
 		fs.writeFileSync(
 			path.join(globalDir, "rules.json"),
-			JSON.stringify([{ comment: "ok", pattern: "g" }]),
+			JSON.stringify([{ comment: "ok", reason: "test", pattern: "g" }]),
 			"utf-8",
 		);
 		const rules = loadRules(globalDir, {
@@ -124,7 +125,7 @@ describe("loadRulesFromFile 边界", () => {
 describe("ruleMatches", () => {
 	it("conditions AND 模式全满足时匹配", () => {
 		const rule = compileRules([
-			{
+			{ reason: "test",
 				comment: "r",
 				conditions: [
 					{ field: "path", pattern: "\\.py$" },
@@ -144,7 +145,7 @@ describe("ruleMatches", () => {
 	it("conditions AND 模式一条件不满足时不匹配", () => {
 		const rule = compileRules([
 			{
-				comment: "r",
+				comment: "r", reason: "test",
 				conditions: [
 					{ field: "path", pattern: "\\.py$" },
 					{ field: "text", pattern: "import\\s+os" },
@@ -162,7 +163,7 @@ describe("ruleMatches", () => {
 
 	it("单 pattern 匹配 bash command", () => {
 		const rule = compileRules([
-			{ comment: "r", pattern: "rm\\s+-rf", tool: "bash" },
+			{ comment: "r", reason: "test", pattern: "rm\\s+-rf", tool: "bash" },
 		])[0];
 		expect(
 			ruleMatches(rule, "bash", { command: "rm -rf /", path: "", text: "" }),
@@ -171,7 +172,7 @@ describe("ruleMatches", () => {
 
 	it("单 pattern 匹配 edit path", () => {
 		const rule = compileRules([
-			{ comment: "r", pattern: "\\.env$", tool: "edit" },
+			{ comment: "r", reason: "test", pattern: "\\.env$", tool: "edit" },
 		])[0];
 		expect(
 			ruleMatches(rule, "edit", { command: "", path: "/app/.env", text: "" }),
@@ -180,7 +181,7 @@ describe("ruleMatches", () => {
 
 	it("无 pattern 也无 conditions 时 return false", () => {
 		const rule = compileRules([
-			{ comment: "r", check: "has_edits", hook: "agent_end" },
+			{ comment: "r", reason: "test", check: "has_edits", hook: "agent_end" },
 		])[0];
 		expect(ruleMatches(rule, "bash", { command: "", path: "", text: "" })).toBe(
 			false,
@@ -192,7 +193,7 @@ describe("ruleMatches", () => {
 	it("negate=true 时正则不匹配才算通过", () => {
 		const rule = compileRules([
 			{
-				comment: "unwrap 但排除测试代码",
+				comment: "unwrap 但排除测试代码", reason: "test",
 				conditions: [
 					{ field: "path", pattern: "src/.*\\.rs$" },
 					{ field: "text", pattern: "\\.(unwrap|expect)\\(" },
@@ -229,7 +230,7 @@ describe("ruleMatches", () => {
 	it("negate=false（默认）行为不变", () => {
 		const rule = compileRules([
 			{
-				comment: "简单测试",
+				comment: "简单测试", reason: "test",
 				conditions: [{ field: "text", pattern: "hello" }],
 			},
 		])[0];
@@ -264,7 +265,7 @@ describe("getMatchTargets grep", () => {
 	it("grep 提取 path/text/glob", () => {
 		const r = getMatchTargets("grep", {
 			input: { path: "src/", glob: "*.ts", pattern: "import" },
-		});
+		} as ToolEvent);
 		expect(r.path).toBe("src/");
 		expect(r.text).toBe("import");
 		expect(r.glob).toBe("*.ts");
@@ -273,14 +274,14 @@ describe("getMatchTargets grep", () => {
 	it("glob 为代码扩展名时不短路", () => {
 		const r = getMatchTargets("grep", {
 			input: { path: "src/", glob: "*.ts", pattern: "import" },
-		});
+		} as ToolEvent);
 		expect(Object.keys(r).length).toBeGreaterThan(0);
 	});
 
 	it("glob 为非代码扩展名时返回空 targets", () => {
 		const r = getMatchTargets("grep", {
 			input: { path: "src/", glob: "*.md", pattern: "TODO" },
-		});
+		} as ToolEvent);
 		expect(Object.keys(r)).toEqual(["result"]);
 		expect(r.result).toBe("");
 	});
@@ -288,7 +289,7 @@ describe("getMatchTargets grep", () => {
 	it("无 glob 时默认不短路", () => {
 		const r = getMatchTargets("grep", {
 			input: { path: ".", pattern: "TODO" },
-		});
+		} as ToolEvent);
 		expect(Object.keys(r).length).toBeGreaterThan(0);
 	});
 });
@@ -299,7 +300,7 @@ describe("getMatchTargets edit/write/bash", () => {
 	it("edit 提取 path 和 newText（不含 oldText）", () => {
 		const r = getMatchTargets("edit", {
 			input: { path: "main.ts", edits: [{ oldText: "var", newText: "const" }] },
-		});
+		} as ToolEvent);
 		expect(r.path).toBe("main.ts");
 		expect(r.text).toContain("const");
 		expect(r.text).not.toContain("var");
@@ -317,7 +318,7 @@ describe("getMatchTargets edit/write/bash", () => {
 					},
 				],
 			},
-		});
+		} as ToolEvent);
 		expect(r.text).toContain("crate::data");
 		expect(r.text).not.toContain("crate::render");
 	});
@@ -325,13 +326,13 @@ describe("getMatchTargets edit/write/bash", () => {
 	it("write 提取 path 和 content", () => {
 		const r = getMatchTargets("write", {
 			input: { path: "new.ts", content: "log('hi')" },
-		});
+		} as ToolEvent);
 		expect(r.path).toBe("new.ts");
 		expect(r.text).toBe("log('hi')");
 	});
 
 	it("bash 提取 command", () => {
-		const r = getMatchTargets("bash", { input: { command: "ls -la" } });
+		const r = getMatchTargets("bash", { input: { command: "ls -la" } } as ToolEvent);
 		expect(r.command).toBe("ls -la");
 	});
 });

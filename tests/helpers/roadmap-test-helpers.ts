@@ -2,7 +2,7 @@
  * roadmap block 规则测试的共享辅助函数和规则定义
  */
 
-import type { ToolEvent } from "../../shepherd/event-types";
+import type { ToolEvent } from "../../shepherd/tool-event-types";
 import type { Rule } from "../../shepherd/rules";
 import {
 	compileRules,

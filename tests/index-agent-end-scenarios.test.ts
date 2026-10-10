@@ -3,6 +3,8 @@
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type { Rule } from "@pi-atelier/shepherd";
 
 const mockGetEffectiveConfig = vi.fn().mockReturnValue({
 	config: { projectRulesPattern: "shepherd-rules-", maxWarnings: 5 },
@@ -60,16 +62,7 @@ function makeMockPi() {
 	};
 }
 
-function makeRules(
-	arr: Array<{
-		check?: string;
-		action?: string;
-		comment?: string;
-		reason?: string;
-		stopReason?: string[];
-		conditions?: Array<{ builtin?: string; pattern?: string; field?: string }>;
-	}>,
-) {
+function makeRules(arr: Array<Partial<Rule>>) {
 	return arr.map(({ check, ...rest }) => {
 		const base: Record<string, unknown> = {
 			hook: "agent_end",
@@ -106,7 +99,7 @@ async function fireAgentEnd(handlers: Map<string, Function[]>, event: unknown) {
 }
 
 describe("agent_end — check 类型", () => {
-	let shepherdExtension: (pi: ReturnType<typeof makeMockPi>) => void;
+	let shepherdExtension: (pi: ExtensionAPI) => void;
 	let pi: ReturnType<typeof makeMockPi>;
 
 	beforeEach(async () => {
@@ -116,7 +109,7 @@ describe("agent_end — check 类型", () => {
 		const mod = await import("../index");
 		shepherdExtension = mod.default;
 		pi = makeMockPi();
-		shepherdExtension(pi);
+		shepherdExtension(pi as unknown as ExtensionAPI);
 	});
 
 	afterEach(() => {

@@ -49,3 +49,4 @@ export {
 	toolsAvailable,
 } from "./tool-hooks";
 export { checkWorktrees } from "./worktree-check";
+export type { ToolEvent } from "./tool-event-types";

@@ -3,6 +3,7 @@
  */
 
 import assert from "node:assert/strict";
+import type { ToolEvent } from "@pi-atelier/shepherd";
 import { getMatchTargets, ruleMatches } from "@pi-atelier/shepherd";
 import { describe, it } from "vitest";
 import { makeRule } from "./helpers.js";
@@ -13,7 +14,7 @@ import { makeRule } from "./helpers.js";
 
 describe("getMatchTargets", () => {
 	it("should extract command from bash event", () => {
-		const event = { input: { command: "git status" } };
+		const event = { input: { command: "git status" } } as ToolEvent;
 		const result = getMatchTargets("bash", event);
 		assert.equal(result.command, "git status");
 		assert.equal(typeof result.path, "string");
@@ -26,7 +27,7 @@ describe("getMatchTargets", () => {
 				path: "sizing/vol_target.py",
 				edits: [{ oldText: "old code", newText: "from signals import foo" }],
 			},
-		};
+		} as ToolEvent;
 		const result = getMatchTargets("edit", event);
 		assert.equal(result.path, "sizing/vol_target.py");
 		assert.ok(result.text.includes("from signals import foo"));
@@ -38,20 +39,20 @@ describe("getMatchTargets", () => {
 				path: "signals/base.py",
 				content: "from sizing import foo",
 			},
-		};
+		} as ToolEvent;
 		const result = getMatchTargets("write", event);
 		assert.equal(result.path, "signals/base.py");
 		assert.ok(result.text.includes("from sizing import foo"));
 	});
 
 	it("should handle empty input gracefully", () => {
-		const result = getMatchTargets("edit", { input: {} });
+		const result = getMatchTargets("edit", { input: {} } as ToolEvent);
 		assert.equal(result.path, "");
 		assert.equal(result.text, "");
 	});
 
 	it("should handle edit with empty edits array", () => {
-		const event = { input: { path: "foo.py", edits: [] } };
+		const event = { input: { path: "foo.py", edits: [] } } as unknown as ToolEvent;
 		const result = getMatchTargets("edit", event);
 		assert.equal(result.path, "foo.py");
 		assert.equal(result.text, "");
@@ -61,7 +62,7 @@ describe("getMatchTargets", () => {
 	it("should return non-empty targets for grep with code glob and in-scope path", () => {
 		const event = {
 			input: { path: process.cwd(), pattern: "myFunction", glob: "*.ts" },
-		};
+		} as ToolEvent;
 		const result = getMatchTargets("grep", event);
 		assert.ok(Object.keys(result).length > 0);
 		assert.equal(result.glob, "*.ts");
@@ -69,7 +70,7 @@ describe("getMatchTargets", () => {
 	});
 
 	it("should return non-empty targets for grep with no glob but path in cwd", () => {
-		const event = { input: { path: process.cwd(), pattern: "myFunction" } };
+		const event = { input: { path: process.cwd(), pattern: "myFunction" } } as ToolEvent;
 		const result = getMatchTargets("grep", event);
 		assert.ok(Object.keys(result).length > 0);
 	});
@@ -77,7 +78,7 @@ describe("getMatchTargets", () => {
 	it("should return empty targets for grep with non-code glob", () => {
 		const event = {
 			input: { path: process.cwd(), pattern: "TODO", glob: "*.md" },
-		};
+		} as ToolEvent;
 		const result = getMatchTargets("grep", event);
 		assert.ok(Object.keys(result).length === 1 && "result" in result);
 	});
@@ -85,13 +86,13 @@ describe("getMatchTargets", () => {
 	it("should return non-empty targets for grep with code glob regardless of path", () => {
 		const event = {
 			input: { path: "/tmp/some/dir", pattern: "myFunction", glob: "*.ts" },
-		};
+		} as ToolEvent;
 		const result = getMatchTargets("grep", event);
 		assert.ok(Object.keys(result).length > 0);
 	});
 
 	it("should return non-empty targets for grep with no glob regardless of path", () => {
-		const event = { input: { path: "/tmp/some/dir", pattern: "myFunction" } };
+		const event = { input: { path: "/tmp/some/dir", pattern: "myFunction" } } as ToolEvent;
 		const result = getMatchTargets("grep", event);
 		assert.ok(Object.keys(result).length > 0);
 	});

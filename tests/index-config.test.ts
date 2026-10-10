@@ -3,6 +3,7 @@
  */
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 // ── Mock 声明 ──
 const mockGetEffectiveConfig = vi.fn().mockReturnValue({
@@ -84,7 +85,7 @@ function fireSystemEvent(
 
 // ── 测试 ──
 describe("shepherdExtension 注册 & config", () => {
-	let shepherdExtension: (pi: ReturnType<typeof makeMockPi>) => void;
+	let shepherdExtension: (pi: ExtensionAPI) => void;
 	let pi: ReturnType<typeof makeMockPi>;
 
 	beforeEach(async () => {
@@ -93,7 +94,7 @@ describe("shepherdExtension 注册 & config", () => {
 		const mod = await import("../index");
 		shepherdExtension = mod.default;
 		pi = makeMockPi();
-		shepherdExtension(pi);
+		shepherdExtension(pi as unknown as ExtensionAPI);
 	});
 
 	it("应注册所有 pi 事件", () => {

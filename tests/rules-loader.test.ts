@@ -8,6 +8,7 @@
  * 4) getMatchTargets — bash 短路逻辑
  */
 
+import type { ToolEvent } from "@pi-atelier/shepherd";
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
@@ -49,7 +50,7 @@ describe("loadRulesFromFile", () => {
 	it("读取有效 JSON 规则", () => {
 		const filePath = createTempRules(
 			JSON.stringify([
-				{ comment: "test rule", pattern: "foo", action: "block" },
+				{ comment: "test rule", reason: "test", pattern: "foo", action: "block" },
 			]),
 		);
 		const result = loadRulesFromFile(filePath);
@@ -84,7 +85,7 @@ describe("loadRulesFromFile", () => {
 describe("compileRules", () => {
 	it("编译 pattern 为正则", () => {
 		const rules: Rule[] = [
-			{ comment: "r1", pattern: "hello.world", flags: "i" },
+			{ comment: "r1", reason: "test", pattern: "hello.world", flags: "i" },
 		];
 		const compiled = compileRules(rules);
 		expect(compiled[0]._compiled).toBeInstanceOf(RegExp);
@@ -93,7 +94,7 @@ describe("compileRules", () => {
 
 	it("编译 conditions 中每个条件的 pattern", () => {
 		const rules: Rule[] = [
-			{
+			{ reason: "test",
 				comment: "r1",
 				conditions: [
 					{ field: "path", pattern: "\\.py$" },
@@ -107,7 +108,7 @@ describe("compileRules", () => {
 	});
 
 	it("填充默认值：hook=tool_call, tool=bash, action=block", () => {
-		const rules: Rule[] = [{ comment: "r1", pattern: "git push" }];
+		const rules: Rule[] = [{ comment: "r1", reason: "test", pattern: "git push" }];
 		const compiled = compileRules(rules);
 		expect(compiled[0].hook).toBe("tool_call");
 		expect(compiled[0].tool).toBe("bash");
@@ -116,9 +117,9 @@ describe("compileRules", () => {
 
 	it("禁用规则（enabled=false）被过滤", () => {
 		const rules: Rule[] = [
-			{ comment: "r1", pattern: "foo", enabled: false },
-			{ comment: "r2", pattern: "bar", enabled: true },
-			{ comment: "r3", pattern: "baz" },
+			{ comment: "r1", reason: "test", pattern: "foo", enabled: false },
+			{ comment: "r2", reason: "test", pattern: "bar", enabled: true },
+			{ comment: "r3", reason: "test", pattern: "baz" },
 		];
 		const compiled = compileRules(rules);
 		expect(compiled).toHaveLength(2);
@@ -128,14 +129,14 @@ describe("compileRules", () => {
 
 	it("无 pattern 也无 conditions 的规则不编译 _compiled", () => {
 		const rules: Rule[] = [
-			{ comment: "r1", check: "has_edits", hook: "agent_end" },
+			{ comment: "r1", reason: "test", check: "has_edits", hook: "agent_end" },
 		];
 		const compiled = compileRules(rules);
 		expect(compiled[0]._compiled).toBeUndefined();
 	});
 
 	it("保持已有 action 不覆盖", () => {
-		const rules: Rule[] = [{ comment: "r1", pattern: "foo", action: "steer" }];
+		const rules: Rule[] = [{ comment: "r1", reason: "test", pattern: "foo", action: "steer" }];
 		const compiled = compileRules(rules);
 		expect(compiled[0].action).toBe("steer");
 	});
@@ -183,40 +184,40 @@ describe("isSubagent", () => {
 
 describe("getMatchTargets bash 短路", () => {
 	it("git commit 在 tool_call 阶段返回仅 result 字段", () => {
-		const event = { input: { command: "git commit -m 'fix: update deps'" } };
+		const event = { input: { command: "git commit -m 'fix: update deps'" } } as ToolEvent;
 		const result = getMatchTargets("bash", event, "tool_call");
 		expect(Object.keys(result)).toEqual(["result"]);
 		expect(result.result).toBe("");
 	});
 
 	it("cd xxx && git commit 格式也短路", () => {
-		const event = { input: { command: "cd repo && git commit -m 'update'" } };
+		const event = { input: { command: "cd repo && git commit -m 'update'" } } as ToolEvent;
 		const result = getMatchTargets("bash", event, "tool_call");
 		expect(Object.keys(result)).toEqual(["result"]);
 		expect(result.result).toBe("");
 	});
 
 	it("git status 不短路（不是 git commit）", () => {
-		const event = { input: { command: "git status" } };
+		const event = { input: { command: "git status" } } as ToolEvent;
 		const result = getMatchTargets("bash", event, "tool_call");
 		expect(Object.keys(result).length).toBeGreaterThan(0);
 		expect(result.command).toBe("git status");
 	});
 
 	it("tool_result 阶段 git commit 不短路", () => {
-		const event = { input: { command: "git commit -m 'fix'" } };
+		const event = { input: { command: "git commit -m 'fix'" } } as ToolEvent;
 		const result = getMatchTargets("bash", event, "tool_result");
 		expect(Object.keys(result).length).toBeGreaterThan(0);
 	});
 
 	it("无 phase 时默认不短路（兼容旧行为）", () => {
-		const event = { input: { command: "git commit -m 'test'" } };
+		const event = { input: { command: "git commit -m 'test'" } } as ToolEvent;
 		const result = getMatchTargets("bash", event);
 		expect(Object.keys(result).length).toBeGreaterThan(0);
 	});
 
 	it("git push 不短路", () => {
-		const event = { input: { command: "git push origin main" } };
+		const event = { input: { command: "git push origin main" } } as ToolEvent;
 		const result = getMatchTargets("bash", event, "tool_call");
 		expect(Object.keys(result).length).toBeGreaterThan(0);
 	});
