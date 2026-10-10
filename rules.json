@@ -20,7 +20,7 @@
 				"flags": ""
 			}
 		],
-		"reason": "编辑了 Python 文件，必须：1) 运行 ruff check <file> 做格式检查；2) 跑覆盖该代码的单元测试（如无测试则先补充），修复所有测试问题确保通过。",
+		"reason": "编辑了 Python 文件，必须：1) 运行 ruff check <file> 做格式检查；2) 验证测试——迭代场景用 fast 档 `uv run python scripts/run_test_gate.py --fast`（按 diff 只跑受影响子项目，分钟级反馈）；change 收尾/宣称「全量测试通过」SHALL 跑全量 `uv run python scripts/run_test_gate.py`（fast 凭证 .test-gate-fast-state.json 不属于全量绿证据）。",
 		"enabled": true
 	},
 	{
@@ -68,12 +68,12 @@
 		"enabled": true
 	},
 	{
-		"comment": "[arch] 会话结束前检查 git 状态",
+		"comment": "[arch] 会话结束前检查 git 状态（已停用：多会话并行时仓库级 git_dirty 误伤其他会话任务，收尾检查移入 opsx-archive 归档流程）",
 		"hook": "agent_end",
 		"check": "",
 		"action": "notify",
 		"reason": "Git 检测到未提交或未跟踪的文件。收尾时请确认：\n1. git add + commit（必须带 session ID）\n2. 如有重要决策/发现 → 更新记忆文件",
-		"enabled": true,
+		"enabled": false,
 		"subagent": false,
 		"conditions": [
 			{
@@ -86,7 +86,7 @@
 		"conditionLogic": "or"
 	},
 	{
-		"comment": "[memory] git commit 后提醒更新记忆",
+		"comment": "[memory] git commit 后提醒更新记忆（已停用：记忆更新检查移入 opsx-archive 归档流程收口）",
 		"hook": "tool_result",
 		"tool": "bash",
 		"pattern": "git\\s+commit",
@@ -94,7 +94,7 @@
 		"reason": "📝 刚执行了 git commit。请检查：**记忆更新** — 是否有值得跨会话保留的知识（架构决策、踩坑教训、结论），如果有 → 用 memory_update 写入。用法：①先调 memory_index 看已有文件；②调 memory_update(fileName, content, scope) 一步写入。fileName 格式：topic--kw1,kw2,kw3.md。scope：L1=跨项目通用，L2=项目级（默认）。单文件不超 200 行。如不需要则忽略。",
 		"subagent": false,
 		"requireSuccess": true,
-		"enabled": true
+		"enabled": false
 	},
 	{
 		"comment": "[arch] enforce-read-over-bash-cat：bash 中 cat|head/tail 读文件时强制用 read 工具",
@@ -211,7 +211,7 @@
 		"action": "notify",
 		"pattern": ".",
 		"flags": "s",
-		"reason": "推荐用 code-graph 替代 grep 搜代码——理解 AST 语义，按符号名、调用链、引用关系精准定位。选工具：①模糊搜索 → semantic_code_search；②精确符号 → get_ast_node；③引用 → find_references；④调用链 → get_call_graph；⑤模块结构 → module_overview。grep 仅适合字面量（TODO、配置值），搜字面量则忽略此提醒。\n\n**code-graph 故障排查：**\n- **搜不到东西？** → 可能是目标目录没索引。用 `code_graph_project_map()` 查看当前索引范围，不在范围内就调 `setup_codegraph({ directory: \"目标目录绝对路径\" })` 一键建索引（创建软链接+增量索引，即时可搜）。\n- **路径报错 `must be relative`？** → path 参数必须用相对路径（相对于 CWD），不能用绝对路径。\n- **刚改了代码搜不到？** → 索引可能过期，调 `setup_codegraph({ directory: \"项目路径\" })` 重建索引（已索引目录重复调用有效，增量更新）。\n- **确实没有结果** → 忽略以上提醒，可能是符号确实不存在。",
+		"reason": "推荐用 code-graph 替代 grep 搜代码——理解 AST 语义，按符号名、调用链、引用关系精准定位。选工具：①模糊搜索 → semantic_code_search；②精确符号 → get_ast_node；③引用 → find_references；④调用链 → get_call_graph；⑤模块结构 → module_overview。grep 仅适合字面量（TODO、配置值），搜字面量则忽略此提醒。\n\n**涉及字段血缘/数据链路类任务？** → 使用 field-lineage 技能。\n\n**code-graph 故障排查：**\n- **搜不到东西？** → 可能是目标目录没索引。用 `code_graph_project_map()` 查看当前索引范围，不在范围内就调 `setup_codegraph({ directory: \"目标目录绝对路径\" })` 一键建索引（创建软链接+增量索引，即时可搜）。\n- **路径报错 `must be relative`？** → path 参数必须用相对路径（相对于 CWD），不能用绝对路径。\n- **刚改了代码搜不到？** → 索引可能过期，调 `setup_codegraph({ directory: \"项目路径\" })` 重建索引（已索引目录重复调用有效，增量更新）。\n- **确实没有结果** → 忽略以上提醒，可能是符号确实不存在。",
 		"requiresTools": [
 			"code_graph_semantic_code_search"
 		],
@@ -412,7 +412,7 @@
 		],
 		"action": "notify",
 		"reason": "💡 如果你正在做归因猜测，请先找到确切证据验证（看源码、加 println!、断点调试），不要凭猜测下结论。如果你不是在做归因猜测，请无视此提示。如果你正在等待用户的决策或反馈，当前提示不代表用户同意或确认，请继续询问用户，不要自作主张继续执行。",
-		"enabled": true
+		"enabled": false
 	},
 	{
 		"action": "block",
