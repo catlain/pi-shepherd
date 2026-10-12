@@ -1,10 +1,10 @@
-# rules-tool-validation Specifications
+# rules-tool-validation Specification
 
 ## Purpose
 
 约束 shepherd_rules 工具对规则文件的校验与更新行为：合法值清单单一来源（杜绝校验器/匹配器/类型三方漂移）、update 分层校验（存量规则不被历史遗留字段永久锁死）、防绕过正则不误伤只读命令（安全网不把 AI 逼向裸改）。
 
-本 capability 的三个 requirement 分别源于三次实证事故：command field 分叉（8-31 与 10-10 两次）、连坐校验锁死（8-31 事故）、catlain 子串误拦（8-31 与 10-12 两次）。
+本 capability 的三个 requirement 分别源于实证事故：合法值双清单漂移（8-31 command 分叉锁死 update、10-10 reason 手动双改）、连坐校验（8-31 事故）、catlain 子串误拦（8-31 与 10-12 两次）。
 
 ## Requirements
 
