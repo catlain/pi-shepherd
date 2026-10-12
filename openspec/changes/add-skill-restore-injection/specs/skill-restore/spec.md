@@ -2,7 +2,7 @@
 
 ### Requirement: 技能激活记录
 
-shepherd SHALL 监听 `tool_result` 事件，以纯函数谓词（toolName 为 `read` 且路径以 `SKILL.md` 结尾，大小写不敏感）识别技能读取，将命中路径记入会话进程内存态激活技能集；SHALL NOT 持久化激活集，SHALL NOT 对非 read 工具或非 SKILL.md 路径做任何记录。
+shepherd SHALL 监听 `tool_call` 事件，以纯函数谓词（toolName 为 `read` 且路径以 `SKILL.md` 结尾，大小写不敏感）识别技能读取，将命中路径记入会话进程内存态激活技能集；SHALL NOT 持久化激活集，SHALL NOT 对非 read 工具或非 SKILL.md 路径做任何记录。
 
 #### Scenario: read 技能文件记入激活集
 - **WHEN** AI 调用 read 工具读取 `C:\...\skills\code-graph\SKILL.md`

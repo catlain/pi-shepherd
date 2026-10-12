@@ -44,9 +44,9 @@ pi 宿主（1.1.0）压缩链路五环已在本会话逐环源码验证（`agent
 - **Type**: one-off
 - **Sediment-to**: none
 
-### D2 技能来源：tool_result 自动记录，会话内存态
+### D2 技能来源：tool_call 自动记录，会话内存态
 
-记录器监听 `tool_result`：read 调用的 `args.path` 匹配 SKILL.md（谓词见 D4）→ Set 记路径。压缩回调读 Set → 磁盘读正文 → 注入。生命周期=会话进程：跨压缩持续有效（多次压缩重复注入自愈——旧恢复 entry 下次压缩又被摘要挥发，Set 仍持有激活集，再注入即可）。备选（branchEntries 扫描：更准但需解析 entry 结构、且 handler 拿到的 branchEntries 在 session_compact 事件里不可得）与（配置清单：死板、要维护）均被否。
+记录器监听 `tool_call`：read 调用的 `input.path` 匹配 SKILL.md（谓词见 D4。实现期事实修正：宿主 ToolResultEvent 无 toolName 字段，tool_call 才有 toolName+input；代价=被 block 调用也计入，宁多勿缺）→ Set 记路径。压缩回调读 Set → 磁盘读正文 → 注入。生命周期=会话进程：跨压缩持续有效（多次压缩重复注入自愈——旧恢复 entry 下次压缩又被摘要挥发，Set 仍持有激活集，再注入即可）。备选（branchEntries 扫描：更准但需解析 entry 结构、且 handler 拿到的 branchEntries 在 session_compact 事件里不可得）与（配置清单：死板、要维护）均被否。
 
 - **Type**: one-off
 - **Sediment-to**: none
@@ -90,7 +90,7 @@ maxSkills（默认 4，按最近激活优先保留——Set 保插入序，取�
 
 - [custom entry 渲染语义随宿主升级漂移] → 单测锁定 sendMessage 调用形态（customType/display/content 结构）；pi 升级时跑回归
 - [overflow 时序] session_compact 与 willRetry 重试请求的先后依赖宿主实现顺序（当前源码：压缩完成 emit 后才 continue）→ 单测 mock 验证注入先于重试请求；升级时关注 agent-session 变更
-- [tool_result 高频调用谓词开销] → 纯函数 O(1) 字符串判断，无 IO；维护者性能面确认无异议
+- [tool_call 高频调用谓词开销] → 纯函数 O(1) 字符串判断，无 IO；维护者性能面确认无异议
 - [注入 entry 与提醒 hint 双通道竞争] → D6 联动：注入成功即抑制 steer 文本，二者互斥
 - [skillRestore.enabled: true 的默认行为变化] → 现有用户升级后压缩时多一条不可见 entry + notify 轻提示；proposal/README 明示，可一键关
 - [磁盘上 SKILL.md 被删/改] → 读盘失败跳过该技能（记入未恢复名单，走提醒兜底）；读到的是压缩时最新版，非 read 时的快照（Non-Goal 已声明）

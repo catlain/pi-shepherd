@@ -69,11 +69,15 @@ export function resetSkillTracker(): void {
 	_activeSkills.clear();
 }
 
-/** 注册 tool_result 追踪（独立监听旁挂，不进规则引擎——设计 D3） */
+/** 注册 tool_call 追踪（独立监听旁挂，不进规则引擎——设计 D3）
+ *
+ * 挂 tool_call 而非 tool_result：宿主 ToolResultEvent 无 toolName 字段
+ * （只有 toolCallId/input），tool_call 才有 toolName+input。代价是被 block
+ * 的调用也计入——最多多注一个正文，无害（宁多勿缺）。 */
 export function registerSkillTracker(pi: ExtensionAPI): void {
-	pi.on("tool_result", async (event) => {
+	pi.on("tool_call", async (event) => {
 		recordSkillRead(
-			event.toolName,
+			(event as { toolName?: string }).toolName,
 			event.input as Record<string, unknown> | undefined,
 		);
 	});
