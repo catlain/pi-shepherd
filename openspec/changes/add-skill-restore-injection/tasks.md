@@ -28,4 +28,4 @@
 ## 6. 冒烟与门禁
 
 - [ ] 6.1 真机冒烟：read 一个 SKILL.md → `/compact` → 验证 session 历史新增 `shepherd.skillRestore` entry 且 AI 下轮可见正文、TUI 无显示
-- [ ] 6.2 `npm run typecheck` + `npm test` 全绿 + 分仓精确 `git add` 提交
+- [x] 6.2 `npm run typecheck` + `npm test` 全绿 + 分仓精确 `git add` 提交
