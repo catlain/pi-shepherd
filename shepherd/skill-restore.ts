@@ -77,7 +77,7 @@ export function resetSkillTracker(): void {
 export function registerSkillTracker(pi: ExtensionAPI): void {
 	pi.on("tool_call", async (event) => {
 		recordSkillRead(
-			(event as { toolName?: string }).toolName,
+			(event as { toolName?: string }).toolName ?? "",
 			event.input as Record<string, unknown> | undefined,
 		);
 	});
