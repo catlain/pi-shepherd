@@ -1,7 +1,7 @@
 {
 	"name": "pi-shepherd",
-	"version": "0.2.0",
-	"description": "Line count guard and behavior rules extension for pi-coding-agent",
+	"version": "0.3.0",
+	"description": "Rules engine with context guardrails (line-count, compaction reminders, skill restore) for pi-coding-agent",
 	"main": "index.ts",
 	"scripts": {
 		"test": "vitest run",
