@@ -27,10 +27,10 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { execSync } from "node:child_process";
 import { matchBuiltinCondition } from "./conditions";
-import { pushRuleError } from "./ephemeral.js";
-import type { StateCondition } from "./state-tracker.js";
-import type { ToolEvent } from "./tool-event-types.js";
-import { extractResultText } from "./tool-event-types.js";
+import { pushRuleError } from "./ephemeral";
+import type { StateCondition } from "./state-tracker";
+import type { ToolEvent } from "./tool-event-types";
+import { extractResultText } from "./tool-event-types";
 
 // ── 类型定义 ──────────────────────────────────────────────────
 

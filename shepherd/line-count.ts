@@ -5,7 +5,7 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { pushWarning } from "./ephemeral.js";
+import { pushWarning } from "./ephemeral";
 
 // ── 代码文件阈值 ─────────────────────────────────────────────
 const LINE_WARN = 200;

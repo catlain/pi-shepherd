@@ -6,7 +6,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, rmSync } from "node:fs";
 import { join } from "node:path";
-import { isInWorktree, isSubagent } from "./rules.js";
+import { isInWorktree, isSubagent } from "./rules";
 
 interface UIContext {
 	notify?: (msg: string, level?: "error" | "info" | "warning") => void;

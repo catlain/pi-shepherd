@@ -13,7 +13,7 @@
 
 import { basename, dirname } from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { pushWarning } from "./ephemeral.js";
+import { pushWarning } from "./ephemeral";
 import {
 	buildRestoreDecision,
 	getActiveSkills,
@@ -24,9 +24,9 @@ import {
 	type LoadRulesOptions,
 	loadRules,
 	ruleMatches,
-} from "./rules.js";
-import type { ToolState } from "./tool-hooks.js";
-import { toolsAvailable } from "./tool-hooks.js";
+} from "./rules";
+import type { ToolState } from "./tool-hooks";
+import { toolsAvailable } from "./tool-hooks";
 
 /**
  * 注册 session_compact 事件处理。

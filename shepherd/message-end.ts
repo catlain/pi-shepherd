@@ -6,15 +6,15 @@
  */
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { pushWarning } from "./ephemeral.js";
+import { pushWarning } from "./ephemeral";
 import {
 	isSubagent,
 	type LoadRulesOptions,
 	loadRules,
 	ruleMatches,
-} from "./rules.js";
-import type { ToolState } from "./tool-hooks.js";
-import { toolsAvailable } from "./tool-hooks.js";
+} from "./rules";
+import type { ToolState } from "./tool-hooks";
+import { toolsAvailable } from "./tool-hooks";
 
 // ── 文本提取 ──────────────────────────────────────────────────
 

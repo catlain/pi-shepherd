@@ -2,7 +2,7 @@
  * Shepherd 规则校验逻辑
  */
 
-import { VALID_CONDITION_FIELDS } from "./rules.js";
+import { VALID_CONDITION_FIELDS } from "./rules";
 
 const VALID_ACTIONS = ["block", "notify", "rewrite", "steer"] as const;
 const VALID_HOOKS = [

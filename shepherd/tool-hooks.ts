@@ -4,9 +4,9 @@
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
-import { pushWarning } from "./ephemeral.js";
-import { extractResultText } from "./tool-event-types.js";
-import { checkLineCount } from "./line-count.js";
+import { pushWarning } from "./ephemeral";
+import { extractResultText } from "./tool-event-types";
+import { checkLineCount } from "./line-count";
 import {
 	getMatchTargets,
 	isRtkAvailable,
@@ -16,8 +16,8 @@ import {
 	type Rule,
 	ruleMatches,
 	toolMatches,
-} from "./rules.js";
-import type { ResettableRule, StateTracker } from "./state-tracker.js";
+} from "./rules";
+import type { ResettableRule, StateTracker } from "./state-tracker";
 
 /** 工具 hook 共享的可变状态 */
 export interface ToolState {
