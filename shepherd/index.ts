@@ -5,6 +5,18 @@
 export { hasWarnings, notifySummary, pushWarning } from "./ephemeral";
 export { registerSessionCompact } from "./compaction";
 export {
+	buildRestoreDecision,
+	DEFAULT_SKILL_RESTORE,
+	estimateSkillTokens,
+	getActiveSkills,
+	isSkillRead,
+	recordSkillRead,
+	registerSkillTracker,
+	resetSkillTracker,
+	type RestoreDecision,
+	type SkillRestoreConfig,
+} from "./skill-restore";
+export {
 	drainHints,
 	hasHints,
 	peekHints,

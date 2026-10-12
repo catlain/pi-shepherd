@@ -41,6 +41,8 @@ vi.mock("../shepherd", () => ({
 	registerToolResult: mockRegisterToolResult,
 	registerMessageEnd: vi.fn(),
 	registerSessionCompact: vi.fn(),
+	registerSkillTracker: vi.fn(),
+	DEFAULT_SKILL_RESTORE: { enabled: true, maxSkills: 4, maxTokens: 20000 },
 	resetMessageEndState: vi.fn(),
 	StateTracker: vi.fn(() => ({})),
 }));

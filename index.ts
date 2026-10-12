@@ -40,6 +40,7 @@ const RULES_DIR = __dirname;
 import { getEffectiveConfig } from "@pi-atelier/shared-utils";
 import {
 	checkWorktrees,
+	DEFAULT_SKILL_RESTORE,
 	drainHints,
 	hasGitUncommittedChanges,
 	hasGitUntracked,
@@ -50,9 +51,11 @@ import {
 	pushWarning,
 	registerMessageEnd,
 	registerSessionCompact,
+	registerSkillTracker,
 	registerToolCall,
 	registerToolResult,
 	resetMessageEndState,
+	type SkillRestoreConfig,
 	StateTracker,
 	type ToolState,
 } from "./shepherd";
@@ -78,11 +81,13 @@ export default function shepherdExtension(pi: ExtensionAPI) {
 	const { config: shepherdConfig } = getEffectiveConfig<{
 		projectRulesPattern: string;
 		maxWarnings: number;
+		skillRestore: SkillRestoreConfig;
 	}>(
 		"shepherd",
 		{
 			projectRulesPattern: "shepherd-rules-",
 			maxWarnings: 5,
+			skillRestore: DEFAULT_SKILL_RESTORE,
 		},
 		process.cwd(),
 	);
@@ -255,7 +260,15 @@ export default function shepherdExtension(pi: ExtensionAPI) {
 	registerToolCall(pi, _toolState, RULES_DIR, _rulesOpts);
 	registerToolResult(pi, _toolState, RULES_DIR, _rulesOpts);
 	registerMessageEnd(pi, _toolState, RULES_DIR, _rulesOpts);
-	registerSessionCompact(pi, _toolState, RULES_DIR, _rulesOpts);
+	registerSessionCompact(
+		pi,
+		_toolState,
+		RULES_DIR,
+		_rulesOpts,
+		shepherdConfig.skillRestore,
+	);
+	// skill-restore：tool_result 独立追踪（不进规则引擎）
+	registerSkillTracker(pi);
 
 	// ── shepherd_rules 工具：规则文件安全编辑 ───────────────────
 	registerRulesEditorTool(pi, RULES_DIR, process.cwd());

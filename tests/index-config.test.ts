@@ -20,6 +20,7 @@ const mockDrainHints = vi.fn().mockReturnValue("");
 const mockHasGitUncommittedChanges = vi.fn().mockReturnValue(false);
 const mockHasWarnings = vi.fn().mockReturnValue(false);
 const mockIsSubagent = vi.fn().mockReturnValue(false);
+const mockSkillRestore = { enabled: true, maxSkills: 4, maxTokens: 20000 };
 const mockLoadRules = vi.fn().mockReturnValue([]);
 const mockNotifySummary = vi
 	.fn()
@@ -42,6 +43,8 @@ vi.mock("../shepherd", () => ({
 	registerToolResult: mockRegisterToolResult,
 	registerMessageEnd: vi.fn(),
 	registerSessionCompact: vi.fn(),
+	registerSkillTracker: vi.fn(),
+	DEFAULT_SKILL_RESTORE: mockSkillRestore,
 	resetMessageEndState: vi.fn(),
 	StateTracker: mockStateTracker,
 }));
@@ -143,11 +146,11 @@ describe("shepherdExtension 注册 & config", () => {
 	});
 
 	it("应在注册时调用 getEffectiveConfig", () => {
-		expect(mockGetEffectiveConfig).toHaveBeenCalledWith(
-			"shepherd",
-			{ projectRulesPattern: "shepherd-rules-", maxWarnings: 5 },
-			process.cwd(),
-		);
+		expect(mockGetEffectiveConfig).toHaveBeenCalledWith("shepherd", {
+			projectRulesPattern: "shepherd-rules-",
+			maxWarnings: 5,
+			skillRestore: mockSkillRestore,
+		}, process.cwd());
 	});
 
 	// ── ephemeral:hint ──
