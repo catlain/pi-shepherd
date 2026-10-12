@@ -44,9 +44,9 @@ pi 宿主（1.1.0）压缩链路五环已在本会话逐环源码验证（`agent
 - **Type**: one-off
 - **Sediment-to**: none
 
-### D2 技能来源：tool_call 自动记录，会话内存态
+### D2 技能来源：tool_execution_start 自动记录，会话内存态
 
-记录器监听 `tool_call`：read 调用的 `input.path` 匹配 SKILL.md（谓词见 D4。实现期事实修正：宿主 ToolResultEvent 无 toolName 字段，tool_call 才有 toolName+input；代价=被 block 调用也计入，宁多勿缺）→ Set 记路径。压缩回调读 Set → 磁盘读正文 → 注入。生命周期=会话进程：跨压缩持续有效（多次压缩重复注入自愈——旧恢复 entry 下次压缩又被摘要挥发，Set 仍持有激活集，再注入即可）。备选（branchEntries 扫描：更准但需解析 entry 结构、且 handler 拿到的 branchEntries 在 session_compact 事件里不可得）与（配置清单：死板、要维护）均被否。
+记录器监听 `tool_execution_start`：read 调用的 `args.path` 匹配 SKILL.md（谓词见 D4。真机验证事实修正：宿主主调用路径的 `tool_call` 事件实测未派发到扩展层（enabled 的 tool_call 规则从未触发），而 `tool_execution_start` 是 UI 执行动画数据源、每次工具执行必发且携带 {toolName, args}；代价=失败调用也发事件，以 existsSync 预检过滤——正文从未进上下文的不入激活集）→ Set 记路径。压缩回调读 Set → 磁盘读正文 → 注入。生命周期=会话进程：跨压缩持续有效（多次压缩重复注入自愈——旧恢复 entry 下次压缩又被摘要挥发，Set 仍持有激活集，再注入即可）。**实现期陷阱（重要）：jiti 对 `"./skill-restore"` 与 `"./skill-restore.js"` 两种 import 说明符产生双 cache key = 双模块实例，模块级 Set 状态分裂（handler 写 A 实例、restore 读 B 实例 → 激活集恒空）。库内 import 说明符必须统一为无扩展名风格（barrel 已是此风格）。**备选（branchEntries 扫描：更准但需解析 entry 结构、且 handler 拿到的 branchEntries 在 session_compact 事件里不可得）与（配置清单：死板、要维护）均被否。
 
 - **Type**: one-off
 - **Sediment-to**: none

@@ -18,7 +18,7 @@ import {
 	buildRestoreDecision,
 	getActiveSkills,
 	type SkillRestoreConfig,
-} from "./skill-restore.js";
+} from "./skill-restore";
 import {
 	isSubagent,
 	type LoadRulesOptions,
@@ -111,10 +111,14 @@ function performSkillRestore(
 	config: SkillRestoreConfig | undefined,
 	notify: ((msg: string, type?: "info" | "warning") => void) | undefined,
 ): number {
-	if (!config?.enabled || isSubagent()) return 0;
+	if (!config?.enabled || isSubagent()) {
+		return 0;
+	}
 
 	const active = getActiveSkills();
-	if (active.length === 0) return 0;
+	if (active.length === 0) {
+		return 0;
+	}
 
 	const decision = buildRestoreDecision(active, config);
 

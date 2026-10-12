@@ -16,6 +16,7 @@
 
 import { readFileSync } from "node:fs";
 import { basename, dirname } from "node:path";
+import { existsSync } from "node:fs";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 
 /** skillRestore 配置（settings.json shepherd.skillRestore 子键） */
@@ -47,14 +48,16 @@ export function isSkillRead(
 /** 会话内存态激活技能集（Set 插入序，尾部 = 最近激活） */
 const _activeSkills = new Set<string>();
 
-/** 记录一次技能读取（重读时移到尾部，维持"最近激活优先"序） */
+/** 记录一次技能读取（重读时移到尾部，维持"最近激活优先"序）
+ * existsSync 预检：失败调用（如 ENOENT）不进激活集——正文从未进入
+ * 上下文，恢复无意义；同时避免 skipped 名单误点名 */
 export function recordSkillRead(
 	toolName: string,
 	input: Record<string, unknown> | undefined,
 ): void {
 	if (!isSkillRead(toolName, input)) return;
 	const p = input?.path;
-	if (typeof p !== "string") return;
+	if (typeof p !== "string" || !existsSync(p)) return;
 	_activeSkills.delete(p);
 	_activeSkills.add(p);
 }
@@ -69,16 +72,21 @@ export function resetSkillTracker(): void {
 	_activeSkills.clear();
 }
 
-/** 注册 tool_call 追踪（独立监听旁挂，不进规则引擎——设计 D3）
+/** 注册技能读取追踪（独立监听旁挂，不进规则引擎——设计 D3）
  *
- * 挂 tool_call 而非 tool_result：宿主 ToolResultEvent 无 toolName 字段
- * （只有 toolCallId/input），tool_call 才有 toolName+input。代价是被 block
- * 的调用也计入——最多多注一个正文，无害（宁多勿缺）。 */
+ * 挂 tool_execution_start：宿主主调用路径的 tool_call 事件实测未派发到
+ * 扩展层（真机验证：enabled 的 tool_call 规则从未触发），而
+ * tool_execution_start 是 UI 执行动画的数据源，每次工具执行必发，且携带
+ * {toolName, args}。代价：失败调用（如 ENOENT）也计入激活集，恢复时
+ * 读盘失败会进 skipped 名单点名——宁可多注不可漏注（宁多勿缺）。
+ * 另注：本模块状态为模块级 Set，import 说明符必须统一（"./skill-restore"）
+ * —— jiti 对 ".js"/无扩展名两种写法产生双 cache key = 双实例，状态分裂。 */
 export function registerSkillTracker(pi: ExtensionAPI): void {
-	pi.on("tool_call", async (event) => {
+	pi.on("tool_execution_start", async (event) => {
+		const ev = event as { toolName?: string; args?: Record<string, unknown> };
 		recordSkillRead(
-			(event as { toolName?: string }).toolName ?? "",
-			event.input as Record<string, unknown> | undefined,
+			ev.toolName ?? "",
+			ev.args,
 		);
 	});
 }

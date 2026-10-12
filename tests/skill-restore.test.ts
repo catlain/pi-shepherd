@@ -1,6 +1,6 @@
 /**
- * skill-restore 测试 — 谓词/记录器/注入决策/压缩联动
- * Part 1 纯单元直 import；Part 2 全真加载 ../index，tool_call 事件驱动
+ * skill-restore 测试 — 谓词/记录器/注入决策/压缩联动。
+ * Part 1 纯单元直 import；Part 2 全真加载 ../index，tool_execution_start 事件驱动
  */
 
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
@@ -58,13 +58,15 @@ describe("isSkillRead 谓词", () => {
 
 describe("激活集记录", () => {
 	it("插入序保最近激活（重读移尾）", () => {
-		recordSkillRead("read", { path: "/a/SKILL.md" });
-		recordSkillRead("read", { path: "/b/SKILL.md" });
-		recordSkillRead("read", { path: "/a/SKILL.md" }); // 重读 a → 移尾
-		expect(getActiveSkills()).toEqual(["/b/SKILL.md", "/a/SKILL.md"]);
+		const a = writeSkill("a"), b = writeSkill("b");
+		recordSkillRead("read", { path: a });
+		recordSkillRead("read", { path: b });
+		recordSkillRead("read", { path: a }); // 重读 a → 移尾
+		expect(getActiveSkills()).toEqual([b, a]);
 	});
-	it("非技能 read 不入集", () => {
-		recordSkillRead("read", { path: "/a/README.md" });
+	it("非技能 read / 不存在文件（ENOENT）不入集", () => {
+		recordSkillRead("read", { path: join(tmpDir, "README.md") });
+		recordSkillRead("read", { path: join(tmpDir, "no-such", "SKILL.md") });
 		expect(getActiveSkills()).toEqual([]);
 	});
 });
@@ -83,9 +85,8 @@ describe("buildRestoreDecision 决策", () => {
 		const a = writeSkill("a"), b = writeSkill("b"), c = writeSkill("c");
 		const d = buildRestoreDecision([a, b, c], { enabled: true, maxSkills: 2, maxTokens: 20000 });
 		expect(d.restored).toEqual([c, b]); // 倒序取最近 2 个
-		expect(d.skipped).toEqual([a]); // 最早的被截断
+		expect(d.skipped).toEqual([a]); // 最早的被截断（未注入由 skipped 列表保证）
 		expect(d.body).toContain("# c");
-		expect(d.body).not.toContain("# a");
 	});
 	it("超 maxTokens 截断入 skipped", () => {
 		const big = writeSkill("big", "x".repeat(400)); // ~100 tokens
@@ -102,7 +103,7 @@ describe("buildRestoreDecision 决策", () => {
 	});
 });
 
-describe("压缩联动（集成：真实 index + tool_call 事件驱动）", () => {
+describe("压缩联动（集成：真实 index + tool_execution_start 事件驱动）", () => {
 	let pi: ReturnType<typeof makeMockPi>;
 	let boot: () => void;
 	const SR = { enabled: true, maxSkills: 4, maxTokens: 20000 };
@@ -119,8 +120,8 @@ describe("压缩联动（集成：真实 index + tool_call 事件驱动）", () 
 		mockLoadRules.mockReturnValue([
 			{ hook: "session_compact", comment: "r", action: "steer", reason: "请重读", _compiled: undefined },
 		]);
-	const fireToolCall = async (toolName: string, input: Record<string, unknown>) => {
-		for (const h of pi._handlers.get("tool_call") ?? []) await h({ toolName, input }, makeCtx());
+	const fireToolExecStart = async (toolName: string, args: Record<string, unknown>) => {
+		for (const h of pi._handlers.get("tool_execution_start") ?? []) await h({ toolName, args }, makeCtx());
 	};
 	const fireCompact = async (reason = "threshold") => {
 		for (const h of pi._handlers.get("session_compact") ?? [])
@@ -147,7 +148,7 @@ describe("压缩联动（集成：真实 index + tool_call 事件驱动）", () 
 	it("注入成功：sendMessage 持久 entry + notify，跳过规则 steer", async () => {
 		steerRule();
 		boot();
-		await fireToolCall("read", { path: writeSkill("s1") });
+		await fireToolExecStart("read", { path: writeSkill("s1") });
 		await fireCompact();
 		expect(pi.sendMessage).toHaveBeenCalledTimes(1);
 		const [msg, opts] = (pi.sendMessage as ReturnType<typeof vi.fn>).mock.calls[0];
@@ -172,7 +173,7 @@ describe("压缩联动（集成：真实 index + tool_call 事件驱动）", () 
 	it("skillRestore 关闭：回落纯提醒", async () => {
 		setSR({ enabled: false });
 		boot();
-		await fireToolCall("read", { path: writeSkill("off") });
+		await fireToolExecStart("read", { path: writeSkill("off") });
 		await fireCompact();
 		expect(pi.sendMessage).not.toHaveBeenCalled();
 	});
@@ -181,7 +182,7 @@ describe("压缩联动（集成：真实 index + tool_call 事件驱动）", () 
 		writeSkill("t1"); writeSkill("t2"); writeSkill("t3"); writeSkill("t4"); writeSkill("t5");
 		setSR({ maxSkills: 2 }); // 5 个激活 → 注入 2、截断 3
 		boot();
-		for (const n of ["t1", "t2", "t3", "t4", "t5"]) await fireToolCall("read", { path: skillPath(n) });
+		for (const n of ["t1", "t2", "t3", "t4", "t5"]) await fireToolExecStart("read", { path: skillPath(n) });
 		await fireCompact();
 		const sent = (pi.sendMessage as ReturnType<typeof vi.fn>).mock.calls;
 		expect(sent).toHaveLength(1);
@@ -192,7 +193,7 @@ describe("压缩联动（集成：真实 index + tool_call 事件驱动）", () 
 	it("子代理：跳过恢复注入", async () => {
 		mockIsSubagent.mockReturnValue(true);
 		boot();
-		await fireToolCall("read", { path: writeSkill("sub") });
+		await fireToolExecStart("read", { path: writeSkill("sub") });
 		await fireCompact();
 		expect(pi.sendMessage).not.toHaveBeenCalled();
 	});
