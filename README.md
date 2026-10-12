@@ -159,6 +159,12 @@ shepherd_rules(action: "update", index: 2, changes: { enabled: false })
 shepherd_rules(action: "delete", index: 3)
 ```
 
+### update 分层校验与生效说明
+
+`update` 采用分层校验：`changes` 中出现的字段严格校验（非法即拒绝）；合并后规则里的历史遗留问题降级为警告（不阻塞写入），警告文本附修复指引。
+
+**注意生效时机**：`shepherd_rules` 修改的是磁盘上的规则文件，运行中的匹配引擎仍用启动时加载的副本——源码或规则更新后需重载扩展（重启会话或触发扩展重载）才对后续工具调用生效。可用一条含 `command` field 的 update 冒烟验证新逻辑已生效。
+
 ## 实战示例
 
 ### 1. 编辑 Python 后自动跑测试

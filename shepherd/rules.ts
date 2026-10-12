@@ -34,8 +34,23 @@ import { extractResultText } from "./tool-event-types.js";
 
 // ── 类型定义 ──────────────────────────────────────────────────
 
+/**
+ * conditions[].field 合法值单一来源。
+ * 类型（Condition.field）、运行时校验（rules-validate.ts）、工具描述文案均从此常量派生，
+ * 禁止在任何地方手写第二份清单——command/session_end 两次分叉与 reason 手动双改的共同根因治理。
+ */
+export const VALID_CONDITION_FIELDS = [
+	"path",
+	"text",
+	"glob",
+	"result",
+	"command",
+	"reason",
+] as const;
+export type ConditionField = (typeof VALID_CONDITION_FIELDS)[number];
+
 export interface Condition {
-	field?: "path" | "text" | "glob" | "result" | "command" | "reason";
+	field?: ConditionField;
 	pattern?: string;
 	flags?: string;
 	/** true 时取反：正则不匹配才算通过 */

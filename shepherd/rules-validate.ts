@@ -2,6 +2,8 @@
  * Shepherd 规则校验逻辑
  */
 
+import { VALID_CONDITION_FIELDS } from "./rules.js";
+
 const VALID_ACTIONS = ["block", "notify", "rewrite", "steer"] as const;
 const VALID_HOOKS = [
 	"tool_call",
@@ -17,8 +19,15 @@ export interface ValidationResult {
 	errors: string[];
 }
 
-/** 校验单条规则 */
-export function validateRule(rule: Record<string, unknown>): ValidationResult {
+/**
+ * 校验单条规则。
+ * options.partial=true 时为增量模式（update 的 changes 严格校验）：
+ * 只校验出现的字段合法性，跳过 comment/reason 必填检查。
+ */
+export function validateRule(
+	rule: Record<string, unknown>,
+	options?: { partial?: boolean },
+): ValidationResult {
 	const errors: string[] = [];
 
 	// 归一化：将 disabled 转为 enabled
@@ -29,15 +38,17 @@ export function validateRule(rule: Record<string, unknown>): ValidationResult {
 		if (v === false && rule.enabled === undefined) rule.enabled = true;
 	}
 
-	if (
-		!rule.comment ||
-		typeof rule.comment !== "string" ||
-		!rule.comment.trim()
-	) {
-		errors.push("缺少必填字段: comment");
-	}
-	if (!rule.reason || typeof rule.reason !== "string" || !rule.reason.trim()) {
-		errors.push("缺少必填字段: reason");
+	if (!options?.partial) {
+		if (
+			!rule.comment ||
+			typeof rule.comment !== "string" ||
+			!rule.comment.trim()
+		) {
+			errors.push("缺少必填字段: comment");
+		}
+		if (!rule.reason || typeof rule.reason !== "string" || !rule.reason.trim()) {
+			errors.push("缺少必填字段: reason");
+		}
 	}
 	if (rule.action && !VALID_ACTIONS.includes(rule.action as any)) {
 		let msg = `action 值 "${rule.action}" 不合法，可选: ${VALID_ACTIONS.join(", ")}`;
@@ -68,10 +79,12 @@ export function validateRule(rule: Record<string, unknown>): ValidationResult {
 	if (Array.isArray(rule.conditions)) {
 		for (let i = 0; i < rule.conditions.length; i++) {
 			const cond = rule.conditions[i] as Record<string, unknown>;
-			const validFields = ["path", "text", "glob", "result", "command", "reason"];
-			if (cond.field && !validFields.includes(cond.field as string)) {
+			if (
+				cond.field &&
+				!(VALID_CONDITION_FIELDS as readonly string[]).includes(cond.field as string)
+			) {
 				errors.push(
-					`conditions[${i}].field 值无效: "${cond.field}"，合法值: ${validFields.join(", ")}`,
+					`conditions[${i}].field 值无效: "${cond.field}"，合法值: ${VALID_CONDITION_FIELDS.join(", ")}`,
 				);
 			}
 			if (cond.pattern) {

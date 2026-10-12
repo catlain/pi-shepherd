@@ -222,12 +222,22 @@ export function updateRule(
 			success: false,
 			error: `编号越界: ${index}（共 ${rules.length} 条）`,
 		};
+	// D2 分层校验：changes 中出现的字段严格校验（非法即拒绝）；
+	// 合并后的存量字段问题降级为警告（不阻塞写入），附带修复指引。
+	const changesValidation = validateRule(changes, { partial: true });
+	if (!changesValidation.valid)
+		return {
+			success: false,
+			error: `changes 非法: ${changesValidation.errors.join("; ")}`,
+		};
 	const merged = { ...rules[index], ...changes };
-	const validation = validateRule(merged);
-	if (!validation.valid)
-		return { success: false, error: validation.errors.join("; ") };
+	const mergedValidation = validateRule(merged);
+	const warning = mergedValidation.valid
+		? undefined
+		: `存量字段警告（不阻塞写入）: ${mergedValidation.errors.join("; ")}。建议 update(index, changes={...}) 修复对应字段`;
 	rules[index] = merged;
-	return safeWrite(filePath, rules);
+	const writeResult = safeWrite(filePath, rules);
+	return writeResult.success ? { ...writeResult, warning } : writeResult;
 }
 
 export function deleteRule(filePath: string, index: number): WriteResult {

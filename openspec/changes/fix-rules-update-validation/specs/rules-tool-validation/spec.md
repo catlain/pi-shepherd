@@ -4,7 +4,7 @@
 
 ### Requirement: 条件 field 合法值单一来源
 
-校验器与匹配引擎的 `conditions[].field` 合法值列表 SHALL 由同一导出常量提供，且 SHALL 包含 `command`。
+校验器与匹配引擎的 `conditions[].field` 合法值列表 SHALL 由同一导出常量提供，`Condition.field` 类型 SHALL 从该常量派生（新增合法值时类型/校验/文案单点联动），合法值 SHALL 包含 `command` 与 `reason`。
 
 #### Scenario: 存量 command field 通过校验
 
