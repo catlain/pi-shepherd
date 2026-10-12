@@ -2,7 +2,7 @@
 
 ### Requirement: 技能激活记录
 
-shepherd SHALL 监听 `tool_call` 事件，以纯函数谓词（toolName 为 `read` 且路径以 `SKILL.md` 结尾，大小写不敏感）识别技能读取，将命中路径记入会话进程内存态激活技能集；SHALL NOT 持久化激活集，SHALL NOT 对非 read 工具或非 SKILL.md 路径做任何记录。
+shepherd SHALL 监听 `tool_execution_start` 事件（真机验证：宿主主调用路径的 `tool_call` 事件不派发到扩展层），以纯函数谓词（toolName 为 `read` 且路径以 `SKILL.md` 结尾，大小写不敏感）识别技能读取，经 existsSync 预检后（失败调用如 ENOENT 不入集）将命中路径记入会话进程内存态激活技能集；SHALL NOT 持久化激活集，SHALL NOT 对非 read 工具、非 SKILL.md 路径或不存在的文件做任何记录。
 
 #### Scenario: read 技能文件记入激活集
 - **WHEN** AI 调用 read 工具读取 `C:\...\skills\code-graph\SKILL.md`
@@ -15,6 +15,10 @@ shepherd SHALL 监听 `tool_call` 事件，以纯函数谓词（toolName 为 `re
 #### Scenario: 非 read 工具不记录
 - **WHEN** AI 调用 grep / ls / write 等其他工具且参数中出现 SKILL.md 字样
 - **THEN** 不记入激活集
+
+#### Scenario: 失败调用不入集
+- **WHEN** AI 调用 read 读取不存在的 SKILL.md 路径（ENOENT，正文从未进入上下文）
+- **THEN** 不记入激活集（恢复无意义，且避免未恢复名单误点名）
 
 ### Requirement: 压缩后持久恢复注入
 
