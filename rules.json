@@ -455,7 +455,7 @@
 		"conditions": [
 			{
 				"field": "command",
-				"pattern": "(rules\\.json[\\s\\S]*(open\\(|json\\.load|json\\.dump|write|sed|awk|jq|cat))|((open\\(|json\\.load|json\\.dump|write|sed|awk|jq|cat)[\\s\\S]*rules\\.json)"
+				"pattern": "(rules\\.json[\\s\\S]*(open\\(|json\\.load|json\\.dump|\\bwrite\\b|sed|awk|jq|\\bcat\\b))|((open\\(|json\\.load|json\\.dump|\\bwrite\\b|sed|awk|jq|\\bcat\\b)[\\s\\S]*rules\\.json)"
 			}
 		],
 		"enabled": true,

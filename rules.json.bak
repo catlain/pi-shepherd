@@ -484,5 +484,12 @@
 		"flags": "",
 		"pattern": "DataStore\\s*\\(\\s*\\)",
 		"reason": "检测到内联 DataStore() 默认（RW）构造做纯查询——历史撞锁事故高发模式（会话 a89c 连续撞锁 2 次）。纯查询请改用锁感知助手：uv run python quant-base/scripts/ro_query.py --sql \"...\"（RO+限时重试+持锁 PID 诊断+查完即关，支持 --db 指定 live.duckdb）。若确需 RW 写操作或 DataStore.reader() 网络服务场景，继续即可。"
+	},
+	{
+		"action": "steer",
+		"comment": "compact-skill-reminder",
+		"enabled": true,
+		"hook": "session_compact",
+		"reason": "上下文刚被压缩：此前 read 过的 SKILL.md 技能正文已随历史摘要化挥发。system prompt 里的技能索引（名字/描述/路径）仍在——若当前任务涉及某技能，请重新 read 其 SKILL.md 获取操作指引。"
 	}
 ]
