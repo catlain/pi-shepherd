@@ -14,7 +14,7 @@ describe("validateRule — session_compact 与 reason 字段", () => {
 			hook: "session_compact",
 			comment: "compact-skill-reminder",
 			action: "steer",
-			reason: "技能正文已挥发",
+			reason: "上下文文档正文已挥发",
 			enabled: true,
 			conditions: [{ field: "reason", pattern: "threshold|overflow" }],
 		});

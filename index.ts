@@ -40,7 +40,7 @@ const RULES_DIR = __dirname;
 import { getEffectiveConfig } from "@pi-atelier/shared-utils";
 import {
 	checkWorktrees,
-	DEFAULT_SKILL_RESTORE,
+	DEFAULT_CONTEXT_RESTORE,
 	drainHints,
 	hasGitUncommittedChanges,
 	hasGitUntracked,
@@ -51,11 +51,12 @@ import {
 	pushWarning,
 	registerMessageEnd,
 	registerSessionCompact,
-	registerSkillTracker,
+	registerContextTracker,
+	registerCompactConfigCommand,
 	registerToolCall,
 	registerToolResult,
 	resetMessageEndState,
-	type SkillRestoreConfig,
+	type ContextRestoreConfig,
 	StateTracker,
 	type ToolState,
 } from "./shepherd";
@@ -81,13 +82,13 @@ export default function shepherdExtension(pi: ExtensionAPI) {
 	const { config: shepherdConfig } = getEffectiveConfig<{
 		projectRulesPattern: string;
 		maxWarnings: number;
-		skillRestore: SkillRestoreConfig;
+		contextRestore: ContextRestoreConfig;
 	}>(
 		"shepherd",
 		{
 			projectRulesPattern: "shepherd-rules-",
 			maxWarnings: 5,
-			skillRestore: DEFAULT_SKILL_RESTORE,
+			contextRestore: DEFAULT_CONTEXT_RESTORE,
 		},
 		process.cwd(),
 	);
@@ -265,10 +266,12 @@ export default function shepherdExtension(pi: ExtensionAPI) {
 		_toolState,
 		RULES_DIR,
 		_rulesOpts,
-		shepherdConfig.skillRestore,
+		shepherdConfig.contextRestore,
 	);
-	// skill-restore：tool_result 独立追踪（不进规则引擎）
-	registerSkillTracker(pi);
+	// context-restore：tool_execution_start 独立追踪（不进规则引擎）
+	registerContextTracker(pi);
+	// /compact-config：contextRestore 配置命令（对照 /distill-config 生态模式）
+	registerCompactConfigCommand(pi);
 
 	// ── shepherd_rules 工具：规则文件安全编辑 ───────────────────
 	registerRulesEditorTool(pi, RULES_DIR, process.cwd());

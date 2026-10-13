@@ -33,7 +33,7 @@ function makeCompactRules(
 		hook: "session_compact" as const,
 		comment: r.comment ?? `compact-${i}`,
 		action: (r.action ?? "steer") as "steer" | "notify",
-		reason: r.reason ?? "技能正文已挥发",
+		reason: r.reason ?? "上下文文档正文已挥发",
 		enabled: r.enabled,
 		subagent: r.subagent,
 		pattern: r.pattern,

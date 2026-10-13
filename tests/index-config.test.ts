@@ -20,7 +20,7 @@ const mockDrainHints = vi.fn().mockReturnValue("");
 const mockHasGitUncommittedChanges = vi.fn().mockReturnValue(false);
 const mockHasWarnings = vi.fn().mockReturnValue(false);
 const mockIsSubagent = vi.fn().mockReturnValue(false);
-const mockSkillRestore = { enabled: true, maxSkills: 4, maxTokens: 20000 };
+const mockContextRestore = { enabled: true, maxTokens: 40000 };
 const mockLoadRules = vi.fn().mockReturnValue([]);
 const mockNotifySummary = vi
 	.fn()
@@ -43,8 +43,9 @@ vi.mock("../shepherd", () => ({
 	registerToolResult: mockRegisterToolResult,
 	registerMessageEnd: vi.fn(),
 	registerSessionCompact: vi.fn(),
-	registerSkillTracker: vi.fn(),
-	DEFAULT_SKILL_RESTORE: mockSkillRestore,
+	registerContextTracker: vi.fn(),
+	registerCompactConfigCommand: vi.fn(),
+	DEFAULT_CONTEXT_RESTORE: mockContextRestore,
 	resetMessageEndState: vi.fn(),
 	StateTracker: mockStateTracker,
 }));
@@ -149,7 +150,7 @@ describe("shepherdExtension 注册 & config", () => {
 		expect(mockGetEffectiveConfig).toHaveBeenCalledWith("shepherd", {
 			projectRulesPattern: "shepherd-rules-",
 			maxWarnings: 5,
-			skillRestore: mockSkillRestore,
+			contextRestore: mockContextRestore,
 		}, process.cwd());
 	});
 

@@ -2,7 +2,7 @@
  * session_compact hook 处理逻辑
  *
  * pi 会话压缩完成后（manual /compact、threshold 阈值、overflow 溢出恢复），
- * 按 `hook: "session_compact"` 规则注入提醒（典型用途：技能正文已随压缩
+ * 按 `hook: "session_compact"` 规则注入提醒（典型用途：上下文文档正文已随压缩
  * 挥发，提示 AI 需要时重读 SKILL.md）。
  *
  * 注入走 ephemeral 管线（pushWarning → 缓冲区 → before_provider_request
@@ -16,9 +16,9 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { pushWarning } from "./ephemeral";
 import {
 	buildRestoreDecision,
-	getActiveSkills,
-	type SkillRestoreConfig,
-} from "./skill-restore";
+	getActiveDocs,
+	type ContextRestoreConfig,
+} from "./context-restore";
 import {
 	isSubagent,
 	type LoadRulesOptions,
@@ -34,7 +34,7 @@ import { toolsAvailable } from "./tool-hooks";
  * 触发语义：一次压缩事件 = 一次真实挥发 = 一次提醒（不做每会话一次的
  * _fired 去重——与 message_end 的"每轮一次"语义刻意不同）。
  *
- * skill-restore 联动（add-skill-restore-injection）：压缩后先把激活过的
+ * context-restore 联动（extend-context-restore）：压缩后先把激活过的
  * SKILL.md 正文持久注入（sendMessage no-trigger 分支），注入成功时提醒
  * 降级为 ui.notify；空集/关闭/失败时维持原提醒；截断名单追加点名。
  */
@@ -43,15 +43,14 @@ export function registerSessionCompact(
 	state: ToolState,
 	rulesDir?: string,
 	rulesOptions?: LoadRulesOptions,
-	skillRestore?: SkillRestoreConfig,
+	contextRestore?: ContextRestoreConfig,
 ): void {
 	pi.on("session_compact", async (event, ctx) => {
 		// ── 恢复注入（先于提醒，联动决策依赖注入结果）──
-		const restoredSkills = performSkillRestore(
+		const restoredDocs = performContextRestore(
 			pi,
 			event.reason,
-			skillRestore,
-			ctx.ui?.notify?.bind(ctx.ui),
+			contextRestore,			ctx.ui?.notify?.bind(ctx.ui),
 		);
 
 		const rules = loadRules(rulesDir, rulesOptions).filter(
@@ -89,7 +88,7 @@ export function registerSessionCompact(
 			}
 
 			// 恢复注入成功 → 跳过 steer 文本（正文已恢复，无需引导重读）
-			if (restoredSkills > 0) continue;
+			if (restoredDocs > 0) continue;
 
 			// steer/notify 统一走 pushWarning（即焚注入）
 			pushWarning(rule.reason, rule.comment);
@@ -100,22 +99,22 @@ export function registerSessionCompact(
 /**
  * 恢复注入执行体：返回成功注入的技能数。
  *
- * - skillRestore 未启用 / 子代理 → 0（维持原提醒行为）
+ * - contextRestore 未启用 / 子代理 → 0（维持原提醒行为）
  * - 激活集空 → 0（零注入，仅走既有提醒管线）
  * - 注入成功 ≥1 → sendMessage 持久条目（no-trigger 分支）+ ui.notify 轻提示
  * - skipped（截断/读盘失败）→ 无条件 pushWarning 点名（不管注入是否成功）
  */
-function performSkillRestore(
+function performContextRestore(
 	pi: ExtensionAPI,
 	reason: string,
-	config: SkillRestoreConfig | undefined,
+	config: ContextRestoreConfig | undefined,
 	notify: ((msg: string, type?: "info" | "warning") => void) | undefined,
 ): number {
 	if (!config?.enabled || isSubagent()) {
 		return 0;
 	}
 
-	const active = getActiveSkills();
+	const active = getActiveDocs();
 	if (active.length === 0) {
 		return 0;
 	}
@@ -125,10 +124,10 @@ function performSkillRestore(
 	// 截断/读盘失败名单：无条件点名（提醒兜底，独立于注入成败）
 	if (decision.skipped.length > 0) {
 		pushWarning(
-			`压缩后部分技能正文未能自动恢复，需要时请重新 read：\n${decision.skipped
+			`压缩后部分上下文文档正文未能自动恢复，需要时请重新 read：\n${decision.skipped
 				.map((p) => `- ${p}`)
 				.join("\n")}`,
-			"skill-restore-skipped",
+			"context-restore-skipped",
 		);
 	}
 
@@ -137,8 +136,8 @@ function performSkillRestore(
 	try {
 		pi.sendMessage(
 			{
-				customType: "shepherd.skillRestore",
-				content: `⚠️ 以下技能正文已随上下文压缩挥发，现恢复如下（无需重新 read）：\n\n${decision.body}`,
+				customType: "shepherd.contextRestore",
+				content: `⚠️ 以下上下文文档正文已随上下文压缩挥发，现恢复如下（无需重新 read）：\n\n${decision.body}`,
 				display: false,
 				details: {
 					restored: decision.restored,
@@ -158,7 +157,7 @@ function performSkillRestore(
 	}
 
 	notify?.(
-		`✅ shepherd: 已恢复技能正文 (${decision.restored
+		`✅ shepherd: 已恢复上下文文档正文 (${decision.restored
 			.map((p) => basename(dirname(p)))
 			.join(", ")})`,
 		"info",

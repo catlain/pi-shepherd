@@ -55,6 +55,7 @@ vi.mock("../../shepherd/rules-tool", () => ({
 
 export function makeMockPi() {
 	const handlers = new Map<string, Function[]>();
+	const commands = new Map<string, { handler: Function; description?: string }>();
 	return {
 		on: vi.fn((event: string, handler: Function) => {
 			if (!handlers.has(event)) handlers.set(event, []);
@@ -63,7 +64,11 @@ export function makeMockPi() {
 		events: { on: vi.fn(), emit: vi.fn() },
 		sendMessage: vi.fn(),
 		getActiveTools: vi.fn().mockReturnValue([]),
+		registerCommand: vi.fn((name: string, def: { handler: Function; description?: string }) => {
+			commands.set(name, def);
+		}),
 		_handlers: handlers,
+		_commands: commands,
 	};
 }
 

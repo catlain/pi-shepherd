@@ -6,16 +6,20 @@ export { hasWarnings, notifySummary, pushWarning } from "./ephemeral";
 export { registerSessionCompact } from "./compaction";
 export {
 	buildRestoreDecision,
-	DEFAULT_SKILL_RESTORE,
-	estimateSkillTokens,
-	getActiveSkills,
-	isSkillRead,
-	recordSkillRead,
-	registerSkillTracker,
-	resetSkillTracker,
+	DEFAULT_CONTEXT_RESTORE,
+	estimateDocTokens,
+	getActiveDocs,
+	isContextDocRead,
+	recordContextRead,
+	registerContextTracker,
+	resetContextTracker,
 	type RestoreDecision,
-	type SkillRestoreConfig,
-} from "./skill-restore";
+	type ContextRestoreConfig,
+} from "./context-restore";
+export {
+	registerCompactConfigCommand,
+	setContextRestoreConfig,
+} from "./commands";
 export {
 	drainHints,
 	hasHints,
