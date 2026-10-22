@@ -3,22 +3,21 @@
  *
  * 压缩把消息历史摘要化后，read 过的上下文文档正文随之挥发——SKILL.md
  * 还有 system prompt 索引兜底，openspec 文档（proposal/design/tasks/spec）
- * 挥发后连索引都没有。本模块承担记录与决策两职：
- *   1. 记录器：监听 tool_execution_start，read 命中谓词（SKILL.md ∪
- *      openspec/ 下 .md）的路径记入会话内存态激活集
- *   2. 注入决策：读激活集 → 磁盘读正文 → maxTokens 预算截断
- *      （最近激活优先）→ 产出注入正文与未恢复名单
+ * 挥发后连索引都没有。本模块承担激活源适配与决策两职：
+ *   1. 激活源：session_compact 事件 payload 的
+ *      compactionEntry.details.readFiles（宿主语义 = 上次压缩 readFiles
+ *      继承 ∪ 本次挥发窗口内全部 read 调用）→ 谓词过滤为候选清单
+ *   2. 注入决策：读盘取正文 → maxTokens 预算截断（最近激活优先）→
+ *      产出注入正文与未恢复名单
+ *
+ * 无自有状态：不挂 tool_execution_start、不做实时记录——resume / reload
+ * / fork 等进程边界天然免疫（jsonl 连续统计，宿主维护激活真源）。
  *
  * 注入调用（sendMessage）与提醒联动在 compaction.ts 的 session_compact
- * 回调里完成（职责分离：记录器只写态，注入决策读态）。
- *
- * 生命周期=会话进程：激活集不持久化，重启丢记录（已知限制，由压缩
- * 提醒规则兜底）。
+ * 回调里完成（职责分离：本模块纯函数，副作用集中在回调）。
  */
 
-import { existsSync, readFileSync } from "node:fs";
-import { basename, dirname } from "node:path";
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { readFileSync } from "node:fs";
 
 /** contextRestore 配置（settings.json shepherd.contextRestore 子键）
  * 仅 token 预算约束（不限文档个数——超预算按最近激活优先截断） */
@@ -33,69 +32,35 @@ export const DEFAULT_CONTEXT_RESTORE: ContextRestoreConfig = {
 };
 
 /**
- * 纯函数谓词：read 工具且路径满足其一——
+ * 纯函数谓词：路径满足其一——
  *   a) 以 SKILL.md 结尾（大小写不敏感）
  *   b) 规范化路径含 openspec/ 段且以 .md 结尾
  * 不做磁盘访问，O(1) 判断。
  */
-export function isContextDocRead(
-	toolName: string,
-	input: Record<string, unknown> | undefined,
-): boolean {
-	if (toolName !== "read") return false;
-	const p = input?.path;
-	if (typeof p !== "string") return false;
-	const norm = p.replace(/\\/g, "/");
+export function isContextDocPath(path: string): boolean {
+	const norm = path.replace(/\\/g, "/");
 	const lower = norm.toLowerCase();
 	if (lower.endsWith("skill.md")) return true;
 	const inOpenspec = norm.includes("/openspec/") || norm.startsWith("openspec/");
 	return inOpenspec && lower.endsWith(".md");
 }
 
-/** 会话内存态激活文档集（Set 插入序，尾部 = 最近激活；技能与文档共池单序） */
-const _activeDocs = new Set<string>();
-
-/** 记录一次上下文文档读取（重读时移到尾部，维持"最近激活优先"序）
- * existsSync 预检：失败调用（如 ENOENT）不进激活集——正文从未进入
- * 上下文，恢复无意义；同时避免 skipped 名单误点名 */
-export function recordContextRead(
-	toolName: string,
-	input: Record<string, unknown> | undefined,
-): void {
-	if (!isContextDocRead(toolName, input)) return;
-	const p = input?.path;
-	if (typeof p !== "string" || !existsSync(p)) return;
-	_activeDocs.delete(p);
-	_activeDocs.add(p);
-}
-
-/** 激活集快照（数组序 = 激活时序，尾部最近） */
-export function getActiveDocs(): string[] {
-	return [..._activeDocs];
-}
-
-/** 重置激活集（测试用） */
-export function resetContextTracker(): void {
-	_activeDocs.clear();
-}
-
-/** 注册上下文文档追踪（独立监听旁挂，不进规则引擎——ADR-0002）
- *
- * 挂 tool_execution_start：宿主主调用路径的 tool_call 事件实测未派发到
- * 扩展层（真机验证：enabled 的 tool_call 规则从未触发），而
- * tool_execution_start 是 UI 执行动画的数据源，每次工具执行必发，且携带
- * {toolName, args}。代价：失败调用（如 ENOENT）也发事件，由 existsSync
- * 预检过滤。
- * 另注：本模块状态为模块级 Set，import 说明符必须统一（"./context-restore"）
- * —— jiti 对 ".js"/无扩展名两种写法产生双 cache key = 双实例，状态分裂。 */
-export function registerContextTracker(pi: ExtensionAPI): void {
-	pi.on("tool_execution_start", async (event) => {
-		const ev = event as { toolName?: string; args?: Record<string, unknown> };
-		recordContextRead(
-			ev.toolName ?? "",
-			ev.args,
-		);
-	});
+/**
+ * 激活源适配：readFiles（宿主 compactionEntry.details.readFiles）→
+ * 受保护文档候选清单。
+ * 数组序即激活序（宿主：继承段在前、本次窗口 read 按消息序追加，尾部
+ * = 最近激活）；Set 保序去重（防御继承与窗口重叠）。
+ * 非数组/缺失输入 → 空清单（空集路径，调用方负责观测提示）。
+ */
+export function filterContextDocs(readFiles: unknown): string[] {
+	if (!Array.isArray(readFiles)) return [];
+	const seen = new Set<string>();
+	for (const p of readFiles) {
+		if (typeof p !== "string") continue;
+		if (!isContextDocPath(p)) continue;
+		seen.add(p);
+	}
+	return [...seen];
 }
 
 /** 注入决策产物 */

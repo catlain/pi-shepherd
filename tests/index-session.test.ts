@@ -33,7 +33,6 @@ vi.mock("../shepherd", () => ({
 	registerToolResult: vi.fn(),
 	registerMessageEnd: vi.fn(),
 	registerSessionCompact: vi.fn(),
-	registerContextTracker: vi.fn(),
 	registerCompactConfigCommand: vi.fn(),
 	DEFAULT_CONTEXT_RESTORE: { enabled: true, maxTokens: 40000 },
 	resetMessageEndState: vi.fn(),

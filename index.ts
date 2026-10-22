@@ -51,7 +51,6 @@ import {
 	pushWarning,
 	registerMessageEnd,
 	registerSessionCompact,
-	registerContextTracker,
 	registerCompactConfigCommand,
 	registerToolCall,
 	registerToolResult,
@@ -268,8 +267,6 @@ export default function shepherdExtension(pi: ExtensionAPI) {
 		_rulesOpts,
 		shepherdConfig.contextRestore,
 	);
-	// context-restore：tool_execution_start 独立追踪（不进规则引擎）
-	registerContextTracker(pi);
 	// /compact-config：contextRestore 配置命令（对照 /distill-config 生态模式）
 	registerCompactConfigCommand(pi);
 

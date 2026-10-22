@@ -11,12 +11,13 @@
  * manual/threshold→用户下一条消息）。
  */
 
-import { basename, dirname } from "node:path";
+import { basename } from "node:path";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { pushWarning } from "./ephemeral";
+import { logRestore } from "./restore-log";
 import {
 	buildRestoreDecision,
-	getActiveDocs,
+	filterContextDocs,
 	type ContextRestoreConfig,
 } from "./context-restore";
 import {
@@ -45,12 +46,22 @@ export function registerSessionCompact(
 	rulesOptions?: LoadRulesOptions,
 	contextRestore?: ContextRestoreConfig,
 ): void {
-	pi.on("session_compact", async (event, ctx) => {
+	pi.on("session_compact", async (event) => {
+		// 审计：handler 入口行——区分「事件未到达」与「分支提前返回」
+		// （无此行时旧代码进程/未注册 handler 无法与空集静默区分）
+		logRestore(`entry reason=${(event as { reason?: string }).reason ?? "?"}`);
 		// ── 恢复注入（先于提醒，联动决策依赖注入结果）──
+		// 激活源：宿主 compactionEntry.details.readFiles（= 上次压缩继承 ∪
+		// 本次挥发窗口的 read，跨 resume/fork 连续）——无自有状态
+		const ev = event as {
+			compactionEntry?: { details?: { readFiles?: unknown } };
+		};
+		const readFiles = ev.compactionEntry?.details?.readFiles;
 		const restoredDocs = performContextRestore(
 			pi,
 			event.reason,
-			contextRestore,			ctx.ui?.notify?.bind(ctx.ui),
+			contextRestore,
+			readFiles,
 		);
 
 		const rules = loadRules(rulesDir, rulesOptions).filter(
@@ -100,22 +111,26 @@ export function registerSessionCompact(
  * 恢复注入执行体：返回成功注入的技能数。
  *
  * - contextRestore 未启用 / 子代理 → 0（维持原提醒行为）
- * - 激活集空 → 0（零注入，仅走既有提醒管线）
- * - 注入成功 ≥1 → sendMessage 持久条目（no-trigger 分支）+ ui.notify 轻提示
- * - skipped（截断/读盘失败）→ 无条件 pushWarning 点名（不管注入是否成功）
+ * - 候选清单（readFiles 谓词过滤后）空 → 0 + 日志 empty 行（区分“没得
+ *   恢复”与“恢复失败”）
+ * - 注入成功 ≥1 → sendMessage 持久条目（no-trigger 分支）+ 日志 ok 行
+ * - skipped（截断/读盘失败）→ 无条件 pushWarning 点名 + 日志 skipped 行
  */
 function performContextRestore(
 	pi: ExtensionAPI,
 	reason: string,
 	config: ContextRestoreConfig | undefined,
-	notify: ((msg: string, type?: "info" | "warning") => void) | undefined,
+	readFiles: unknown,
 ): number {
 	if (!config?.enabled || isSubagent()) {
 		return 0;
 	}
 
-	const active = getActiveDocs();
+	const active = filterContextDocs(readFiles);
 	if (active.length === 0) {
+		logRestore(
+			`empty reason=${reason} readFiles=${Array.isArray(readFiles) ? readFiles.length : "?"}`,
+		);
 		return 0;
 	}
 
@@ -123,6 +138,7 @@ function performContextRestore(
 
 	// 截断/读盘失败名单：无条件点名（提醒兜底，独立于注入成败）
 	if (decision.skipped.length > 0) {
+		logRestore(`skipped reason=${reason} names=${decision.skipped.join(",")}`);
 		pushWarning(
 			`压缩后部分上下文文档正文未能自动恢复，需要时请重新 read：\n${decision.skipped
 				.map((p) => `- ${p}`)
@@ -153,14 +169,14 @@ function performContextRestore(
 		);
 	} catch {
 		// 注入失败 → 返回 0，提醒兜底
+		logRestore(`fail reason=${reason} injected=0`);
 		return 0;
 	}
 
-	notify?.(
-		`✅ shepherd: 已恢复上下文文档正文 (${decision.restored
-			.map((p) => basename(dirname(p)))
-			.join(", ")})`,
-		"info",
+	logRestore(
+		`ok reason=${reason} restored=${decision.restored.length} skipped=${decision.skipped.length} docs=${decision.restored
+			.map((p) => basename(p))
+			.join(",")}`,
 	);
 	return decision.restored.length;
 }

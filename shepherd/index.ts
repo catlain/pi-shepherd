@@ -8,11 +8,8 @@ export {
 	buildRestoreDecision,
 	DEFAULT_CONTEXT_RESTORE,
 	estimateDocTokens,
-	getActiveDocs,
-	isContextDocRead,
-	recordContextRead,
-	registerContextTracker,
-	resetContextTracker,
+	filterContextDocs,
+	isContextDocPath,
 	type RestoreDecision,
 	type ContextRestoreConfig,
 } from "./context-restore";
