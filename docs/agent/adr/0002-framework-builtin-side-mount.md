@@ -13,3 +13,13 @@ date: 2026-10-12
 - **替代方案（被否）**: ①作为内置规则进规则引擎——污染规则列表、语义错位（内建≠可配置）；②做成默认规则写 rules.json——用户可误删误改，恢复注入失效难排查。
 - **影响**: 规则引擎、rules.json、rules-validate 零改动；skill-restore 以 `registerSkillTracker` 旁挂（`pi.on("tool_execution_start")`）+ `performSkillRestore` 联动 compaction.ts 实现。后续同类内建功能（如其他上下文保护）沿用此模式。
 - **证据来源**: change add-skill-restore-injection / design.md D3
+
+## 增补 2026-10-22：激活源改为宿主 payload，无自有状态
+
+- **日期**: 2026-10-22
+- **状态**: Accepted
+- **决策**: context-restore 的激活源 SHALL 取宿主 `session_compact` 事件 payload 的 `compactionEntry.details.readFiles`（继承 ∪ 挥发窗口语义），SHALL NOT 自建进程内存态激活集（tool_execution_start Set 方案已废弃）。
+- **原因**: 自建状态在 /resume 进程重启时丢失且不可恢复（2026-10 Quant 事故：重启后压缩静默零恢复）；宿主 jsonl 跨 resume 连续统计，readFiles 继承链天然覆盖跨进程场景，真机冒烟全过。旁挂模块因此进一步退化为无状态纯函数适配层。
+- **替代方案（被否）**: ①继续 tool_execution_start Set + 落盘持久化——引入自有存储与同步问题，重而脆弱；②fork 宿主加激活字段——越界改宿主，成本高。
+- **影响**: 删除 registerContextTracker 挂载与全部 Set 状态；spec 明文记录宿主语义依赖（继承∪挥发窗口）；冒烟含 resume 回归；上游若变更 readFiles 语义，按 spec 契约回归验证后跟随。
+- **证据来源**: change restore-from-compaction-payload / design.md D5

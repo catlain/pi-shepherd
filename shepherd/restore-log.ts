@@ -23,7 +23,8 @@ export function logRestore(line: string): void {
 			join(dir, "shepherd-restore.log"),
 			`${new Date().toISOString()} sid=${sid} ${line}\n`,
 		);
-	} catch {
-		// 静默：日志失败不影响主流程
+	} catch (e) {
+		// 静默降级：不干扰压缩主流程，但 stderr 留痕——避免排障工具自身成为盲区
+		console.error("[shepherd] logRestore failed:", e);
 	}
 }

@@ -10,8 +10,8 @@
 
 ## 2. 空集观测
 
-- [x] 2.1 handler 内：候选清单为空时 `ctx.ui.notify("shepherd: 本次压缩无可恢复的上下文文档（readFiles 未命中技能/openspec 文档）", "debug")`，不调用 sendMessage
-- [x] 2.2 区分三类输出：全量注入零提示 / 截断 skipped 点名 / 空集 debug notify
+- [x] 2.1 handler 内：候选清单为空时记审计日志 empty 行，不调用 sendMessage（初版 ctx.ui.notify，演进为文件日志，见 4.3）
+- [x] 2.2 区分三类输出：全量注入 ok 审计行 / 截断 skipped 点名 + 审计行 / 空集 empty 审计行
 
 ## 3. 测试改造
 
@@ -36,4 +36,5 @@
 ## 5. 文档与收尾
 
 - [x] 5.1 README 功能段更新（激活源语义一句话）
-- [ ] 5.2 冒烟全过后精确提交（正常门禁）+ push
+- [x] 5.2 冒烟全过后精确提交（正常门禁）+ push
+  - 00fb27d（main → main，pre-commit 门禁 624/624 + coverage 93% 通过）；rules.json/bak 非本变更改动未纳入

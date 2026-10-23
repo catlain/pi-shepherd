@@ -10,7 +10,7 @@
 
 - **删除自建激活记录层**：`tool_execution_start` 事件挂载、模块级 `_activeDocs` Set、`recordContextRead`、existsSync 预检及相关测试。
 - **恢复管线改为无状态纯事件驱动**：`session_compact` handler 直接从 `event.compactionEntry.details.readFiles` 取清单 → `isContextDocRead` 谓词过滤（SKILL.md ∪ openspec/**/*.md）→ `buildRestoreDecision`（maxTokens 预算、最近优先、skipped 点名——不变）。
-- **空集可观测**：readFiles 无谓词命中时输出 debug 级 notify，区分"没有可恢复对象"与"恢复失败"。
+- **空集可观测**：readFiles 无谓词命中时记审计日志 empty 行，区分"没有可恢复对象"与"恢复失败"（初版为 debug 级 notify，4.3 真机验收发现 TUI ui.notify 不可见，演进为文件日志，见 tasks 4.3 注记）。
 - 配置（`shepherd.contextRestore` / `/compact-config`）、注入 customType、compaction-reminder 联动均不变。
 
 ## Impact
