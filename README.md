@@ -167,6 +167,25 @@ shepherd_rules(action: "delete", index: 3)
 
 **注意生效时机**：`shepherd_rules` 修改的是磁盘上的规则文件，运行中的匹配引擎仍用启动时加载的副本——源码或规则更新后需重载扩展（重启会话或触发扩展重载）才对后续工具调用生效。可用一条含 `command` field 的 update 冒烟验证新逻辑已生效。
 
+## /compact-config 命令
+
+管理压缩行为配置（两段式子命令，无参查看现值与用法）：
+
+```bash
+/compact-config                 # 查看：恢复注入配置 + 当前模型压缩触发点
+/compact-config tokens 50000    # 设恢复注入预算 maxTokens（1000~400000）
+/compact-config tokens on|off   # 开关压缩后恢复注入
+/compact-config trigger 200000  # 设当前模型自动压缩触发点（达到即压缩）
+/compact-config trigger         # 删当前模型触发点，回默认（接近满窗口触发）
+```
+
+- `tokens` 写 `shepherd.contextRestore`（压缩后恢复注入的预算/开关）
+- `trigger` 以「触发点」语义管理 pi 内置自动压缩：内部换算
+  `reserveTokens = contextWindow − trigger`，写入全局 settings.json 的
+  `compaction.modelOverrides["{provider}/{id}"]`（例：1M 窗口设 200000 →
+  reserveTokens=800000，即 200k 触发压缩）。触发点有效区间随模型窗口变化
+- 配置改动新会话生效
+
 ## 实战示例
 
 ### 1. 编辑 Python 后自动跑测试

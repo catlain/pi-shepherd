@@ -159,6 +159,26 @@ shepherd_rules(action: "update", index: 2, changes: { enabled: false })
 shepherd_rules(action: "delete", index: 3)
 ```
 
+## /compact-config Command
+
+Manage compaction behavior (two-segment subcommands; bare invocation shows current values and usage):
+
+```bash
+/compact-config                 # View: restore-injection config + current model trigger point
+/compact-config tokens 50000    # Set restore injection budget maxTokens (1000~400000)
+/compact-config tokens on|off   # Toggle post-compaction restore injection
+/compact-config trigger 200000  # Set current model's auto-compaction trigger point
+/compact-config trigger         # Remove override, back to default (near-full-window)
+```
+
+- `tokens` writes `shepherd.contextRestore` (budget/switch of post-compaction restore injection)
+- `trigger` manages pi's built-in auto-compaction in "trigger point" semantics:
+  converts `reserveTokens = contextWindow − trigger` and writes
+  `compaction.modelOverrides["{provider}/{id}"]` in the global settings.json
+  (e.g. 200000 on a 1M window → reserveTokens=800000, compacts at 200k).
+  The valid range scales with the model's context window
+- Config changes take effect in new sessions
+
 ## Practical Examples
 
 ### 1. Auto-run tests after editing Python
