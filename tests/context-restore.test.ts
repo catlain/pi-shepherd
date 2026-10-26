@@ -29,14 +29,24 @@ function writeSkill(name: string, body = "body"): string {
 	return join(dir, "SKILL.md");
 }
 
-describe("isContextDocPath 谓词", () => {
-	it("SKILL.md 后缀命中（大小写不敏感、反斜杠归一）", () => {
-		expect(isContextDocPath("C:/a/b/SKILL.md")).toBe(true);
-		expect(isContextDocPath("C:\\a\\b\\skill.MD")).toBe(true);
+describe("isContextDocPath 谓词（保护文档清单，单一事实源 shared-utils）", () => {
+	it("技能 SKILL.md：任意目录树 skills/{name}/ 命中；无目录段结构不命中", () => {
+		expect(isContextDocPath("C:/a/.pi/skills/s/SKILL.md")).toBe(true);
+		expect(isContextDocPath("C:/Users/u/.agents/skills/x/SKILL.md")).toBe(true);
+		expect(isContextDocPath("C:\\a\\b\\skills\\s\\skill.MD")).toBe(true);
+		expect(isContextDocPath("C:/a/b/SKILL.md")).toBe(false);
 	});
-	it("openspec 路径段 .md 命中；普通 .md 不命中", () => {
+	it("openspec：仅 changes/{change}/design.md 命中；tasks/specs 增量/主规格不命中", () => {
 		expect(isContextDocPath("C:/x/openspec/changes/f/design.md")).toBe(true);
-		expect(isContextDocPath("openspec/specs/c/spec.md")).toBe(true);
+		expect(isContextDocPath("openspec/changes/f/design.md")).toBe(true);
+		expect(isContextDocPath("openspec/changes/f/tasks.md")).toBe(false);
+		expect(isContextDocPath("openspec/changes/f/specs/x/spec.md")).toBe(false);
+		expect(isContextDocPath("openspec/specs/c/spec.md")).toBe(false);
+	});
+	it("架构文档：docs/agent/ 前缀四类命中；docs/ADR.md 非 agent 段不命中", () => {
+		expect(isContextDocPath("C:/r/docs/agent/ADR.md")).toBe(true);
+		expect(isContextDocPath("C:/r/docs/agent/designs/x.md")).toBe(true);
+		expect(isContextDocPath("C:/r/docs/agent/adr/0001-x.md")).toBe(true);
 		expect(isContextDocPath("C:/x/docs/ADR.md")).toBe(false);
 		expect(isContextDocPath("README.md")).toBe(false);
 	});
@@ -56,8 +66,11 @@ describe("filterContextDocs 激活源适配", () => {
 		expect(out).toEqual([skill, design]);
 	});
 	it("尾部 = 最近激活（数组序即激活序语义）", () => {
-		const out = filterContextDocs(["C:/o/a/SKILL.md", "C:/o/b/SKILL.md"]);
-		expect(out[out.length - 1]).toBe("C:/o/b/SKILL.md");
+		const out = filterContextDocs([
+			"C:/o/skills/a/SKILL.md",
+			"C:/o/skills/b/SKILL.md",
+		]);
+		expect(out[out.length - 1]).toBe("C:/o/skills/b/SKILL.md");
 	});
 });
 

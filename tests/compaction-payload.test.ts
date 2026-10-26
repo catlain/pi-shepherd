@@ -69,7 +69,7 @@ describe("session_compact — payload 激活源注入", () => {
 		shepherdExtension(pi as unknown as ExtensionAPI);
 
 		tmp = mkdtempSync(join(tmpdir(), "cp-"));
-		const sdir = join(tmp, "my-skill");
+		const sdir = join(tmp, "skills", "my-skill"); // skills/{name}/ 段结构（新谓词要求）
 		mkdirSync(sdir, { recursive: true });
 		skillPath = join(sdir, "SKILL.md");
 		writeFileSync(skillPath, "---\nname: my-skill\n---\n# my-skill\n正文");

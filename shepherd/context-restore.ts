@@ -1,14 +1,18 @@
 /**
  * 上下文文档恢复注入（context-restore）
  *
- * 压缩把消息历史摘要化后，read 过的上下文文档正文随之挥发——SKILL.md
- * 还有 system prompt 索引兜底，openspec 文档（proposal/design/tasks/spec）
- * 挥发后连索引都没有。本模块承担激活源适配与决策两职：
+ * 压缩把消息历史摘要化后，read 过的上下文文档正文随之挥发。本模块
+ * 承担激活源适配与决策两职，回补范围 = 保护文档清单（与 aging 豁免
+ * 单一事实源一致，见 @pi-atelier/shared-utils protected-docs）：
  *   1. 激活源：session_compact 事件 payload 的
  *      compactionEntry.details.readFiles（宿主语义 = 上次压缩 readFiles
  *      继承 ∪ 本次挥发窗口内全部 read 调用）→ 谓词过滤为候选清单
  *   2. 注入决策：读盘取正文 → maxTokens 预算截断（最近激活优先）→
  *      产出注入正文与未恢复名单
+ *
+ * 保护文档 = 技能入口 SKILL.md（任意目录树）+ openspec/changes/{change}/design.md
+ * + docs/agent/ 架构宪法文档（ADR/INVARIANTS/Design Note）。proposal/tasks/
+ * specs 增量/主规格不回补——旧快照留在上下文是负资产，挥发逼着重读拿实况。
  *
  * 无自有状态：不挂 tool_execution_start、不做实时记录——resume / reload
  * / fork 等进程边界天然免疫（jsonl 连续统计，宿主维护激活真源）。
@@ -18,6 +22,7 @@
  */
 
 import { readFileSync } from "node:fs";
+import { isConstitutionalDocPath as isContextDocPath } from "@pi-atelier/shared-utils";
 
 /** contextRestore 配置（settings.json shepherd.contextRestore 子键）
  * 仅 token 预算约束（不限文档个数——超预算按最近激活优先截断） */
@@ -31,19 +36,10 @@ export const DEFAULT_CONTEXT_RESTORE: ContextRestoreConfig = {
 	maxTokens: 40000,
 };
 
-/**
- * 纯函数谓词：路径满足其一——
- *   a) 以 SKILL.md 结尾（大小写不敏感）
- *   b) 规范化路径含 openspec/ 段且以 .md 结尾
- * 不做磁盘访问，O(1) 判断。
- */
-export function isContextDocPath(path: string): boolean {
-	const norm = path.replace(/\\/g, "/");
-	const lower = norm.toLowerCase();
-	if (lower.endsWith("skill.md")) return true;
-	const inOpenspec = norm.includes("/openspec/") || norm.startsWith("openspec/");
-	return inOpenspec && lower.endsWith(".md");
-}
+/** 纯函数谓词（单一事实源 shared-utils）：保护文档清单命中判断。
+ *  本地历史导出名保留为别名（护住既有测试 import 与 filterContextDocs 调用），
+ *  语义与实现见 @pi-atelier/shared-utils protected-docs。 */
+export { isContextDocPath };
 
 /**
  * 激活源适配：readFiles（宿主 compactionEntry.details.readFiles）→
