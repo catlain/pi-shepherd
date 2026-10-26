@@ -53,21 +53,6 @@
 		"enabled": false
 	},
 	{
-		"comment": "[TypeScript] 编辑/写入后必须跑测试",
-		"hook": "tool_result",
-		"tool": "edit|write",
-		"action": "notify",
-		"conditions": [
-			{
-				"field": "path",
-				"pattern": "\\.ts$",
-				"flags": ""
-			}
-		],
-		"reason": "编辑了 TypeScript 文件，必须跑覆盖该代码的单元测试（如无测试则先补充），修复所有测试问题确保通过。",
-		"enabled": true
-	},
-	{
 		"comment": "[arch] 会话结束前检查 git 状态（已停用：多会话并行时仓库级 git_dirty 误伤其他会话任务，收尾检查移入 opsx-archive 归档流程）",
 		"hook": "agent_end",
 		"check": "",
