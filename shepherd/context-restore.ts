@@ -22,7 +22,10 @@
  */
 
 import { readFileSync } from "node:fs";
-import { isConstitutionalDocPath as isContextDocPath } from "@pi-atelier/shared-utils";
+import {
+	isConstitutionalDocPath as isContextDocPath,
+	estimateTokens,
+} from "@pi-atelier/shared-utils";
 
 /** contextRestore 配置（settings.json shepherd.contextRestore 子键）
  * 仅 token 预算约束（不限文档个数——超预算按最近激活优先截断） */
@@ -69,11 +72,6 @@ export interface RestoreDecision {
 	skipped: string[];
 }
 
-/** 轻量 token 估算（字符数/4，与宿主 estimateTokens 同量级的近似） */
-export function estimateDocTokens(text: string): number {
-	return Math.ceil(text.length / 4);
-}
-
 /** 边界标记显示名：父目录/文件名 两段式（技能如 code-graph/SKILL.md，
  * 文档如 add-skill-restore-injection/design.md——两类都有区分度） */
 function displayPath(path: string): string {
@@ -106,7 +104,7 @@ export function buildRestoreDecision(
 			continue;
 		}
 		const block = `===== 上下文恢复: ${displayPath(path)} (${path}) =====\n${content}`;
-		const blockTokens = estimateDocTokens(block);
+		const blockTokens = estimateTokens(block);
 		if (tokensUsed + blockTokens > config.maxTokens) {
 			skipped.push(path);
 			continue;

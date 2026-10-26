@@ -7,7 +7,6 @@ export { registerSessionCompact } from "./compaction";
 export {
 	buildRestoreDecision,
 	DEFAULT_CONTEXT_RESTORE,
-	estimateDocTokens,
 	filterContextDocs,
 	isContextDocPath,
 	type RestoreDecision,
