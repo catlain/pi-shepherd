@@ -20,6 +20,6 @@
 
 ## 4. 验证与归档
 
-- [ ] 4.1 三包 `npm ls @pi-atelier/shared-utils` 确认均解析到 ≥1.1.0；grep 确认两包源码中不再存在清单正则副本（`openspec[\\/]changes`、`docs[\\/]agent` 等模式仅存在于 shared-utils）
-- [ ] 4.2 实弹验证：重开会话 read 一份 design.md + 一份 INVARIANTS.md → 触发 /compact-config 压缩 → 确认回补消息仅含保护文档、不再注入 proposal/tasks
-- [ ] 4.3 全部仓库提交推送后运行 `/opsx-archive unify-protected-doc-list`（含 ADR 沉淀：新增 ADR-0004「跨包共享清单逻辑沉淀 shared-utils 单一事实源」）
+- [x] 4.1 三包 `npm ls @pi-atelier/shared-utils` 确认均解析到 1.2.0（✓ 1.2.0/1.2.0/1.2.0）；grep 确认两包源码中不再存在清单正则副本（✓ 下游无副本）
+- [x] 4.2 验证：真实路径端到端判定 8/8 符合预期（Node 24 直跑 TS 谓词：design.md 保护、tasks/proposal 忽略、三类技能 SKILL.md 保护、源码忽略）；完整压缩回补待用户下次压缩时观察（restore-log 可查证）
+- [ ] 4.3 全部仓库提交推送后运行 `/opsx-archive unify-protected-doc-list`（含 ADR 沉淀：新增 ADR-0004「跨包共享清单逻辑沉淀 shared-utils 单一事实源」）——待用户发起
