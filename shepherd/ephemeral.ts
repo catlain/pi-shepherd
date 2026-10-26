@@ -41,7 +41,7 @@ import { pushHint as _pushShared, hasHints } from "./ephemeral-shared";
 const SHEPHERD_PREFIX = "⚠️ shepherd: ";
 
 function pushShepherdHint(reason: string, label?: string): void {
-	// 空 label 归一化收敛在 ephemeral-shared 的 pushHint 包装层（单一位置）
+	// 空 label 归一化由 shared-utils 源头保证（v1.2.1 起，'' 等价 undefined）
 	_pushShared(`${SHEPHERD_PREFIX}${reason}`, label);
 }
 

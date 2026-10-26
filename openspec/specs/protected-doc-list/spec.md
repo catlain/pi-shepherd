@@ -14,7 +14,7 @@
 
 `isOpenspecDesignDocPath` SHALL 命中且仅命中 `openspec/changes/{change}/design.md`（`{change}` 为单一路径段，文件名精确）。
 
-`isArchDocPath` SHALL 命中且仅命中 `docs/agent/` 前缀下的架构文档：`docs/agent/adr/**`、`docs/agent/adr-archive/**`、`docs/agent/ADR.md`、`docs/agent/INVARIANTS.md`、`docs/agent/designs/**`。
+`isArchDocPath` SHALL 命中且仅命中 `docs/agent/` 前缀下的架构文档（五类路径形态）：`docs/agent/adr/**`、`docs/agent/adr-archive/**`、`docs/agent/ADR.md`、`docs/agent/INVARIANTS.md`、`docs/agent/designs/**`。所有谓词的文件名与目录段匹配均大小写不敏感（正则 `/i`）——`docs/agent/adr.md`、`docs/agent/invariants.md` 同样命中。
 
 所有谓词签名 SHALL 为 `(path: string | undefined): boolean`（undefined 输入返回 false，兼容下游直接传 `ctx.filePath`），SHALL 兼容 `/` 与 `\` 路径分隔符及绝对/相对路径形态。
 
@@ -32,7 +32,7 @@
 - **WHEN** 输入 `C:/r/openspec/changes/add-x/proposal.md`、`C:/r/openspec/changes/add-x/tasks.md`、`C:/r/openspec/changes/add-x/specs/c/spec.md`、`C:/r/openspec/specs/context-restore/spec.md`
 - **THEN** `isOpenspecDesignDocPath` 均返回 false
 
-#### Scenario: 架构文档四类命中且 docs/agent 前缀防误伤
+#### Scenario: 架构文档五类路径形态命中且 docs/agent 前缀防误伤
 - **WHEN** 输入 `C:/r/docs/agent/adr/0001-x.md`、`C:/r/docs/agent/adr-archive/0000-y.md`、`C:/r/docs/agent/ADR.md`、`C:/r/docs/agent/INVARIANTS.md`、`C:/r/docs/agent/designs/subsystem.md`
 - **THEN** `isArchDocPath` 均返回 true
 - **WHEN** 输入 `C:/r/docs/ADR.md`（缺 agent 段）或 `C:/r/results/designs/x.md`（非 docs/agent 前缀）
@@ -41,3 +41,9 @@
 #### Scenario: 组合谓词 OR 语义
 - **WHEN** 输入任一细分谓词命中的路径（三类各一，含 `.agents/skills/x/SKILL.md`）
 - **THEN** `isConstitutionalDocPath` 均返回 true；三类之外的普通业务文档（如 `C:/r/src/index.ts`、`C:/r/README.md`）返回 false
+
+#### Scenario: undefined 输入与文件名大小写不敏感
+- **WHEN** 输入 `undefined` 或空字符串
+- **THEN** 全部谓词返回 false，不抛异常
+- **WHEN** 输入 `C:/r/.pi/skills/x/skill.md`（小写）或 `C:/r/docs/agent/invariants.md`（小写）
+- **THEN** 对应谓词返回 true
