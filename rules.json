@@ -476,5 +476,15 @@
 		"enabled": true,
 		"hook": "session_compact",
 		"reason": "上下文刚被压缩：此前 read 过的 SKILL.md 技能正文已随历史摘要化挥发。system prompt 里的技能索引（名字/描述/路径）仍在——若当前任务涉及某技能，请重新 read 其 SKILL.md 获取操作指引。"
+	},
+	{
+		"action": "block",
+		"comment": "[arch] 禁止 python heredoc 内联脚本 — 文件操作必须走标准工具或 temp 落盘脚本",
+		"enabled": true,
+		"hook": "tool_call",
+		"message": "禁止 python heredoc（python - <<'EOF'）内联执行。合法路径二选一：① 普通文件读写/编辑 → read/write/edit 工具（edit 匹配失败时用 read 拿精确文本重试，而不是转投脚本）；② 数据分析/批量替换/一次性脚本 → 用 write 落盘到 .pi/tmp/*.py，再 bash 执行，完成后删除临时脚本",
+		"pattern": "\\bpython3?\\b\\s*(?:-\\s*)?<<",
+		"reason": "禁止 python heredoc 内联脚本（绕过 edit 唯一性校验、diff 审计与 hook）。合法路径二选一：① 普通文件读写/编辑 → read/write/edit 工具，edit 匹配失败时用 read 拿精确文本（含空白）重试，而不是转投脚本；② 数据分析/批量替换/一次性脚本 → 用 write 落盘到 .pi/tmp/*.py，再 bash 执行，完成后删除临时脚本",
+		"tool": "bash"
 	}
 ]
