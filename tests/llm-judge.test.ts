@@ -37,6 +37,7 @@ import {
 	resolveJudgeModel,
 	setJudgeContext,
 } from "../shepherd/llm-judge";
+import { compileRules } from "../shepherd/rules";
 
 // ── 工具 ──
 
@@ -95,6 +96,11 @@ describe("parseYesNo", () => {
 	it("空输出 → null", () => {
 		expect(parseYesNo("")).toBe(null);
 		expect(parseYesNo("  \n  ")).toBe(null);
+	});
+	it("英文 Yes/No 兼容（发现8 修复）", () => {
+		expect(parseYesNo("Yes")).toBe("是");
+		expect(parseYesNo("NO")).toBe("否");
+		expect(parseYesNo("**yes**")).toBe("是");
 	});
 });
 
@@ -199,5 +205,50 @@ describe("judgePasses 判定与 fail-closed", () => {
 		const user = callerMock.mock.calls[0]?.[1] as string;
 		expect(user).toContain("是否为猜测？");
 		expect(user).toContain("这段可能是猜测");
+	});
+	it("待判断文本用分隔符包裹并截断（反注入 + 防 token 爆炸）", async () => {
+		setJudgeContext(fakeCtx());
+		callerMock.mockResolvedValue("是");
+		const rule = makeRule({ llmJudge: { prompt: "判断" } });
+		await judgePasses(rule, "x".repeat(20000));
+		const user = callerMock.mock.calls[0]?.[1] as string;
+		expect(user).toContain("<<<BEGIN_TEXT>>>");
+		expect(user).toContain("<<<END_TEXT>>>");
+		expect(user.length).toBeLessThan(9000); // 8000 截断 + 包装开销
+	});
+});
+
+// ── 审计修复：加载时校验（compileRules 剥离无效 llmJudge）────────────
+
+describe("compileRules llmJudge 加载校验（发现1/发现2 修复）", () => {
+	it("prompt 为空时剥离 llmJudge 并 console.error，规则保留", () => {
+		const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		const rule = makeRule({
+			hook: "message_end",
+			llmJudge: { prompt: "" },
+		});
+		const out = compileRules([rule]);
+		expect(out[0].llmJudge).toBeUndefined();
+		expect(out).toHaveLength(1); // 规则本身保留
+		expect(errSpy).toHaveBeenCalledWith(expect.stringContaining("llmJudge 配置无效"));
+		errSpy.mockRestore();
+	});
+	it("hook 非 message_end 时剥离 llmJudge", () => {
+		const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		const rule = makeRule({
+			hook: "tool_call",
+			llmJudge: { prompt: "判断" },
+		});
+		const out = compileRules([rule]);
+		expect(out[0].llmJudge).toBeUndefined();
+		errSpy.mockRestore();
+	});
+	it("合法 llmJudge 不受影响", () => {
+		const rule = makeRule({
+			hook: "message_end",
+			llmJudge: { prompt: "判断" },
+		});
+		const out = compileRules([rule]);
+		expect(out[0].llmJudge).toEqual({ prompt: "判断" });
 	});
 });

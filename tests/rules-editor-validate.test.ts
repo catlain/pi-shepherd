@@ -142,6 +142,30 @@ describe("validateRule", () => {
 		expect(result.errors[0]).toContain("hook");
 	});
 
+	it("llmJudge 挂在非 message_end hook 报错（W2 修复）", () => {
+		const result = validateRule({
+			comment: "judge on tool_call",
+			reason: "test",
+			pattern: "foo",
+			hook: "tool_call",
+			llmJudge: { prompt: "判断" },
+		});
+		expect(result.valid).toBe(false);
+		expect(result.errors.some((e) => e.includes("message_end"))).toBe(true);
+	});
+
+	it("llmJudge prompt 为空报错", () => {
+		const result = validateRule({
+			comment: "empty prompt",
+			reason: "test",
+			pattern: "foo",
+			hook: "message_end",
+			llmJudge: { prompt: "" },
+		});
+		expect(result.valid).toBe(false);
+		expect(result.errors.some((e) => e.includes("prompt"))).toBe(true);
+	});
+
 	it("disabled: true 归一化为 enabled: false", () => {
 		const rule = { comment: "test", reason: "test", disabled: true } as Record<
 			string,

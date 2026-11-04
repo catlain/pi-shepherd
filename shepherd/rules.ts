@@ -168,6 +168,20 @@ export function compileRules(rules: Rule[]): Rule[] {
 		if (!rule.hook) rule.hook = "tool_call";
 		if (!rule.tool) rule.tool = "bash";
 		if (!rule.action) rule.action = "block";
+		// llmJudge 加载时校验：prompt 非空 + 仅 message_end 支持；无效则剥离该字段（降级为纯正则行为）
+		if (rule.llmJudge) {
+			const problems: string[] = [];
+			if (typeof rule.llmJudge.prompt !== "string" || rule.llmJudge.prompt.trim() === "") {
+				problems.push("llmJudge.prompt 缺失或为空");
+			}
+			if (rule.hook !== "message_end") {
+				problems.push(`llmJudge 仅支持 message_end hook，当前 hook=${rule.hook}`);
+			}
+			if (problems.length > 0) {
+				console.error(`[shepherd] 规则 "${rule.comment ?? rule.pattern ?? "(未命名)"}" llmJudge 配置无效: ${problems.join("；")}，已剥离 llmJudge（降级为纯正则）`);
+				delete rule.llmJudge;
+			}
+		}
 	}
 	return active;
 }
