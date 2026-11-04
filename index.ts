@@ -19,7 +19,11 @@
 
 import { dirname } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import type {
+	ExtensionAPI,
+	ExtensionContext,
+} from "@earendil-works/pi-coding-agent";
+import { setJudgeContext } from "./shepherd/llm-judge";
 
 /** pi payload 消息结构的最小类型 */
 interface PayloadMessage {
@@ -76,7 +80,12 @@ const _toolState: ToolState = {
 	cachedTools: null,
 };
 
-export default function shepherdExtension(pi: ExtensionAPI) {
+export default function shepherdExtension(pi: ExtensionAPI, ctx?: ExtensionContext) {
+	// ── LLM 二级判定：注入宿主 ctx（modelRegistry/model，llmJudge 规则用）──
+	if (ctx) {
+		setJudgeContext(ctx);
+	}
+
 	// ── 读取配置（三层合并：defaults → 全局 settings → 项目 settings）──
 	const { config: shepherdConfig } = getEffectiveConfig<{
 		projectRulesPattern: string;

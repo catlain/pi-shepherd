@@ -98,5 +98,31 @@ export function validateRule(
 		}
 	}
 
+	// llmJudge 校验：prompt 必填非空串，model 可选串，invert 可选布尔
+	if (rule.llmJudge !== undefined) {
+		const judge = rule.llmJudge as Record<string, unknown>;
+		if (
+			typeof judge !== "object" ||
+			judge === null ||
+			Array.isArray(judge)
+		) {
+			errors.push(
+				"llmJudge 必须是对象（{ prompt, model?, invert? }），当前不是对象",
+			);
+		} else {
+			if (typeof judge.prompt !== "string" || !(judge.prompt as string).trim()) {
+				errors.push(
+					"llmJudge.prompt 必填：非空字符串（描述“什么算命中”的判断提示词）",
+			);
+			}
+			if (judge.model !== undefined && typeof judge.model !== "string") {
+				errors.push("llmJudge.model 可选：字符串（provider/id 判断模型 ID）");
+			}
+			if (judge.invert !== undefined && typeof judge.invert !== "boolean") {
+				errors.push("llmJudge.invert 可选：布尔（true 时答“否”才触发）");
+			}
+		}
+	}
+
 	return { valid: errors.length === 0, errors };
 }

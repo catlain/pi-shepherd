@@ -87,7 +87,7 @@ async function fireAgentEnd(
 }
 
 describe("agent_end — 基础场景", () => {
-	let shepherdExtension: (pi: ExtensionAPI) => void;
+	let shepherdExtension: typeof import("../index").default;
 	let pi: ReturnType<typeof makeMockPi>;
 
 	beforeEach(async () => {

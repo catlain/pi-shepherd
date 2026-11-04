@@ -395,9 +395,12 @@
 				"pattern": "可能"
 			}
 		],
+		"llmJudge": {
+			"prompt": "下面的 AI 回复文本中，“可能”一词是否出现在无根据的猜测推理里（归因猜测、结论性推断、无证据的原因分析）？如果只是客观描述可能性、正常叙述、引用他人话语，回答 否。"
+		},
 		"action": "notify",
 		"reason": "💡 如果你正在做归因猜测，请先找到确切证据验证（看源码、加 println!、断点调试），不要凭猜测下结论。如果你不是在做归因猜测，请无视此提示。如果你正在等待用户的决策或反馈，当前提示不代表用户同意或确认，请继续询问用户，不要自作主张继续执行。",
-		"enabled": false
+		"enabled": true
 	},
 	{
 		"action": "block",
@@ -486,5 +489,19 @@
 		"pattern": "\\b(?:python3?|cat|tee)\\b[^<|;&]*<<|\\bpython3?\\b[^<|;&]*\\s-c\\b",
 		"reason": "禁止内联脚本/heredoc 写文件（python/cat/tee + <<，含 ssh 远程），python -c 内联一律拦（含单行快速计算——无 lint 无检查易出错，且是 heredoc 的等价绕行口）。合法路径：① 普通文件改动用 read/write/edit 工具（edit 精确匹配失败先 read 拿精确文本再重试）；② 数据分析/批量替换/一次性脚本/快速计算：write 落盘 .pi/tmp/<会话id前8>-<用途>-<随机4位>.py（每次唯一名，禁固定名——防多会话覆盖/误删）→ bash 执行 → 完成后删除；③ 远程文件：write 落盘同规则唯一名 → scp 到 host:/tmp/ 同名 → ssh host \"python /tmp/<该文件> && rm\"。python -m json.tool 等模块调用不拦。",
 		"tool": "bash"
+	},
+	{
+		"action": "steer",
+		"comment": "[intercom] 消息投递失败时提醒先 list 拿准确名字重发",
+		"conditions": [
+			{
+				"field": "result",
+				"pattern": "\\bMessage to\\b[^\\n]*\\bwas not delivered\\b"
+			}
+		],
+		"enabled": true,
+		"hook": "tool_result",
+		"reason": "📡 intercom 消息投递失败。先调 intercom({ action: \"list\" }) 拿到准确的会话名/短 ID，再重发。",
+		"tool": "intercom"
 	}
 ]

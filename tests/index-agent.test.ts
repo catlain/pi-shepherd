@@ -64,7 +64,7 @@ function getHandler(
 
 // ── agent_start ──
 describe("agent_start", () => {
-	let shepherdExtension: (pi: ExtensionAPI) => void;
+	let shepherdExtension: typeof import("../index").default;
 	let pi: ReturnType<typeof makeMockPi>;
 
 	beforeEach(async () => {
@@ -121,7 +121,7 @@ describe("agent_start", () => {
 
 // ── input ──
 describe("input 事件", () => {
-	let shepherdExtension: (pi: ExtensionAPI) => void;
+	let shepherdExtension: typeof import("../index").default;
 	let pi: ReturnType<typeof makeMockPi>;
 
 	beforeEach(async () => {

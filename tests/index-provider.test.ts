@@ -95,7 +95,7 @@ function getHandler(
 
 // ── 测试 ──
 describe("before_provider_request", () => {
-	let shepherdExtension: (pi: ExtensionAPI) => void;
+	let shepherdExtension: typeof import("../index").default;
 	let pi: ReturnType<typeof makeMockPi>;
 
 	beforeEach(async () => {

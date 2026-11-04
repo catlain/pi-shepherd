@@ -89,7 +89,7 @@ function fireSystemEvent(
 
 // ── 测试 ──
 describe("shepherdExtension 注册 & config", () => {
-	let shepherdExtension: (pi: ExtensionAPI) => void;
+	let shepherdExtension: typeof import("../index").default;
 	let pi: ReturnType<typeof makeMockPi>;
 
 	beforeEach(async () => {

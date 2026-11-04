@@ -3,17 +3,21 @@
 	"compilerOptions": {
 		"strict": true,
 		"types": ["node"],
-		"outDir": "dist",
-		"rootDir": ".",
 		"paths": {
 			"@pi-atelier/shared-utils": [
 				"./node_modules/@pi-atelier/shared-utils/src/index.ts"
+			],
+			"@pi-atelier/shared-utils/llm": [
+				"./node_modules/@pi-atelier/shared-utils/src/llm.ts"
 			],
 			"@earendil-works/pi-coding-agent": [
 				"../_sdk-link/dist/index.d.ts"
 			],
 			"@pi-atelier/shepherd": [
 				"./shepherd/index.ts"
+			],
+			"@earendil-works/pi-ai/compat": [
+				"../_sdk-link/node_modules/@earendil-works/pi-ai/dist/compat.d.ts"
 			]
 		}
 	},

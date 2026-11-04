@@ -6,6 +6,7 @@
  */
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { judgePasses } from "./llm-judge";
 import { pushWarning } from "./ephemeral";
 import {
 	isSubagent,
@@ -97,6 +98,13 @@ export function registerMessageEnd(
 				if (!re.test(text)) continue;
 			} else {
 				// 无条件：无条件匹配（总是触发）
+			}
+
+			// LLM 二级判定：正则通过后语义精判（fail-closed：失败按命中处理）
+			// 判定“否” → 不触发、不标记防重复（下一条消息可重新判定）
+			if (rule.llmJudge) {
+				const pass = await judgePasses(rule, text);
+				if (!pass) continue;
 			}
 
 			// 标记已触发

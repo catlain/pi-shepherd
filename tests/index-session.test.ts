@@ -84,7 +84,7 @@ function shutdownRules(arr: Array<Partial<Rule>>) {
 
 // ── session_start ──
 describe("session_start", () => {
-	let shepherdExtension: (pi: ExtensionAPI) => void;
+	let shepherdExtension: typeof import("../index").default;
 	let pi: ReturnType<typeof makeMockPi>;
 
 	beforeEach(async () => {
@@ -105,7 +105,7 @@ describe("session_start", () => {
 
 // ── session_shutdown ──
 describe("session_shutdown", () => {
-	let shepherdExtension: (pi: ExtensionAPI) => void;
+	let shepherdExtension: typeof import("../index").default;
 	let pi: ReturnType<typeof makeMockPi>;
 
 	beforeEach(async () => {

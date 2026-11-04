@@ -60,6 +60,16 @@ export interface Condition {
 	_compiled?: RegExp;
 }
 
+/** LLM 二级判定配置：正则初筛通过后，调 LLM 对判定文本做语义精判（是/否） */
+export interface LLMJudgeConfig {
+	/** 判断提示词：描述“什么样算命中”（如“判断文本中的‘可能’是否属于无根据的猜测推理”） */
+	prompt: string;
+	/** 规则级判断模型（provider/id），缺省回退 settings shepherd.judgeModel → ctx.model */
+	model?: string;
+	/** true 时答“否”才触发（默认 false：答“是”触发） */
+	invert?: boolean;
+}
+
 // ConditionBuiltin 类型定义移到 conditions.ts，这里 import + re-export
 // （上方已 import type 到本地作用域，此处仅对外导出）
 
@@ -97,6 +107,8 @@ export interface Rule {
 	requireSuccess?: boolean;
 	// 条件组合逻辑："and"（默认）= 所有条件都满足，"or" = 任一满足
 	conditionLogic?: "and" | "or";
+	// LLM 二级判定：正则/状态条件全过后追加语义精判（AND 语义，判断“否”则不触发）
+	llmJudge?: LLMJudgeConfig;
 	// 运行时：已触发标记（防重复）
 	_triggered?: boolean;
 	// 编译后的正则（运行时填充，单条件模式）

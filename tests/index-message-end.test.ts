@@ -19,7 +19,7 @@ import {
 } from "./helpers/message-end-helper";
 
 describe("message_end — 集成测试（基本功能）", () => {
-	let shepherdExtension: (pi: ExtensionAPI) => void;
+	let shepherdExtension: typeof import("../index").default;
 	let pi: ReturnType<typeof makeMockPi>;
 
 	beforeEach(async () => {

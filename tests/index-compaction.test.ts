@@ -62,7 +62,7 @@ async function fireSessionCompact(
 }
 
 describe("session_compact — 集成测试", () => {
-	let shepherdExtension: (pi: ExtensionAPI) => void;
+	let shepherdExtension: typeof import("../index").default;
 	let pi: ReturnType<typeof makeMockPi>;
 
 	beforeEach(async () => {

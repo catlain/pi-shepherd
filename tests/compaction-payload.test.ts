@@ -23,7 +23,7 @@ import { logRestore } from "../shepherd/restore-log";
 // 恢复审计日志 mock：拦截真实写盘（~/.pi/agent/logs/）并供断言
 vi.mock("../shepherd/restore-log", () => ({ logRestore: vi.fn() }));
 
-let shepherdExtension: (pi: ExtensionAPI) => void;
+let shepherdExtension: typeof import("../index").default;
 // helpers 的共享 vi.mock 覆盖本文件同名 mock（后注册胜出）——不另建
 // vi.mock，直接定制共享 mockGetEffectiveConfig 返回 contextRestore。
 

@@ -96,7 +96,7 @@ async function fireAgentEnd(handlers: Map<string, Function[]>, event: unknown) {
 }
 
 describe("agent_end — triggerTurn / abort", () => {
-	let shepherdExtension: (pi: ExtensionAPI) => void;
+	let shepherdExtension: typeof import("../index").default;
 	let pi: ReturnType<typeof makeMockPi>;
 
 	beforeEach(async () => {
