@@ -50,25 +50,9 @@ export function extractAssistantText(
 /** 防重复触发的 rule comment 集合 */
 const _messageEndFired = new Set<string>();
 
-/** llmJudge 命中待提醒标志：agent_before_settle 消费（continue: true 驱动下一 provider request） */
-let _llmJudgePending = false;
-
-/** 置 llmJudge 待提醒标志（message_end 命中时调用） */
-export function setLlmJudgePending(): void {
-	_llmJudgePending = true;
-}
-
-/** 消费 llmJudge 待提醒标志（agent_before_settle 调用，读后即清） */
-export function consumeLlmJudgePending(): boolean {
-	const v = _llmJudgePending;
-	_llmJudgePending = false;
-	return v;
-}
-
 /** 重置防重复标记（agent_start 时调用） */
 export function resetMessageEndState(): void {
 	_messageEndFired.clear();
-	_llmJudgePending = false;
 }
 
 /** 注册 message_end hook */
@@ -137,14 +121,33 @@ export function registerMessageEnd(
 			}
 		}
 
-		// llmJudge 命中：置待提醒标志，由 agent_before_settle 统一消费——
-		// 返回 continue: true 让 pi 官方机制驱动下一 provider request
-		// （"ensure one next provider request"），零 sendMessage、零 setTimeout、零竞态；
-		// 下一 request 的 before_provider_request → drainHints 注入提醒 → AI 回应。
+		// llmJudge 命中：pushWarning（已完成）+ sendMessage(triggerTurn:false)
+		// → isStreaming 分支下消息入 _pendingCustomMessages 队列，
+		//   使 agent_before_settle 的 canContinue 判定（pendingCustomContext）为真，
+		//   此时 handler 返回 continue: true 是合法的（否则 pi 报
+		//   "requested continuation without runnable model context"）。
+		// pi 官方机制驱动下一 provider request，drainHints 注入提醒 → AI 回应。
 		// 死循环防护：提醒 turn 的回应若再命中规则，_messageEndFired 防重复兜住，
-		// 标志不再置位 → 收敛。
+		// 不再 pushWarning → hasWarnings 为假 → 不再 continue → 收敛。
 		if (llmJudgePushed) {
-			setLlmJudgePending();
+			try {
+				Promise.resolve()
+					.then(() =>
+						pi.sendMessage(
+							{
+								customType: "shepherd-llm-judge",
+								display: false,
+								content: "",
+							},
+								{ triggerTurn: false },
+							),
+					)
+					.catch(() => {
+						// 会话已替换等场景：静默降级，提醒降为下轮 drainHints 注入
+						});
+			} catch {
+					// 同步 throw 同降级
+			}
 		}
 	});
 }

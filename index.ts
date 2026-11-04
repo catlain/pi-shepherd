@@ -59,7 +59,6 @@ import {
 	registerToolCall,
 	registerToolResult,
 	resetMessageEndState,
-	consumeLlmJudgePending,
 	type ContextRestoreConfig,
 	StateTracker,
 	type ToolState,
@@ -225,10 +224,32 @@ export default function shepherdExtension(pi: ExtensionAPI, ctx?: ExtensionConte
 			}
 		}
 
-		// 统一发送唯一的 sendMessage(triggerTurn)：
-		// 提醒 turn 的驱动改由 agent_before_settle 统一承担（见下方注册）：
+		// 收尾规则 pushWarning 后：sendMessage(triggerTurn:false) 入
+		// _pendingCustomMessages 队列，使 agent_before_settle 的
+		// canContinue（pendingCustomContext）为真，continue: true 合法。
+		// 提醒 turn 的驱动由 agent_before_settle 统一承担（见下方注册）：
 		// 旧链路 sendMessage(triggerTurn)+setTimeout 与 finishRun 异步链存在竞态
 		// （activeRun 未清理时 agent.prompt() throw，async rejection 静默失败）。
+		if (pushed) {
+			try {
+				Promise.resolve()
+					.then(() =>
+						pi.sendMessage(
+							{
+								customType: "shepherd-agent-end",
+								display: false,
+								content: "",
+							},
+								{ triggerTurn: false },
+							),
+					)
+					.catch(() => {
+						// 会话已替换等场景：静默降级，提醒降为下轮 drainHints 注入
+					});
+			} catch {
+				// 同步 throw 同降级
+			}
+		}
 	});
 
 	// ── agent_before_settle：统一驱动提醒 turn（官方零竞态通道）──────
@@ -240,7 +261,10 @@ export default function shepherdExtension(pi: ExtensionAPI, ctx?: ExtensionConte
 	// 死循环防护：_messageEndFired/_agentEndFired 防重复兜底，标志消费后即清 → 收敛。
 	pi.on("agent_before_settle", async (_event, _ctx) => {
 		if (isSubagent() || _aborted) return {};
-		if (consumeLlmJudgePending() || hasWarnings()) {
+		// hasWarnings 隐含 pending custom 消息已入队（message_end/agent_end
+		// 的 pushWarning 均伴随 sendMessage(triggerTurn:false)），
+		// canContinue 的 pendingCustomContext 条件成立，continue 合法。
+		if (hasWarnings()) {
 			return { continue: true };
 		}
 		return {};

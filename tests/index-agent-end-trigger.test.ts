@@ -28,7 +28,6 @@ const mockRegisterToolCall = vi.fn((pi: any, toolState: any) => {
 
 vi.mock("../shepherd", () => ({
 	checkWorktrees: vi.fn(),
-	consumeLlmJudgePending: vi.fn().mockReturnValue(false),
 	drainHints: vi.fn().mockReturnValue(""),
 	hasGitUncommittedChanges: mockHasGitUncommittedChanges,
 	hasGitUntracked: vi.fn().mockReturnValue(false),
