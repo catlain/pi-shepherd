@@ -5,3 +5,4 @@ package-lock.json
 .code-graph/
 coverage/
 rules.json.bak
+*.bak
