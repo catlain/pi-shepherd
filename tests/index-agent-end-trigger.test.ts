@@ -28,6 +28,7 @@ const mockRegisterToolCall = vi.fn((pi: any, toolState: any) => {
 
 vi.mock("../shepherd", () => ({
 	checkWorktrees: vi.fn(),
+	consumeLlmJudgePending: vi.fn().mockReturnValue(false),
 	drainHints: vi.fn().mockReturnValue(""),
 	hasGitUncommittedChanges: mockHasGitUncommittedChanges,
 	hasGitUntracked: vi.fn().mockReturnValue(false),
@@ -117,48 +118,33 @@ describe("agent_end — triggerTurn / abort", () => {
 		return fireAgentEnd(pi._handlers, event);
 	}
 
-	it("有 warnings 时发送 triggerTurn 消息", async () => {
+	it("有 warnings 时 agent_before_settle 返回 continue: true", async () => {
 		mockHasWarnings.mockReturnValue(true);
 		mockLoadRules.mockReturnValue(
 			makeRules([{ check: "always", comment: "warn-rule" }]),
 		);
 
 		await fire(makeEvent("stop"));
-		await vi.advanceTimersByTimeAsync(10);
 
-		expect(pi.sendMessage).toHaveBeenCalledWith(
-			expect.objectContaining({
-				customType: "shepherd-agent-end",
-				display: false,
-			}),
-			{ triggerTurn: true },
-		);
+		const hs = pi._handlers.get("agent_before_settle") ?? [];
+		const results: unknown[] = [];
+		for (const h of hs) results.push(await h({}, {}));
+		expect(results).toContainEqual({ continue: true });
 	});
 
-	it("无 warnings 时不发送 triggerTurn", async () => {
+	it("无 warnings 时 continue 不为 true", async () => {
 		mockHasWarnings.mockReturnValue(false);
-		// has_edits + 没有编辑 → 条件不匹配 → pushed=false → 不发消息
+		// has_edits + 没有编辑 → 条件不匹配 → pushed=false → 无 warning
 		mockLoadRules.mockReturnValue(makeRules([{ check: "has_edits" }]));
 
 		await fire(makeEvent("stop"));
-		await vi.advanceTimersByTimeAsync(10);
-		expect(pi.sendMessage).not.toHaveBeenCalled();
+		const hs = pi._handlers.get("agent_before_settle") ?? [];
+		const results: unknown[] = [];
+		for (const h of hs) results.push(await h({}, {}));
+		expect(results).not.toContainEqual({ continue: true });
 	});
 
-	it("sendMessage 抛出异常不崩溃", async () => {
-		mockHasWarnings.mockReturnValue(true);
-		mockLoadRules.mockReturnValue(
-			makeRules([{ check: "always", comment: "warn-rule" }]),
-		);
-		pi.sendMessage.mockImplementation(() => {
-			throw new Error("session replaced");
-		});
-
-		await fire(makeEvent("stop"));
-		await vi.advanceTimersByTimeAsync(10);
-	});
-
-	it("abort 信号触发后 agent_end 跳过", async () => {
+	it("abort 信号触发后 agent_before_settle 返回空", async () => {
 		mockLoadRules.mockReturnValue(makeRules([{ check: "always" }]));
 
 		const ctrl = new AbortController();

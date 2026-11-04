@@ -59,6 +59,7 @@ import {
 	registerToolCall,
 	registerToolResult,
 	resetMessageEndState,
+	consumeLlmJudgePending,
 	type ContextRestoreConfig,
 	StateTracker,
 	type ToolState,
@@ -225,40 +226,24 @@ export default function shepherdExtension(pi: ExtensionAPI, ctx?: ExtensionConte
 		}
 
 		// 统一发送唯一的 sendMessage(triggerTurn)：
-		// - pushed：agent_end 自己推入了 warning
-		// - hasWarnings()：message_end 或 tool_result 推入了 warning（它们不再自己发 sendMessage）
-		// 只发一次，避免多个 hook 各发一次导致第二个 drainHints 拿空 → 空回复
-		if (pushed || hasWarnings()) {
-			// setTimeout(0) 宏任务与 finishRun 异步链存在竞态：若 activeRun 未清理，
-			// agent.prompt() 会 throw "Agent is already processing a prompt"，
-			// sendMessage 返回的 Promise reject。同步 try/catch 捕不到 async rejection，
-			// 裸调会静默失败（提醒 turn 永不启动，warning 悬置到用户消息后才注入）。
-			// 修复：.catch 捕获 + 退避重试（activeRun 清理后必成功）+ 错误可见化。
-			const sendTriggerTurn = (delay: number): void => {
-				setTimeout(() => {
-					Promise.resolve()
-						// 调用放进 then：同步 throw（session 已替换）与 async rejection 都进 catch
-						.then(() =>
-							pi.sendMessage(
-								{ customType: "shepherd-agent-end", display: false, content: "" },
-								{ triggerTurn: true },
-							),
-						)
-						.then(() => undefined)
-						.catch((e: unknown) => {
-							const msg = e instanceof Error ? e.message : String(e);
-							if (delay < 500) {
-								// 竞态窗口内（activeRun 未清）：退避后重试
-								sendTriggerTurn(delay * 2 + 50);
-							} else {
-								// 重试耗尽：会话可能已切换/关闭，丢弃并留诊断
-								console.error(`[shepherd] triggerTurn 发送失败（已重试）: ${msg}`);
-							}
-						});
-				}, delay);
-			};
-			sendTriggerTurn(0);
+		// 提醒 turn 的驱动改由 agent_before_settle 统一承担（见下方注册）：
+		// 旧链路 sendMessage(triggerTurn)+setTimeout 与 finishRun 异步链存在竞态
+		// （activeRun 未清理时 agent.prompt() throw，async rejection 静默失败）。
+	});
+
+	// ── agent_before_settle：统一驱动提醒 turn（官方零竞态通道）──────
+	// 官方语义："Fired before final settlement. May append entries and ensure one next provider request."
+	// 消息流：message_end（llmJudge 判定 + pushWarning）→ agent_end（收尾规则 pushWarning）
+	//       → 此处 continue: true → pi 官方机制驱动下一 provider request
+	//       → before_provider_request 的 drainHints 注入提醒 → AI 回应提醒。
+	// 相比旧 sendMessage(triggerTurn) 链路：零 setTimeout、零 agent.prompt() 竞态。
+	// 死循环防护：_messageEndFired/_agentEndFired 防重复兜底，标志消费后即清 → 收敛。
+	pi.on("agent_before_settle", async (_event, _ctx) => {
+		if (isSubagent() || _aborted) return {};
+		if (consumeLlmJudgePending() || hasWarnings()) {
+			return { continue: true };
 		}
+		return {};
 	});
 
 	// ── session_shutdown ───────────────────────────────────────

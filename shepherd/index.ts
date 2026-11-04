@@ -25,9 +25,11 @@ export {
 } from "./ephemeral-shared";
 export { checkLineCount } from "./line-count";
 export {
+	consumeLlmJudgePending,
 	extractAssistantText,
 	registerMessageEnd,
 	resetMessageEndState,
+	setLlmJudgePending,
 } from "./message-end";
 export {
 	type BuiltinContext,
