@@ -482,12 +482,12 @@
 	},
 	{
 		"action": "block",
-		"comment": "[arch] 禁止 python heredoc 内联脚本 — 文件操作必须走标准工具或 temp 落盘脚本",
+		"comment": "[arch] 禁止 python/node 内联脚本（heredoc + -c/-e）— 文件操作必须走标准工具或 temp 落盘脚本",
 		"enabled": true,
 		"hook": "tool_call",
-		"message": "禁止 python heredoc（python - <<'EOF'）内联执行。合法路径二选一：① 普通文件读写/编辑 → read/write/edit 工具（edit 匹配失败时用 read 拿精确文本重试，而不是转投脚本）；② 数据分析/批量替换/一次性脚本 → 用 write 落盘到 .pi/tmp/*.py，再 bash 执行，完成后删除临时脚本",
-		"pattern": "\\b(?:python3?|cat|tee)\\b[^<|;&]*<<|\\bpython3?\\b[^<|;&]*\\s-c\\b",
-		"reason": "禁止内联脚本/heredoc 写文件（python/cat/tee + <<，含 ssh 远程），python -c 内联一律拦（含单行快速计算——无 lint 无检查易出错，且是 heredoc 的等价绕行口）。合法路径：① 普通文件改动用 read/write/edit 工具（edit 精确匹配失败先 read 拿精确文本再重试）；② 数据分析/批量替换/一次性脚本/快速计算：write 落盘 .pi/tmp/<会话id前8>-<用途>-<随机4位>.py（每次唯一名，禁固定名——防多会话覆盖/误删）→ bash 执行 → 完成后删除；③ 远程文件：write 落盘同规则唯一名 → scp 到 host:/tmp/ 同名 → ssh host \"python /tmp/<该文件> && rm\"。python -m json.tool 等模块调用不拦。",
+		"message": "禁止内联脚本（python -c、node -e/-p、python/node heredoc、deno eval、bun -e、tsx -e）。合法路径三选一：① 普通文件读写/编辑 → read/write/edit 工具（edit 匹配失败时用 read 拿精确文本重试，而不是转投脚本）；② 数据分析/批量替换/一次性脚本 → write 落盘到 .pi/tmp/<会话id前8>-<用途>-<随机4位>.mjs/.py，再 bash 执行，完成后删除临时脚本；③ 纯 JS 快速计算 → codemode 工具（QuickJS 沙箱，免落盘免清理）",
+		"pattern": "\\b(?:python3?|node|deno|bun|cat|tee)\\b[^<|;&]*<<|\\b(?:python3?|node|bun)\\b[^<|;&]*\\s(?:-c|-e|--eval|-p|--print)\\b|\\bdeno\\s+eval\\b|\\btsx\\b[^<|;&]*\\s(?:-e|--eval)\\b",
+		"reason": "禁止内联脚本/heredoc 写文件或执行代码（python/cat/tee/node/deno/bun + <<，python -c、node -e/--eval/-p/--print、deno eval、bun -e、tsx -e 一律拦，含单行快速计算——无 lint 无检查易出错，且是 heredoc 的等价绕行口；node 系解释器换着花样内联执行是同一绕行口）。合法路径：① 普通文件改动用 read/write/edit 工具（edit 精确匹配失败先 read 拿精确文本再重试）；② 数据分析/批量替换/一次性脚本/快速计算：write 落盘 .pi/tmp/<会话id前8>-<用途>-<随机4位>.py/.mjs（每次唯一名，禁固定名——防多会话覆盖/误删）→ bash 执行 → 完成后删除；③ 纯 JS 计算可用 codemode 工具（QuickJS 沙箱）。④ 远程文件：write 落盘同规则唯一名 → scp 传到远程 → ssh host \"python /tmp/<该文件> && rm\"。python -m json.tool、node script.js 等运行落盘脚本/模块调用不拦。",
 		"tool": "bash"
 	},
 	{
@@ -518,5 +518,19 @@
 			"prompt": "判断步骤：第一步，在文本中查找验证信号：单跑通过、单独跑绿、串行跑、重跑通过、日志、证据链、凭证、根因分析、修复动作（改断言、加容忍、修 flaky 测试）。找到任何一处，直接判 否。第二步，没有验证信号时：若文本用'看起来/应该是/八成/估计'等倾向词把失败断定为 flaky/假阳性，并跳过排查、忽略、归档、或只重跑不查根因 → 判 是。若只是把 flaky 列为待验证假设、讨论治理纪律、复盘引用他人归因、正常叙述 → 判 否。"
 		},
 		"reason": "测试失败归因 flaky/假阳性必须有验证证据！先单跑/串行复现、查日志、定位根因；单跑绿≠不是 bug，'看起来是 flaky'不算结论。仅凭倾向词跳过排查继续走 = 猜测。"
+	},
+	{
+		"action": "notify",
+		"comment": "[grep] 禁止 bash grep -r 递归搜索 — 改用 pi 内置 grep 工具或 code-graph",
+		"conditions": [
+			{
+				"field": "command",
+				"pattern": "\\bgrep\\b[^|;&]*\\s-(?!-)[a-zA-Z]*[rR][a-zA-Z]*\\b|\\bgrep\\b[^|;&]*\\s--recursive\\b"
+			}
+		],
+		"enabled": true,
+		"hook": "tool_call",
+		"reason": "⚠️ bash grep -r 递归搜索效率低且有坑：① 不感知 .gitignore——`grep -rn xxx .` 会搜遍 node_modules/dist/.git，输出爆炸且被截断（2000行/50KB）；② 输出非结构化，长行截断 500 字符。请改用：\n① **pi 内置 grep 工具**（首选）——自动 respects .gitignore、结构化结果（file:line）、glob 参数过滤文件（如 *.ts）、ignoreCase/context/limit 精确控制；\n② **搜代码符号/语义** → code-graph：semantic_code_search（模糊）、get_ast_node（精确符号）、find_references（引用）、get_call_graph（调用链）；\n③ rg 也可（尊重 .gitignore），但不如 pi 内置 grep 结构化。\n纯字面量搜索（TODO、配置值）用 pi 内置 grep 工具完全够用。",
+		"tool": "bash"
 	}
 ]

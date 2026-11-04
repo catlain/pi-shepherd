@@ -18,8 +18,10 @@ vi.mock("../shepherd/ephemeral", () => ({
 }));
 
 const judgePassesMock = vi.fn();
+const setJudgeContextMock = vi.fn();
 vi.mock("../shepherd/llm-judge", () => ({
 	judgePasses: (...args: unknown[]) => judgePassesMock(...args),
+	setJudgeContext: (...args: unknown[]) => setJudgeContextMock(...args),
 }));
 
 const { loadRulesMock } = vi.hoisted(() => ({ loadRulesMock: vi.fn() }));

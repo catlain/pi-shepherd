@@ -6,7 +6,7 @@
  */
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import { judgePasses } from "./llm-judge";
+import { judgePasses, setJudgeContext } from "./llm-judge";
 import { pushWarning } from "./ephemeral";
 import {
 	isSubagent,
@@ -62,7 +62,9 @@ export function registerMessageEnd(
 	rulesDir?: string,
 	rulesOptions?: LoadRulesOptions,
 ): void {
-	pi.on("message_end", async (event, _ctx) => {
+	pi.on("message_end", async (event, ctx) => {
+		// 刷新 llmJudge 宿主上下文（扩展入口无 ctx 参数，事件回调才是权威来源）
+		if (ctx) setJudgeContext(ctx);
 		// 只处理 assistant 消息
 		const message = event.message;
 		if (!message || (message as any).role !== "assistant") return;
