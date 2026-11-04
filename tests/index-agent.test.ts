@@ -4,83 +4,35 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { getHandler, makeMockPi, mocks } from "./helpers/shared-mocks";
 
-const mockGetEffectiveConfig = vi.fn().mockReturnValue({
-	config: { projectRulesPattern: "shepherd-rules-", maxWarnings: 5 },
-	sources: {},
-});
-
-vi.mock("@pi-atelier/shared-utils", () => ({
-	getEffectiveConfig: (...args: unknown[]) => mockGetEffectiveConfig(...args),
-}));
-
-const mockHasGitUncommittedChanges = vi.fn().mockReturnValue(false);
-
-vi.mock("../shepherd", async (importOriginal) => ({
-	...((await importOriginal()) as object),
-	checkWorktrees: vi.fn(),
-	drainHints: vi.fn().mockReturnValue(""),
-	hasGitUncommittedChanges: mockHasGitUncommittedChanges,
-	hasWarnings: vi.fn().mockReturnValue(false),
-	isSubagent: vi.fn().mockReturnValue(false),
-	loadRules: vi.fn().mockReturnValue([]),
-	notifySummary: vi.fn(),
-	pushWarning: vi.fn(),
-	registerToolCall: vi.fn(),
-	registerToolResult: vi.fn(),
-	registerMessageEnd: vi.fn(),
-	registerSessionCompact: vi.fn(),
-	registerCompactConfigCommand: vi.fn(),
-	DEFAULT_CONTEXT_RESTORE: { enabled: true, maxTokens: 40000 },
-	resetMessageEndState: vi.fn(),
-	StateTracker: vi.fn(() => ({})),
-}));
-
-vi.mock("../shepherd/rules-tool", () => ({
-	registerRulesEditorTool: vi.fn(),
-}));
-
+vi.mock("@pi-atelier/shared-utils", async () =>
+	(await import("./helpers/shared-mocks")).sharedUtilsFactory(),
+);
+vi.mock("../shepherd", async (importOriginal) =>
+	(await import("./helpers/shared-mocks")).barrelFactory(
+		(await importOriginal()) as Record<string, unknown>,
+	),
+);
+vi.mock("../shepherd/rules-tool", async () =>
+	(await import("./helpers/shared-mocks")).rulesToolFactory(),
+);
 // 真实 agent-hooks/hint-injector 的依赖走子模块路径拦截
-vi.mock("../shepherd/rules", async (importOriginal) => ({
-	...((await importOriginal()) as object),
-	hasGitUncommittedChanges: mockHasGitUncommittedChanges,
-	hasGitUntracked: vi.fn().mockReturnValue(false),
-	isSubagent: vi.fn().mockReturnValue(false),
-	loadRules: vi.fn().mockReturnValue([]),
-}));
-vi.mock("../shepherd/ephemeral", async (importOriginal) => ({
-	...((await importOriginal()) as object),
-	hasWarnings: vi.fn().mockReturnValue(false),
-	notifySummary: vi.fn(),
-	pushWarning: vi.fn(),
-}));
-vi.mock("../shepherd/ephemeral-shared", async (importOriginal) => ({
-	...((await importOriginal()) as object),
-	drainHints: vi.fn().mockReturnValue(""),
-}));
-
-function makeMockPi() {
-	const handlers = new Map<string, Function[]>();
-	return {
-		on: vi.fn((event: string, handler: Function) => {
-			if (!handlers.has(event)) handlers.set(event, []);
-			handlers.get(event)!.push(handler);
-		}),
-		events: { on: vi.fn(), emit: vi.fn() },
-		sendMessage: vi.fn(),
-		getActiveTools: vi.fn().mockReturnValue([]),
-		_handlers: handlers,
-	};
-}
-
-function getHandler(
-	pi: ReturnType<typeof makeMockPi>,
-	event: string,
-): Function {
-	const hs = pi._handlers.get(event)!;
-	if (!hs) throw new Error(`No handler for "${event}"`);
-	return hs[0];
-}
+vi.mock("../shepherd/rules", async (importOriginal) =>
+	(await import("./helpers/shared-mocks")).rulesFactory(
+		(await importOriginal()) as Record<string, unknown>,
+	),
+);
+vi.mock("../shepherd/ephemeral", async (importOriginal) =>
+	(await import("./helpers/shared-mocks")).ephemeralFactory(
+		(await importOriginal()) as Record<string, unknown>,
+	),
+);
+vi.mock("../shepherd/ephemeral-shared", async (importOriginal) =>
+	(await import("./helpers/shared-mocks")).ephemeralSharedFactory(
+		(await importOriginal()) as Record<string, unknown>,
+	),
+);
 
 // ── agent_start ──
 describe("agent_start", () => {
@@ -116,9 +68,9 @@ describe("agent_start", () => {
 	});
 
 	it("检查 git uncommitted 状态", async () => {
-		mockHasGitUncommittedChanges.mockReturnValue(true);
+		mocks.hasGitUncommittedChanges.mockReturnValue(true);
 		await getHandler(pi, "agent_start")({}, { signal: undefined });
-		expect(mockHasGitUncommittedChanges).toHaveBeenCalled();
+		expect(mocks.hasGitUncommittedChanges).toHaveBeenCalled();
 	});
 
 	it("连续调用重置状态", async () => {
@@ -127,7 +79,7 @@ describe("agent_start", () => {
 			{},
 			{ signal: new AbortController().signal },
 		);
-		expect(mockHasGitUncommittedChanges).toHaveBeenCalled();
+		expect(mocks.hasGitUncommittedChanges).toHaveBeenCalled();
 	});
 
 	it("abort 事件监听不抛出 catch 错误", async () => {

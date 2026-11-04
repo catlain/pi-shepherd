@@ -4,103 +4,40 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import type { Rule } from "@pi-atelier/shepherd";
+import {
+	getHandler,
+	makeMockPi,
+	mocks,
+	shutdownRules,
+} from "./helpers/shared-mocks";
 
-const mockGetEffectiveConfig = vi.fn().mockReturnValue({
-	config: { projectRulesPattern: "shepherd-rules-", maxWarnings: 5 },
-	sources: {},
-});
-
-vi.mock("@pi-atelier/shared-utils", () => ({
-	getEffectiveConfig: (...args: unknown[]) => mockGetEffectiveConfig(...args),
-}));
-
-const mockCheckWorktrees = vi.fn();
-const mockHasGitUncommittedChanges = vi.fn().mockReturnValue(false);
-const mockLoadRules = vi.fn().mockReturnValue([]);
-
-vi.mock("../shepherd", async (importOriginal) => ({
-	...((await importOriginal()) as object),
-	checkWorktrees: mockCheckWorktrees,
-	drainHints: vi.fn().mockReturnValue(""),
-	hasGitUncommittedChanges: mockHasGitUncommittedChanges,
-	hasGitUntracked: vi.fn().mockReturnValue(false),
-	hasWarnings: vi.fn().mockReturnValue(false),
-	isSubagent: vi.fn().mockReturnValue(false),
-	loadRules: mockLoadRules,
-	notifySummary: vi.fn(),
-	pushWarning: vi.fn(),
-	registerToolCall: vi.fn(),
-	registerToolResult: vi.fn(),
-	registerMessageEnd: vi.fn(),
-	registerSessionCompact: vi.fn(),
-	registerCompactConfigCommand: vi.fn(),
-	DEFAULT_CONTEXT_RESTORE: { enabled: true, maxTokens: 40000 },
-	resetMessageEndState: vi.fn(),
-	StateTracker: vi.fn(() => ({})),
-}));
-
-vi.mock("../shepherd/rules-tool", () => ({
-	registerRulesEditorTool: vi.fn(),
-}));
-
+vi.mock("@pi-atelier/shared-utils", async () =>
+	(await import("./helpers/shared-mocks")).sharedUtilsFactory(),
+);
+vi.mock("../shepherd", async (importOriginal) =>
+	(await import("./helpers/shared-mocks")).barrelFactory(
+		(await importOriginal()) as Record<string, unknown>,
+	),
+);
+vi.mock("../shepherd/rules-tool", async () =>
+	(await import("./helpers/shared-mocks")).rulesToolFactory(),
+);
 // 真实 agent-hooks/hint-injector 的依赖走子模块路径拦截
-vi.mock("../shepherd/rules", async (importOriginal) => ({
-	...((await importOriginal()) as object),
-	hasGitUncommittedChanges: mockHasGitUncommittedChanges,
-	hasGitUntracked: vi.fn().mockReturnValue(false),
-	isSubagent: vi.fn().mockReturnValue(false),
-	loadRules: mockLoadRules,
-}));
-vi.mock("../shepherd/ephemeral", async (importOriginal) => ({
-	...((await importOriginal()) as object),
-	hasWarnings: vi.fn().mockReturnValue(false),
-	notifySummary: vi.fn(),
-	pushWarning: vi.fn(),
-}));
-vi.mock("../shepherd/ephemeral-shared", async (importOriginal) => ({
-	...((await importOriginal()) as object),
-	drainHints: vi.fn().mockReturnValue(""),
-}));
-
-function makeMockPi() {
-	const handlers = new Map<string, Function[]>();
-	return {
-		on: vi.fn((event: string, handler: Function) => {
-			if (!handlers.has(event)) handlers.set(event, []);
-			handlers.get(event)!.push(handler);
-		}),
-		events: { on: vi.fn(), emit: vi.fn() },
-		sendMessage: vi.fn(),
-		getActiveTools: vi.fn().mockReturnValue([]),
-		_handlers: handlers,
-	};
-}
-
-function getHandler(
-	pi: ReturnType<typeof makeMockPi>,
-	event: string,
-): Function {
-	const hs = pi._handlers.get(event)!;
-	if (!hs) throw new Error(`No handler for "${event}"`);
-	return hs[0];
-}
-
-function shutdownRules(arr: Array<Partial<Rule>>) {
-	return arr.map(({ check, ...rest }) => {
-		const base: Record<string, unknown> = {
-			hook: "session_shutdown",
-			action: "notify",
-			comment: "shutdown-rule",
-			reason: "default reason",
-		};
-		const resolvedCheck = check ?? "always";
-		if (resolvedCheck && !rest.conditions) {
-			base.conditions = [{ builtin: resolvedCheck }];
-		}
-		return { ...base, ...rest };
-	});
-}
+vi.mock("../shepherd/rules", async (importOriginal) =>
+	(await import("./helpers/shared-mocks")).rulesFactory(
+		(await importOriginal()) as Record<string, unknown>,
+	),
+);
+vi.mock("../shepherd/ephemeral", async (importOriginal) =>
+	(await import("./helpers/shared-mocks")).ephemeralFactory(
+		(await importOriginal()) as Record<string, unknown>,
+	),
+);
+vi.mock("../shepherd/ephemeral-shared", async (importOriginal) =>
+	(await import("./helpers/shared-mocks")).ephemeralSharedFactory(
+		(await importOriginal()) as Record<string, unknown>,
+	),
+);
 
 // ── session_start ──
 describe("session_start", () => {
@@ -119,7 +56,7 @@ describe("session_start", () => {
 	it("应调用 checkWorktrees", async () => {
 		const ctx = { ui: { notify: vi.fn() } };
 		await getHandler(pi, "session_start")({}, ctx);
-		expect(mockCheckWorktrees).toHaveBeenCalledWith(ctx.ui);
+		expect(mocks.checkWorktrees).toHaveBeenCalledWith(ctx.ui);
 	});
 });
 
@@ -138,13 +75,13 @@ describe("session_shutdown", () => {
 	});
 
 	it("无 session_shutdown 规则时跳过", async () => {
-		mockLoadRules.mockReturnValue([]);
+		mocks.loadRules.mockReturnValue([]);
 		await getHandler(pi, "session_shutdown")({}, { ui: { notify: vi.fn() } });
-		expect(mockHasGitUncommittedChanges).not.toHaveBeenCalled();
+		expect(mocks.hasGitUncommittedChanges).not.toHaveBeenCalled();
 	});
 
 	it("check=always 规则触发通知（含 ⚠️ shepherd: 前缀）", async () => {
-		mockLoadRules.mockReturnValue(
+		mocks.loadRules.mockReturnValue(
 			shutdownRules([{ check: "always", reason: "bye" }]),
 		);
 		const ctx = { ui: { notify: vi.fn() } };
@@ -153,10 +90,10 @@ describe("session_shutdown", () => {
 	});
 
 	it("check=git_uncommitted 有未提交时触发（含 ⚠️ shepherd: 前缀）", async () => {
-		mockLoadRules.mockReturnValue(
+		mocks.loadRules.mockReturnValue(
 			shutdownRules([{ check: "git_uncommitted", reason: "git dirty" }]),
 		);
-		mockHasGitUncommittedChanges.mockReturnValue(true);
+		mocks.hasGitUncommittedChanges.mockReturnValue(true);
 		const ctx = { ui: { notify: vi.fn() } };
 		await getHandler(pi, "session_shutdown")({}, ctx);
 		expect(ctx.ui.notify).toHaveBeenCalledWith(
@@ -166,10 +103,10 @@ describe("session_shutdown", () => {
 	});
 
 	it("check=git_uncommitted 无更改时跳过", async () => {
-		mockLoadRules.mockReturnValue(
+		mocks.loadRules.mockReturnValue(
 			shutdownRules([{ check: "git_uncommitted", reason: "git dirty" }]),
 		);
-		mockHasGitUncommittedChanges.mockReturnValue(false);
+		mocks.hasGitUncommittedChanges.mockReturnValue(false);
 		const ctx = { ui: { notify: vi.fn() } };
 		await getHandler(pi, "session_shutdown")({}, ctx);
 		expect(ctx.ui.notify).not.toHaveBeenCalled();
@@ -178,7 +115,7 @@ describe("session_shutdown", () => {
 	it("action 不为 notify 时不触发", async () => {
 		const rules = shutdownRules([{ check: "always", reason: "bye" }]);
 		rules[0].action = "block";
-		mockLoadRules.mockReturnValue(rules);
+		mocks.loadRules.mockReturnValue(rules);
 		const ctx = { ui: { notify: vi.fn() } };
 		await getHandler(pi, "session_shutdown")({}, ctx);
 		expect(ctx.ui.notify).not.toHaveBeenCalled();

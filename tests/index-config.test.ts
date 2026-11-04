@@ -4,108 +4,39 @@
 
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import {
+	fireSystemEvent,
+	makeMockPi,
+	mocks,
+} from "./helpers/shared-mocks";
 
-// ── Mock 声明 ──
-const mockGetEffectiveConfig = vi.fn().mockReturnValue({
-	config: { projectRulesPattern: "shepherd-rules-", maxWarnings: 5 },
-	sources: {},
-});
-
-vi.mock("@pi-atelier/shared-utils", () => ({
-	getEffectiveConfig: (...args: unknown[]) => mockGetEffectiveConfig(...args),
-}));
-
-const mockCheckWorktrees = vi.fn();
-const mockDrainHints = vi.fn().mockReturnValue("");
-const mockHasGitUncommittedChanges = vi.fn().mockReturnValue(false);
-const mockHasWarnings = vi.fn().mockReturnValue(false);
-const mockIsSubagent = vi.fn().mockReturnValue(false);
-const mockContextRestore = { enabled: true, maxTokens: 40000 };
-const mockLoadRules = vi.fn().mockReturnValue([]);
-const mockNotifySummary = vi
-	.fn()
-	.mockImplementation((text: string) => (text ? `📋 ${text}` : ""));
-const mockPushWarning = vi.fn();
-const mockRegisterToolCall = vi.fn();
-const mockRegisterToolResult = vi.fn();
-const mockStateTracker = vi.fn(() => ({}));
-
-vi.mock("../shepherd", async (importOriginal) => ({
-	...((await importOriginal()) as object),
-	checkWorktrees: mockCheckWorktrees,
-	drainHints: mockDrainHints,
-	hasGitUncommittedChanges: mockHasGitUncommittedChanges,
-	hasWarnings: mockHasWarnings,
-	isSubagent: mockIsSubagent,
-	loadRules: mockLoadRules,
-	notifySummary: mockNotifySummary,
-	pushWarning: mockPushWarning,
-	registerToolCall: mockRegisterToolCall,
-	registerToolResult: mockRegisterToolResult,
-	registerMessageEnd: vi.fn(),
-	registerSessionCompact: vi.fn(),
-	registerCompactConfigCommand: vi.fn(),
-	DEFAULT_CONTEXT_RESTORE: mockContextRestore,
-	resetMessageEndState: vi.fn(),
-	StateTracker: mockStateTracker,
-}));
-
-vi.mock("../shepherd/rules-tool", () => ({
-	registerRulesEditorTool: vi.fn(),
-}));
-
+vi.mock("@pi-atelier/shared-utils", async () =>
+	(await import("./helpers/shared-mocks")).sharedUtilsFactory(),
+);
+vi.mock("../shepherd", async (importOriginal) =>
+	(await import("./helpers/shared-mocks")).barrelFactory(
+		(await importOriginal()) as Record<string, unknown>,
+	),
+);
+vi.mock("../shepherd/rules-tool", async () =>
+	(await import("./helpers/shared-mocks")).rulesToolFactory(),
+);
 // 真实 agent-hooks/hint-injector 的依赖走子模块路径拦截
-vi.mock("../shepherd/rules", async (importOriginal) => ({
-	...((await importOriginal()) as object),
-	hasGitUncommittedChanges: mockHasGitUncommittedChanges,
-	hasGitUntracked: vi.fn().mockReturnValue(false),
-	isSubagent: mockIsSubagent,
-	loadRules: mockLoadRules,
-}));
-vi.mock("../shepherd/ephemeral", async (importOriginal) => ({
-	...((await importOriginal()) as object),
-	hasWarnings: mockHasWarnings,
-	notifySummary: mockNotifySummary,
-	pushWarning: mockPushWarning,
-}));
-vi.mock("../shepherd/ephemeral-shared", async (importOriginal) => ({
-	...((await importOriginal()) as object),
-	drainHints: mockDrainHints,
-}));
-
-// ── Fixture ──
-function makeMockPi() {
-	const handlers = new Map<string, Function[]>();
-	const systemEvents = new Map<string, Function[]>();
-	return {
-		on: vi.fn((event: string, handler: Function) => {
-			if (!handlers.has(event)) handlers.set(event, []);
-			handlers.get(event)!.push(handler);
-		}),
-		events: {
-			on: vi.fn((event: string, handler: Function) => {
-				if (!systemEvents.has(event)) systemEvents.set(event, []);
-				systemEvents.get(event)!.push(handler);
-			}),
-			emit: vi.fn(),
-		},
-		sendMessage: vi.fn(),
-		getActiveTools: vi.fn().mockReturnValue([]),
-		_handlers: handlers,
-		_systemEvents: systemEvents,
-	};
-}
-
-function fireSystemEvent(
-	pi: ReturnType<typeof makeMockPi>,
-	event: string,
-	data: unknown = {},
-) {
-	const hs = pi._systemEvents.get(event);
-	if (!hs || hs.length === 0)
-		throw new Error(`System event "${event}" has no handlers`);
-	for (const h of hs) h(data);
-}
+vi.mock("../shepherd/rules", async (importOriginal) =>
+	(await import("./helpers/shared-mocks")).rulesFactory(
+		(await importOriginal()) as Record<string, unknown>,
+	),
+);
+vi.mock("../shepherd/ephemeral", async (importOriginal) =>
+	(await import("./helpers/shared-mocks")).ephemeralFactory(
+		(await importOriginal()) as Record<string, unknown>,
+	),
+);
+vi.mock("../shepherd/ephemeral-shared", async (importOriginal) =>
+	(await import("./helpers/shared-mocks")).ephemeralSharedFactory(
+		(await importOriginal()) as Record<string, unknown>,
+	),
+);
 
 // ── 测试 ──
 describe("shepherdExtension 注册 & config", () => {
@@ -140,13 +71,13 @@ describe("shepherdExtension 注册 & config", () => {
 	});
 
 	it("应注册 tool_call/tool_result 子模块（注意：config 嵌套在 .config 下）", () => {
-		expect(mockRegisterToolCall).toHaveBeenCalledWith(
+		expect(mocks.registerToolCall).toHaveBeenCalledWith(
 			pi,
 			expect.objectContaining({ hasEdits: false, cachedTools: null }),
 			expect.any(String),
 			expect.objectContaining({ projectRulesPattern: "shepherd-rules-" }),
 		);
-		expect(mockRegisterToolResult).toHaveBeenCalledWith(
+		expect(mocks.registerToolResult).toHaveBeenCalledWith(
 			pi,
 			expect.objectContaining({ hasEdits: false, cachedTools: null }),
 			expect.any(String),
@@ -166,10 +97,10 @@ describe("shepherdExtension 注册 & config", () => {
 	});
 
 	it("应在注册时调用 getEffectiveConfig", () => {
-		expect(mockGetEffectiveConfig).toHaveBeenCalledWith("shepherd", {
+		expect(mocks.getEffectiveConfig).toHaveBeenCalledWith("shepherd", {
 			projectRulesPattern: "shepherd-rules-",
 			maxWarnings: 5,
-			contextRestore: mockContextRestore,
+			contextRestore: mocks.contextRestore,
 		}, process.cwd());
 	});
 
@@ -182,7 +113,7 @@ describe("shepherdExtension 注册 & config", () => {
 				short: "hint",
 			});
 
-			mockDrainHints.mockReturnValue("");
+			mocks.drainHints.mockReturnValue("");
 			const ctx = { ui: { notify: vi.fn() } };
 			const hs = pi._handlers.get("before_provider_request")!;
 			await hs[0]({ payload: { messages: [] } }, ctx);
@@ -194,7 +125,7 @@ describe("shepherdExtension 注册 & config", () => {
 			fireSystemEvent(pi, "ephemeral:hint", { text: "hint A" });
 			fireSystemEvent(pi, "ephemeral:hint", { text: "hint B" });
 
-			mockDrainHints.mockReturnValue("");
+			mocks.drainHints.mockReturnValue("");
 			const ctx = { ui: { notify: vi.fn() } };
 			const hs = pi._handlers.get("before_provider_request")!;
 			await hs[0]({ payload: { messages: [] } }, ctx);
@@ -206,7 +137,7 @@ describe("shepherdExtension 注册 & config", () => {
 			fireSystemEvent(pi, "ephemeral:hint", {
 				text: "long only",
 			});
-			mockDrainHints.mockReturnValue("");
+			mocks.drainHints.mockReturnValue("");
 			const ctx = { ui: { notify: vi.fn() } };
 			const hs = pi._handlers.get("before_provider_request")!;
 			await hs[0]({ payload: { messages: [] } }, ctx);

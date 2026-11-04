@@ -4,122 +4,48 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import type { Rule } from "@pi-atelier/shepherd";
+import {
+	fireAgentEnd,
+	makeEvent,
+	makeMockPi,
+	makeRules,
+	mocks,
+} from "./helpers/shared-mocks";
 
-const mockGetEffectiveConfig = vi.fn().mockReturnValue({
-	config: { projectRulesPattern: "shepherd-rules-", maxWarnings: 5 },
-	sources: {},
-});
-
-vi.mock("@pi-atelier/shared-utils", () => ({
-	getEffectiveConfig: (...args: unknown[]) => mockGetEffectiveConfig(...args),
-}));
-
-const mockHasGitUncommittedChanges = vi.fn().mockReturnValue(false);
-const mockHasWarnings = vi.fn().mockReturnValue(false);
-const mockIsSubagent = vi.fn().mockReturnValue(false);
-const mockLoadRules = vi.fn().mockReturnValue([]);
-const mockPushWarning = vi.fn();
-const mockRegisterToolCall = vi.fn((pi: any, toolState: any) => {
+// 本文件特化：registerToolCall 注册 tool_call handler 模拟 hasEdits 置位
+mocks.registerToolCall.mockImplementation(((pi: any, toolState: any) => {
 	pi.on("tool_call", () => {
 		toolState.hasEdits = true;
 	});
-});
-const mockRegisterToolResult = vi.fn();
+}) as never);
 
-vi.mock("../shepherd", async (importOriginal) => ({
-	...((await importOriginal()) as object),
-	checkWorktrees: vi.fn(),
-	drainHints: vi.fn().mockReturnValue(""),
-	hasGitUncommittedChanges: mockHasGitUncommittedChanges,
-	hasGitUntracked: vi.fn().mockReturnValue(false),
-	hasWarnings: mockHasWarnings,
-	isSubagent: mockIsSubagent,
-	loadRules: mockLoadRules,
-	notifySummary: vi.fn(),
-	pushWarning: mockPushWarning,
-	registerToolCall: mockRegisterToolCall,
-	registerToolResult: mockRegisterToolResult,
-	registerMessageEnd: vi.fn(),
-	registerSessionCompact: vi.fn(),
-	registerCompactConfigCommand: vi.fn(),
-	DEFAULT_CONTEXT_RESTORE: { enabled: true, maxTokens: 40000 },
-	resetMessageEndState: vi.fn(),
-	StateTracker: vi.fn(() => ({})),
-}));
-
-vi.mock("../shepherd/rules-tool", () => ({
-	registerRulesEditorTool: vi.fn(),
-}));
-
+vi.mock("@pi-atelier/shared-utils", async () =>
+	(await import("./helpers/shared-mocks")).sharedUtilsFactory(),
+);
+vi.mock("../shepherd", async (importOriginal) =>
+	(await import("./helpers/shared-mocks")).barrelFactory(
+		(await importOriginal()) as Record<string, unknown>,
+	),
+);
+vi.mock("../shepherd/rules-tool", async () =>
+	(await import("./helpers/shared-mocks")).rulesToolFactory(),
+);
 // 真实 agent-hooks/hint-injector 的依赖走子模块路径拦截
-vi.mock("../shepherd/rules", async (importOriginal) => ({
-	...((await importOriginal()) as object),
-	hasGitUncommittedChanges: mockHasGitUncommittedChanges,
-	hasGitUntracked: vi.fn().mockReturnValue(false),
-	isSubagent: mockIsSubagent,
-	loadRules: mockLoadRules,
-}));
-vi.mock("../shepherd/ephemeral", async (importOriginal) => ({
-	...((await importOriginal()) as object),
-	hasWarnings: mockHasWarnings,
-	notifySummary: vi.fn(),
-	pushWarning: mockPushWarning,
-}));
-vi.mock("../shepherd/ephemeral-shared", async (importOriginal) => ({
-	...((await importOriginal()) as object),
-	drainHints: vi.fn().mockReturnValue(""),
-}));
-
-function makeMockPi() {
-	const handlers = new Map<string, Function[]>();
-	return {
-		on: vi.fn((event: string, handler: Function) => {
-			if (!handlers.has(event)) handlers.set(event, []);
-			handlers.get(event)!.push(handler);
-		}),
-		events: { on: vi.fn(), emit: vi.fn() },
-		sendMessage: vi.fn(),
-		getActiveTools: vi.fn().mockReturnValue([]),
-		_handlers: handlers,
-	};
-}
-
-function makeRules(arr: Array<Partial<Rule>>) {
-	return arr.map(({ check, ...rest }) => {
-		const base: Record<string, unknown> = {
-			hook: "agent_end",
-			action: "notify",
-			comment: "test-rule",
-			reason: "test reason",
-			stopReason: ["stop"],
-		};
-		// 兼容旧 check 字段：自动转为 conditions
-		if (check === undefined || check === "always") {
-			base.conditions = [{ builtin: "always" }];
-		} else if (check && !rest.conditions) {
-			base.conditions = [{ builtin: check }];
-		} else if (rest.conditions) {
-			base.conditions = rest.conditions;
-			delete rest.conditions;
-		}
-		return { ...base, ...rest };
-	});
-}
-
-function makeEvent(stopReason = "stop") {
-	return {
-		messages: [
-			{ role: "user", content: "hi" },
-			{ role: "assistant", content: "ok", stopReason },
-		],
-	};
-}
-
-async function fireAgentEnd(handlers: Map<string, Function[]>, event: unknown) {
-	const hs = handlers.get("agent_end")!;
-	for (const h of hs) await h(event, {});
-}
+vi.mock("../shepherd/rules", async (importOriginal) =>
+	(await import("./helpers/shared-mocks")).rulesFactory(
+		(await importOriginal()) as Record<string, unknown>,
+	),
+);
+vi.mock("../shepherd/ephemeral", async (importOriginal) =>
+	(await import("./helpers/shared-mocks")).ephemeralFactory(
+		(await importOriginal()) as Record<string, unknown>,
+	),
+);
+vi.mock("../shepherd/ephemeral-shared", async (importOriginal) =>
+	(await import("./helpers/shared-mocks")).ephemeralSharedFactory(
+		(await importOriginal()) as Record<string, unknown>,
+	),
+);
 
 describe("agent_end — check 类型", () => {
 	let shepherdExtension: typeof import("../index").default;
@@ -144,28 +70,28 @@ describe("agent_end — check 类型", () => {
 	}
 
 	it("check=always 触发通知", async () => {
-		mockLoadRules.mockReturnValue(makeRules([{ check: "always" }]));
+		mocks.loadRules.mockReturnValue(makeRules([{ check: "always" }]));
 		await fire(makeEvent("stop"));
-		expect(mockPushWarning).toHaveBeenCalled();
+		expect(mocks.pushWarning).toHaveBeenCalled();
 	});
 
 	it("check=undefined 视为 always", async () => {
-		mockLoadRules.mockReturnValue(makeRules([{ check: undefined }]));
+		mocks.loadRules.mockReturnValue(makeRules([{ check: undefined }]));
 		await fire(makeEvent("stop"));
-		expect(mockPushWarning).toHaveBeenCalled();
+		expect(mocks.pushWarning).toHaveBeenCalled();
 	});
 
 	it("action 不为 notify 时不触发", async () => {
-		mockLoadRules.mockReturnValue(
+		mocks.loadRules.mockReturnValue(
 			makeRules([{ action: "block", check: "always" }]),
 		);
 		await fire(makeEvent("stop"));
-		expect(mockPushWarning).not.toHaveBeenCalled();
+		expect(mocks.pushWarning).not.toHaveBeenCalled();
 	});
 
 	it("check=git_dirty AND has_edits: 有更改 + 有编辑时触发", async () => {
-		mockHasGitUncommittedChanges.mockReturnValue(true);
-		mockLoadRules.mockReturnValue(
+		mocks.hasGitUncommittedChanges.mockReturnValue(true);
+		mocks.loadRules.mockReturnValue(
 			makeRules([
 				{
 					conditions: [{ builtin: "git_dirty" }, { builtin: "has_edits" }],
@@ -179,18 +105,18 @@ describe("agent_end — check 类型", () => {
 		for (const h of pi._handlers.get("tool_call")!) await h({}, {});
 
 		await fire(makeEvent("stop"));
-		expect(mockPushWarning).toHaveBeenCalledWith("git dirty", "test-rule");
+		expect(mocks.pushWarning).toHaveBeenCalledWith("git dirty", "test-rule");
 	});
 
 	it("conditions git_dirty: 无更改时跳过", async () => {
-		mockHasGitUncommittedChanges.mockReturnValue(false);
-		mockLoadRules.mockReturnValue(makeRules([{ check: "git_uncommitted" }]));
+		mocks.hasGitUncommittedChanges.mockReturnValue(false);
+		mocks.loadRules.mockReturnValue(makeRules([{ check: "git_uncommitted" }]));
 		await fire(makeEvent("stop"));
-		expect(mockPushWarning).not.toHaveBeenCalled();
+		expect(mocks.pushWarning).not.toHaveBeenCalled();
 	});
 
 	it("check=has_edits: 有编辑时触发", async () => {
-		mockLoadRules.mockReturnValue(
+		mocks.loadRules.mockReturnValue(
 			makeRules([{ check: "has_edits", reason: "edit detected" }]),
 		);
 		for (const h of pi._handlers.get("agent_start")!)
@@ -198,20 +124,20 @@ describe("agent_end — check 类型", () => {
 		for (const h of pi._handlers.get("tool_call")!) await h({}, {});
 
 		await fire(makeEvent("stop"));
-		expect(mockPushWarning).toHaveBeenCalledWith("edit detected", "test-rule");
+		expect(mocks.pushWarning).toHaveBeenCalledWith("edit detected", "test-rule");
 	});
 
 	it("check=has_edits: 无编辑时跳过", async () => {
-		mockLoadRules.mockReturnValue(
+		mocks.loadRules.mockReturnValue(
 			makeRules([{ check: "has_edits", reason: "edit detected" }]),
 		);
 		await fire(makeEvent("stop"));
-		expect(mockPushWarning).not.toHaveBeenCalled();
+		expect(mocks.pushWarning).not.toHaveBeenCalled();
 	});
 
 	// ── 问句跳过测试 ──
 	it("问句结尾时跳过 agent_end 通知", async () => {
-		mockLoadRules.mockReturnValue(makeRules([{ check: "always" }]));
+		mocks.loadRules.mockReturnValue(makeRules([{ check: "always" }]));
 		const questionEvent = {
 			messages: [
 				{ role: "user", content: "hi" },
@@ -219,11 +145,11 @@ describe("agent_end — check 类型", () => {
 			],
 		};
 		await fire(questionEvent);
-		expect(mockPushWarning).not.toHaveBeenCalled();
+		expect(mocks.pushWarning).not.toHaveBeenCalled();
 	});
 
 	it("英文问号结尾时也跳过", async () => {
-		mockLoadRules.mockReturnValue(makeRules([{ check: "always" }]));
+		mocks.loadRules.mockReturnValue(makeRules([{ check: "always" }]));
 		const questionEvent = {
 			messages: [
 				{ role: "user", content: "hi" },
@@ -231,11 +157,11 @@ describe("agent_end — check 类型", () => {
 			],
 		};
 		await fire(questionEvent);
-		expect(mockPushWarning).not.toHaveBeenCalled();
+		expect(mocks.pushWarning).not.toHaveBeenCalled();
 	});
 
 	it("非问句结尾时正常触发", async () => {
-		mockLoadRules.mockReturnValue(makeRules([{ check: "always" }]));
+		mocks.loadRules.mockReturnValue(makeRules([{ check: "always" }]));
 		const normalEvent = {
 			messages: [
 				{ role: "user", content: "hi" },
@@ -243,11 +169,11 @@ describe("agent_end — check 类型", () => {
 			],
 		};
 		await fire(normalEvent);
-		expect(mockPushWarning).toHaveBeenCalled();
+		expect(mocks.pushWarning).toHaveBeenCalled();
 	});
 
 	it("问句后缀模式也跳过（要不要、可以吗、你觉得）", async () => {
-		mockLoadRules.mockReturnValue(makeRules([{ check: "always" }]));
+		mocks.loadRules.mockReturnValue(makeRules([{ check: "always" }]));
 		const questionEvent = {
 			messages: [
 				{ role: "user", content: "hi" },
@@ -255,6 +181,6 @@ describe("agent_end — check 类型", () => {
 			],
 		};
 		await fire(questionEvent);
-		expect(mockPushWarning).not.toHaveBeenCalled();
+		expect(mocks.pushWarning).not.toHaveBeenCalled();
 	});
 });

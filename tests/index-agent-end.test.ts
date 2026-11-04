@@ -5,109 +5,41 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import type { Rule } from "@pi-atelier/shepherd";
+import {
+	fireAgentEnd,
+	makeEvent,
+	makeMockPi,
+	makeRules,
+	mocks,
+} from "./helpers/shared-mocks";
 
-const mockGetEffectiveConfig = vi.fn().mockReturnValue({
-	config: { projectRulesPattern: "shepherd-rules-", maxWarnings: 5 },
-	sources: {},
-});
-
-vi.mock("@pi-atelier/shared-utils", () => ({
-	getEffectiveConfig: (...args: unknown[]) => mockGetEffectiveConfig(...args),
-}));
-
-const mockHasWarnings = vi.fn().mockReturnValue(false);
-const mockIsSubagent = vi.fn().mockReturnValue(false);
-const mockLoadRules = vi.fn().mockReturnValue([]);
-const mockPushWarning = vi.fn();
-
-vi.mock("../shepherd", async (importOriginal) => ({
-	// 拆分后 registerAgentHooks/registerHintInjector 走真实实现（见下子模块 mock 拦依赖）
-	...((await importOriginal()) as object),
-	checkWorktrees: vi.fn(),
-	drainHints: vi.fn().mockReturnValue(""),
-	hasGitUncommittedChanges: vi.fn().mockReturnValue(false),
-	hasGitUntracked: vi.fn().mockReturnValue(false),
-	hasWarnings: mockHasWarnings,
-	isSubagent: mockIsSubagent,
-	loadRules: mockLoadRules,
-	notifySummary: vi
-		.fn()
-		.mockImplementation((text: string) => (text ? `📋 ${text}` : "")),
-	pushWarning: mockPushWarning,
-	registerToolCall: vi.fn(),
-	registerToolResult: vi.fn(),
-	registerMessageEnd: vi.fn(),
-	registerSessionCompact: vi.fn(),
-	registerCompactConfigCommand: vi.fn(),
-	DEFAULT_CONTEXT_RESTORE: { enabled: true, maxTokens: 40000 },
-	resetMessageEndState: vi.fn(),
-	StateTracker: vi.fn(() => ({})),
-}));
-
-vi.mock("../shepherd/rules-tool", () => ({
-	registerRulesEditorTool: vi.fn(),
-}));
-
+vi.mock("@pi-atelier/shared-utils", async () =>
+	(await import("./helpers/shared-mocks")).sharedUtilsFactory(),
+);
+vi.mock("../shepherd", async (importOriginal) =>
+	(await import("./helpers/shared-mocks")).barrelFactory(
+		(await importOriginal()) as Record<string, unknown>,
+	),
+);
+vi.mock("../shepherd/rules-tool", async () =>
+	(await import("./helpers/shared-mocks")).rulesToolFactory(),
+);
 // 真实 agent-hooks/hint-injector 的依赖走子模块路径拦截
-vi.mock("../shepherd/rules", async (importOriginal) => ({
-	...((await importOriginal()) as object),
-	hasGitUncommittedChanges: vi.fn().mockReturnValue(false),
-	hasGitUntracked: vi.fn().mockReturnValue(false),
-	isSubagent: mockIsSubagent,
-	loadRules: mockLoadRules,
-}));
-vi.mock("../shepherd/ephemeral", async (importOriginal) => ({
-	...((await importOriginal()) as object),
-	hasWarnings: mockHasWarnings,
-	notifySummary: vi
-		.fn()
-		.mockImplementation((text: string) => (text ? `📋 ${text}` : "")),
-	pushWarning: mockPushWarning,
-}));
-vi.mock("../shepherd/ephemeral-shared", async (importOriginal) => ({
-	...((await importOriginal()) as object),
-	drainHints: vi.fn().mockReturnValue(""),
-}));
-
-function makeMockPi() {
-	const handlers = new Map<string, Function[]>();
-	return {
-		on: vi.fn((event: string, handler: Function) => {
-			if (!handlers.has(event)) handlers.set(event, []);
-			handlers.get(event)!.push(handler);
-		}),
-		events: { on: vi.fn(), emit: vi.fn() },
-		sendMessage: vi.fn(),
-		getActiveTools: vi.fn().mockReturnValue([]),
-		_handlers: handlers,
-	};
-}
-
-function makeRules(arr: Array<Partial<Rule>>) {
-	return arr.map(({ check, ...rest }) => {
-		const base: Record<string, unknown> = {
-			hook: "agent_end",
-			action: "notify",
-			comment: "test-rule",
-			reason: "test reason",
-			stopReason: ["stop"],
-		};
-		const resolvedCheck = check ?? "always";
-		if (resolvedCheck && !rest.conditions) {
-			base.conditions = [{ builtin: resolvedCheck }];
-		}
-		return { ...base, ...rest };
-	});
-}
-
-async function fireAgentEnd(
-	handlers: Map<string, Function[]>,
-	event: unknown,
-	ctx?: unknown,
-) {
-	const hs = handlers.get("agent_end")!;
-	for (const h of hs) await h(event, ctx ?? {});
-}
+vi.mock("../shepherd/rules", async (importOriginal) =>
+	(await import("./helpers/shared-mocks")).rulesFactory(
+		(await importOriginal()) as Record<string, unknown>,
+	),
+);
+vi.mock("../shepherd/ephemeral", async (importOriginal) =>
+	(await import("./helpers/shared-mocks")).ephemeralFactory(
+		(await importOriginal()) as Record<string, unknown>,
+	),
+);
+vi.mock("../shepherd/ephemeral-shared", async (importOriginal) =>
+	(await import("./helpers/shared-mocks")).ephemeralSharedFactory(
+		(await importOriginal()) as Record<string, unknown>,
+	),
+);
 
 describe("agent_end — 基础场景", () => {
 	let shepherdExtension: typeof import("../index").default;
@@ -132,9 +64,9 @@ describe("agent_end — 基础场景", () => {
 	}
 
 	it("子代理时跳过", async () => {
-		mockIsSubagent.mockReturnValue(true);
+		mocks.isSubagent.mockReturnValue(true);
 		await fire({ messages: [{ role: "assistant" }] });
-		expect(mockLoadRules).not.toHaveBeenCalled();
+		expect(mocks.loadRules).not.toHaveBeenCalled();
 	});
 
 	it("已中断则跳过", async () => {
@@ -143,75 +75,66 @@ describe("agent_end — 基础场景", () => {
 		const agentStartHs = pi._handlers.get("agent_start")!;
 		for (const h of agentStartHs) await h({}, { signal: ctrl.signal });
 
-		mockIsSubagent.mockReturnValue(false);
+		mocks.isSubagent.mockReturnValue(false);
 		await fire({ messages: [{ role: "assistant" }] });
-		expect(mockLoadRules).not.toHaveBeenCalled();
+		expect(mocks.loadRules).not.toHaveBeenCalled();
 	});
 
 	it("无 agent_end 规则时跳过", async () => {
-		mockLoadRules.mockReturnValue([]);
+		mocks.loadRules.mockReturnValue([]);
 		await fire({ messages: [{ role: "assistant" }] });
-		expect(mockPushWarning).not.toHaveBeenCalled();
+		expect(mocks.pushWarning).not.toHaveBeenCalled();
 	});
 
 	it("stopReason 不匹配时跳过", async () => {
-		mockLoadRules.mockReturnValue(makeRules([{ stopReason: ["end_turn"] } as unknown as Partial<Rule>]));
+		mocks.loadRules.mockReturnValue(makeRules([{ stopReason: ["end_turn"] } as unknown as Partial<Rule>]));
 		await fire(makeEvent("stop"));
-		expect(mockPushWarning).not.toHaveBeenCalled();
+		expect(mocks.pushWarning).not.toHaveBeenCalled();
 	});
 
 	it("stopReason 匹配时触发", async () => {
-		mockLoadRules.mockReturnValue(makeRules([{ stopReason: ["stop"] }]));
+		mocks.loadRules.mockReturnValue(makeRules([{ stopReason: ["stop"] }]));
 		await fire(makeEvent("stop"));
-		expect(mockPushWarning).toHaveBeenCalledWith("test reason", "test-rule");
+		expect(mocks.pushWarning).toHaveBeenCalledWith("test reason", "test-rule");
 	});
 
 	it("默认 stopReason 为 ['stop']", async () => {
-		mockLoadRules.mockReturnValue(makeRules([{}]));
+		mocks.loadRules.mockReturnValue(makeRules([{}]));
 		await fire(makeEvent("stop"));
-		expect(mockPushWarning).toHaveBeenCalled();
+		expect(mocks.pushWarning).toHaveBeenCalled();
 	});
 
 	it("重复 comment 不触发两次", async () => {
-		mockLoadRules.mockReturnValue(makeRules([{ comment: "same-rule" }]));
+		mocks.loadRules.mockReturnValue(makeRules([{ comment: "same-rule" }]));
 		await fire(makeEvent("stop"));
-		expect(mockPushWarning).toHaveBeenCalledTimes(1);
+		expect(mocks.pushWarning).toHaveBeenCalledTimes(1);
 
-		mockPushWarning.mockClear();
+		mocks.pushWarning.mockClear();
 		await fire(makeEvent("stop"));
-		expect(mockPushWarning).not.toHaveBeenCalled();
+		expect(mocks.pushWarning).not.toHaveBeenCalled();
 	});
 
 	it("不同 comment 各自触发", async () => {
-		mockLoadRules.mockReturnValue(
+		mocks.loadRules.mockReturnValue(
 			makeRules([
 				{ comment: "r1", reason: "first" },
 				{ comment: "r2", reason: "second" },
 			]),
 		);
 		await fire(makeEvent("stop"));
-		expect(mockPushWarning).toHaveBeenCalledWith("first", "r1");
-		expect(mockPushWarning).toHaveBeenCalledWith("second", "r2");
-		expect(mockPushWarning).toHaveBeenCalledTimes(2);
+		expect(mocks.pushWarning).toHaveBeenCalledWith("first", "r1");
+		expect(mocks.pushWarning).toHaveBeenCalledWith("second", "r2");
+		expect(mocks.pushWarning).toHaveBeenCalledTimes(2);
 	});
 
 	it("无 stopReason 的 assistant 视为空串，若规则允许空串则匹配", async () => {
-		mockLoadRules.mockReturnValue(makeRules([{ stopReason: [""] } as unknown as Partial<Rule>]));
+		mocks.loadRules.mockReturnValue(makeRules([{ stopReason: [""] } as unknown as Partial<Rule>]));
 		await fire({
 			messages: [
 				{ role: "user", content: "hi" },
 				{ role: "assistant", content: "ok" },
 			],
 		});
-		expect(mockPushWarning).toHaveBeenCalled();
+		expect(mocks.pushWarning).toHaveBeenCalled();
 	});
 });
-
-function makeEvent(stopReason = "stop") {
-	return {
-		messages: [
-			{ role: "user", content: "hi" },
-			{ role: "assistant", content: "ok", stopReason },
-		],
-	};
-}
