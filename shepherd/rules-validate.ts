@@ -122,11 +122,14 @@ export function validateRule(
 				errors.push("llmJudge.invert 可选：布尔（true 时答“否”才触发）");
 			}
 			// hook 组合校验：llmJudge 仅 message_end 支持，其他 hook 上配置会静默不生效
-			const hook = (rule.hook as string) || "tool_call";
-			if (hook !== "message_end") {
-				errors.push(
-					`llmJudge 仅支持 message_end hook，当前 hook=${hook}（判断不会生效）`,
-			);
+			// partial 模式（update changes 无 hook 字段）跳过：merged 完整校验会把关
+			if (rule.hook !== undefined) {
+				const hook = rule.hook as string;
+				if (hook !== "message_end") {
+					errors.push(
+						`llmJudge 仅支持 message_end hook，当前 hook=${hook}（判断不会生效）`,
+				);
+				}
 			}
 		}
 	}

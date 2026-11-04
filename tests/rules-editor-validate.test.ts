@@ -200,6 +200,17 @@ describe("validateRule", () => {
 		expect(rule.disabled).toBeUndefined();
 		expect(rule.enabled).toBe(true); // 已有的 enabled 优先
 	});
+
+	it("partial 模式：changes 仅含 llmJudge（无 hook）不应报 hook 组合错误", () => {
+		// 場景：update(index, changes={llmJudge: {...}}) 的 partial 校验——
+		// changes 无 hook 字段，hook 校验应跳过（merged 完整校验会把关），
+		// 曾因 `|| "tool_call"` 默认值误报“仅支持 message_end”（0.4.2 修复）
+		const changes = {
+			llmJudge: { prompt: "判断是否为无根据的归因猜测" },
+		} as Record<string, unknown>;
+		const result = validateRule(changes, { partial: true });
+		expect(result.valid).toBe(true);
+	});
 });
 
 // ── listRules ────────────────────────────────────────────
