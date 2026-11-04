@@ -10,7 +10,7 @@
 
 import * as fs from "node:fs";
 import * as path from "node:path";
-import { validateRule } from "./rules-validate";
+import { validateHookActionCombo, validateRule } from "./rules-validate";
 
 export type { ValidationResult } from "./rules-validate";
 export { validateRule } from "./rules-validate";
@@ -231,10 +231,32 @@ export function updateRule(
 			error: `changes 非法: ${changesValidation.errors.join("; ")}`,
 		};
 	const merged = { ...rules[index], ...changes };
+	// 组合维度分层（hook-action-validation）：changes 触及 hook/action 时，
+	// 合并后的无效组合升级为拒绝（本次改动直接造成，当场拦）；未触及则降级警告（存量债不锁死，防 8-31 连坐）。
+	const touchesCombo = "hook" in changes || "action" in changes;
+	const comboErrors = validateHookActionCombo(merged);
+	if (touchesCombo && comboErrors.length > 0) {
+		return {
+			success: false,
+			error: `changes 将产生无效组合: ${comboErrors.join("; ")}`,
+		};
+	}
 	const mergedValidation = validateRule(merged);
-	const warning = mergedValidation.valid
-		? undefined
-		: `存量字段警告（不阻塞写入）: ${mergedValidation.errors.join("; ")}。建议 update(index, changes={...}) 修复对应字段`;
+	// mergedValidation 完整模式已含组合错误——剥离后再拼装，避免与 comboErrors 重复
+	const comboSet = new Set(comboErrors);
+	const otherErrors = mergedValidation.errors.filter((e) => !comboSet.has(e));
+	const warnings: string[] = [];
+	if (otherErrors.length > 0) {
+		warnings.push(
+			`存量字段警告（不阻塞写入）: ${otherErrors.join("; ")}`,
+			`建议 update(index, changes={...}) 修复对应字段`,
+		);
+	}
+	if (!touchesCombo && comboErrors.length > 0)
+		warnings.push(
+			`存量 hook×action 组合无效（未触及不阻塞）: ${comboErrors.join("; ")}`,
+		);
+	const warning = warnings.length > 0 ? warnings.join("。") : undefined;
 	rules[index] = merged;
 	const writeResult = safeWrite(filePath, rules);
 	return writeResult.success ? { ...writeResult, warning } : writeResult;

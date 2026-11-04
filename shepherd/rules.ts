@@ -115,6 +115,48 @@ export interface Rule {
 	_compiled?: RegExp;
 }
 
+/** hook × action 支持矩阵 —— 单一来源。
+ * 校验器（rules-validate.ts 组合校验）与运行时警告均从此常量取支持集；
+ * 运行时消费分支增删时 MUST 同步更新本矩阵（各键注释标明消费分支源码位置）。
+ * 实证背景：tool_call+steer 在添加校验通过后静默失效（2026-11 规则 39 事故 + 存量 30/34 两条）。
+ */
+export const HOOK_ACTION_SUPPORT: Readonly<Record<string, readonly string[]>> = {
+	// tool-hooks.ts handleToolCall：block / rewrite / notify（steer 无消费分支）
+	tool_call: ["block", "rewrite", "notify"],
+	// tool-hooks.ts handleToolResult：steer / notify
+	tool_result: ["steer", "notify"],
+	// message-end.ts：steer / notify（steer 经 llmJudge 精判链路）
+	message_end: ["steer", "notify"],
+	// agent-hooks.ts agent_end：仅 notify（pushWarning + sendMessage 队列，无 steer 分支）
+	agent_end: ["notify"],
+	// agent-hooks.ts session_shutdown：仅 notify（ctx.ui.notify）
+	session_shutdown: ["notify"],
+	// compaction.ts：仅 steer
+	session_compact: ["steer"],
+};
+
+/** 归一化 hook：缺省 = tool_call（与 compileRules 运行时行为同源）。校验器 MUST 用归一化后的 hook 做组合校验，
+ * 否则 {action:"steer"} 无 hook 的新规则会绕过组合校验后静默失效（与运行时归一化行为不一致）。 */
+export function normalizeHook(rule: { hook?: string }): string {
+	return rule.hook || "tool_call";
+}
+
+/** 运行时兜底警告：由 compileRules 在规则加载出口单点调用（覆盖全部 hook），
+ * 兼防外部手改 rules.json 绕过校验器的路径（警告进 stderr/restore-log，不阻塞加载）。
+ * Set 去重：loadRules 每次 hook 事件都会重入，同一规则只警告一次防刷屏。 */
+const _warnedCombos = new Set<string>();
+export function warnUnsupportedAction(hook: string, rule: Rule): void {
+	const supported = HOOK_ACTION_SUPPORT[hook];
+	const action = rule.action ?? "block";
+	if (supported && supported.includes(action)) return;
+	const key = `${hook}|${action}|${rule.comment}`;
+	if (_warnedCombos.has(key)) return;
+	_warnedCombos.add(key);
+	console.error(
+		`[shepherd] 规则 "${rule.comment ?? rule.pattern ?? "(未命名)"}" 组合无效: hook=${hook} 不消费 action=${action}，规则静默失效——请用 shepherd_rules 工具修复`,
+	);
+}
+
 // ── 内置条件匹配 ────────────────────────────────────────────
 
 // ── 规则加载/编译/匹配 ────────────────────────────────────────
@@ -164,8 +206,8 @@ export function compileRules(rules: Rule[]): Rule[] {
 			const builtinName = rule.check === "has_edits" ? "has_edits" : rule.check;
 			rule.conditions = [{ builtin: builtinName as ConditionBuiltin }];
 		}
-		// 填充默认值
-		if (!rule.hook) rule.hook = "tool_call";
+		// 填充默认值（hook 经 normalizeHook 归一化，与校验器同源）
+		rule.hook = normalizeHook(rule) as Rule["hook"];
 		if (!rule.tool) rule.tool = "bash";
 		if (!rule.action) rule.action = "block";
 		// llmJudge 加载时校验：prompt 非空 + 仅 message_end 支持；无效则剥离该字段（降级为纯正则行为）
@@ -182,6 +224,8 @@ export function compileRules(rules: Rule[]): Rule[] {
 				delete rule.llmJudge;
 			}
 		}
+		// hook×action 组合兜底警告（归一化后单点检查，覆盖全部 hook 处理器）
+		warnUnsupportedAction(rule.hook!, rule);
 	}
 	return active;
 }

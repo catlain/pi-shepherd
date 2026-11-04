@@ -103,6 +103,19 @@ Shepherd 在 AI 工作流的 6 个关键节点插入钩子：
 
 ## 规则格式
 
+**hook × action 支持矩阵**（写错组合 = 写入被校验器拒绝；存量无效组合运行时仅警告）:
+
+| hook | 支持的 action |
+|------|--------------|
+| `tool_call`（缺省） | `block` / `rewrite` / `notify` |
+| `tool_result` | `steer` / `notify` |
+| `message_end` | `steer` / `notify` |
+| `session_compact` | `steer` |
+| `agent_end` / `session_shutdown` | `notify` |
+
+- hook 缺省归一化为 `tool_call`，action 缺省归一化为 `block`——校验与运行时同源（rules.ts `HOOK_ACTION_SUPPORT`）
+- `tool` 字段纯精确匹配（`|` 多值，无通配无后缀）——MCP 工具必须写全名 `mcp__server__tool`（写裸名永不命中）
+
 完整的规则字段：
 
 ```json

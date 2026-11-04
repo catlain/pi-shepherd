@@ -26,6 +26,7 @@ describe("validateRule — session_compact 与 reason 字段", () => {
 		expect(
 			validateRule({
 				hook: "session_compact",
+				action: "steer", // 矩阵：session_compact 仅消费 steer；缺省归一化为 block 会被组合校验拒绝（防静默失效）
 				conditions: [{ field: "reason", pattern: "manual" }],
 				comment: "c",
 				reason: "r",
@@ -34,6 +35,7 @@ describe("validateRule — session_compact 与 reason 字段", () => {
 		expect(
 			validateRule({
 				hook: "session_compact",
+				action: "steer",
 				conditions: [{ field: "nope", pattern: "x" }],
 				comment: "c",
 				reason: "r",
@@ -45,6 +47,7 @@ describe("validateRule — session_compact 与 reason 字段", () => {
 		expect(
 			validateRule({
 				hook: "session_compact",
+				action: "steer",
 				comment: "c",
 				reason: "r",
 			} as never).valid,
@@ -52,6 +55,7 @@ describe("validateRule — session_compact 与 reason 字段", () => {
 		expect(
 			validateRule({
 				hook: "session_compact_typo",
+				action: "steer",
 				comment: "c",
 				reason: "r",
 			} as never).valid,

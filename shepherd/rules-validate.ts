@@ -2,21 +2,43 @@
  * Shepherd 规则校验逻辑
  */
 
-import { VALID_CONDITION_FIELDS } from "./rules";
+import { HOOK_ACTION_SUPPORT, normalizeHook, VALID_CONDITION_FIELDS } from "./rules";
 
-const VALID_ACTIONS = ["block", "notify", "rewrite", "steer"] as const;
-const VALID_HOOKS = [
-	"tool_call",
-	"tool_result",
-	"agent_end",
-	"message_end",
-	"session_shutdown",
-	"session_compact",
-] as const;
+// 合法值清单由 HOOK_ACTION_SUPPORT 矩阵派生（D1 单一来源：矩阵是运行时消费分支的唯一描述，
+// 校验器不再维护独立清单，杜绝「校验通过但运行时无消费分支」的双清单漂移）
+export const VALID_ACTIONS: readonly string[] = [
+	...new Set(Object.values(HOOK_ACTION_SUPPORT).flat()),
+];
+export const VALID_HOOKS: readonly string[] = Object.keys(HOOK_ACTION_SUPPORT);
 
 export interface ValidationResult {
 	valid: boolean;
 	errors: string[];
+}
+
+/**
+ * hook × action 组合校验（独立导出，供 updateRule 分层复用）。
+ * 基于运行时同源事实：hook 经 normalizeHook 归一化（缺省 = tool_call），
+ * action 缺省 = block（与 compileRules 运行时默认一致）——否则无 hook/action 的规则
+ * 会绕过组合校验后按运行时默认值静默失效。
+ */
+export function validateHookActionCombo(
+	rule: Record<string, unknown>,
+): string[] {
+	const hook = normalizeHook(rule as { hook?: string });
+	const supported = HOOK_ACTION_SUPPORT[hook];
+	if (!supported) {
+		return [
+			`hook "${hook}" 未收录在 HOOK_ACTION_SUPPORT 矩阵（无运行时消费分支），请先在 shepherd/rules.ts 更新矩阵常量`,
+		];
+	}
+	const action = (rule.action as string) || "block";
+	if (!supported.includes(action)) {
+		return [
+			`hook "${hook}" 不支持 action "${action}"（支持: ${supported.join(" / ")}）——该组合无消费分支，写入后规则将静默失效`,
+		];
+	}
+	return [];
 }
 
 /**
@@ -67,6 +89,11 @@ export function validateRule(
 		errors.push(
 			`hook 值 "${rule.hook}" 不合法，可选: ${VALID_HOOKS.join(", ")}`,
 		);
+	}
+	// hook × action 组合校验：仅完整模式（partial 的 update changes 缺 hook 字段时
+	// 按 tool_call 判会误伤合法目标——组合由 updateRule 合并后完整校验把关）
+	if (!options?.partial) {
+		errors.push(...validateHookActionCombo(rule));
 	}
 	if (rule.pattern) {
 		try {

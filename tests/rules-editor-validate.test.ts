@@ -92,6 +92,7 @@ describe("validateRule", () => {
 			comment: "check",
 			reason: "提醒",
 			hook: "agent_end",
+			action: "notify", // 矩阵：agent_end 仅消费 notify；缺省归一化为 block 会被组合校验拒绝（防静默失效）
 			check: "git_uncommitted",
 		});
 		expect(result.valid).toBe(true);
