@@ -79,6 +79,8 @@ export function registerMessageEnd(
 		// 构造匹配目标：只有 text 字段
 		const targets = { text, path: "", command: "", glob: "" };
 
+		let llmJudgePushed = false;
+
 		for (const rule of rules) {
 			// 跳过禁用规则
 			if (rule.enabled === false) continue;
@@ -105,6 +107,7 @@ export function registerMessageEnd(
 			if (rule.llmJudge) {
 				const pass = await judgePasses(rule, text);
 				if (!pass) continue;
+				llmJudgePushed = true;
 			}
 
 			// 标记已触发
@@ -118,7 +121,22 @@ export function registerMessageEnd(
 			}
 		}
 
-		// 不再在此处发送 sendMessage(triggerTurn)。
+		// llmJudge 命中时用 followUp 通道发送：runLoop 外层续 turn 时 pendingMessages 非空
+		// 会跳过 steering poll，提醒独占下一 turn——避免判断窗口内用户 steer 的消息
+		// 被 triggerTurn 新 run 的 initial steering poll 吸进同一 turn（混合回应）。
+		// agent_end 的 triggerTurn 兑底保留：若提醒 turn 已消费 warning（hasWarnings 空）则不再发。
+		if (llmJudgePushed) {
+			try {
+				pi.sendMessage(
+					{ customType: "shepherd-llm-judge", display: false, content: "" },
+					{ deliverAs: "followUp" },
+				);
+			} catch {
+				/* session 已替换 */
+			}
+		}
+
+		// 非 llmJudge 的 warning 仍由 agent_end 统一发送唯一的 sendMessage(triggerTurn)：
 		// agent_end 会统一检查 hasWarnings() 并发送唯一的 triggerTurn，
 		// 避免 message_end 和 agent_end 各发一个 sendMessage 导致第二个 drainHints 空 → 空回复。
 		//
