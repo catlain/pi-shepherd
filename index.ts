@@ -11,7 +11,7 @@
  * 不写入 session 历史，不占用后续上下文。
  *
  * 规则配置文件:
- *   全局: ~/.pi/agent/extensions/shepherd/rules.json
+ *   全局: <扩展包目录>/rules.json（即本包根目录，随安装方式而定：git 安装在 ~/.pi/agent/git/...，npm 安装在 ~/.pi/agent/npm/node_modules/...）
  *   项目级: <cwd>/.pi/extensions/shepherd-rules-*.json（自动扫描，叠加加载）
  *
  * 修改规则文件后 /reload 即可生效，无需重启 pi。
