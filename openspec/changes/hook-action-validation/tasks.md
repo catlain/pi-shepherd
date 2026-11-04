@@ -47,6 +47,6 @@
 
 ## 7. 发版与收尾
 
-- [ ] 7.1 npm run typecheck + npm test 通过
-- [ ] 7.2 发版（按 npm-publish 技能流程）
-- [ ] 7.3 git commit + push（pi-shepherd 仓库，含 rules.json 修复与文档同步）
+- [x] 7.1 npm run typecheck + npm test 通过
+- [x] 7.2 发版（按 npm-publish 技能流程）
+- [x] 7.3 git commit + push（pi-shepherd 仓库，含 rules.json 修复与文档同步）
