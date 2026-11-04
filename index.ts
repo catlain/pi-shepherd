@@ -229,16 +229,35 @@ export default function shepherdExtension(pi: ExtensionAPI, ctx?: ExtensionConte
 		// - hasWarnings()：message_end 或 tool_result 推入了 warning（它们不再自己发 sendMessage）
 		// 只发一次，避免多个 hook 各发一次导致第二个 drainHints 拿空 → 空回复
 		if (pushed || hasWarnings()) {
-			setTimeout(() => {
-				try {
-					pi.sendMessage(
-						{ customType: "shepherd-agent-end", display: false, content: "" },
-						{ triggerTurn: true },
-					);
-				} catch {
-					/* session 已替换 */
-				}
-			}, 0);
+			// setTimeout(0) 宏任务与 finishRun 异步链存在竞态：若 activeRun 未清理，
+			// agent.prompt() 会 throw "Agent is already processing a prompt"，
+			// sendMessage 返回的 Promise reject。同步 try/catch 捕不到 async rejection，
+			// 裸调会静默失败（提醒 turn 永不启动，warning 悬置到用户消息后才注入）。
+			// 修复：.catch 捕获 + 退避重试（activeRun 清理后必成功）+ 错误可见化。
+			const sendTriggerTurn = (delay: number): void => {
+				setTimeout(() => {
+					Promise.resolve()
+						// 调用放进 then：同步 throw（session 已替换）与 async rejection 都进 catch
+						.then(() =>
+							pi.sendMessage(
+								{ customType: "shepherd-agent-end", display: false, content: "" },
+								{ triggerTurn: true },
+							),
+						)
+						.then(() => undefined)
+						.catch((e: unknown) => {
+							const msg = e instanceof Error ? e.message : String(e);
+							if (delay < 500) {
+								// 竞态窗口内（activeRun 未清）：退避后重试
+								sendTriggerTurn(delay * 2 + 50);
+							} else {
+								// 重试耗尽：会话可能已切换/关闭，丢弃并留诊断
+								console.error(`[shepherd] triggerTurn 发送失败（已重试）: ${msg}`);
+							}
+						});
+				}, delay);
+			};
+			sendTriggerTurn(0);
 		}
 	});
 

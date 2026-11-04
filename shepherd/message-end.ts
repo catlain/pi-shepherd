@@ -126,14 +126,22 @@ export function registerMessageEnd(
 		// 被 triggerTurn 新 run 的 initial steering poll 吸进同一 turn（混合回应）。
 		// agent_end 的 triggerTurn 兑底保留：若提醒 turn 已消费 warning（hasWarnings 空）则不再发。
 		if (llmJudgePushed) {
-			try {
-				pi.sendMessage(
-					{ customType: "shepherd-llm-judge", display: false, content: "" },
-					{ deliverAs: "followUp" },
-				);
-			} catch {
-				/* session 已替换 */
-			}
+			// sendMessage 返回 Promise：同步 try/catch 捕不到 async rejection，
+			// 必须用 .catch 暴露错误（否则静默失败，提醒 turn 永不启动）。
+			Promise.resolve()
+				// 调用放进 then：同步 throw 与 async rejection 都进 catch
+				.then(() =>
+					pi.sendMessage(
+						{ customType: "shepherd-llm-judge", display: false, content: "" },
+						{ deliverAs: "followUp" },
+					),
+				)
+				.then(() => undefined)
+				.catch((e: unknown) => {
+					console.error(
+						`[shepherd] llmJudge followUp 发送失败: ${e instanceof Error ? e.message : String(e)}`,
+					);
+				});
 		}
 
 		// 非 llmJudge 的 warning 仍由 agent_end 统一发送唯一的 sendMessage(triggerTurn)：
