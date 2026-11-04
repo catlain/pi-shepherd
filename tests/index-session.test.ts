@@ -19,7 +19,8 @@ const mockCheckWorktrees = vi.fn();
 const mockHasGitUncommittedChanges = vi.fn().mockReturnValue(false);
 const mockLoadRules = vi.fn().mockReturnValue([]);
 
-vi.mock("../shepherd", () => ({
+vi.mock("../shepherd", async (importOriginal) => ({
+	...((await importOriginal()) as object),
 	checkWorktrees: mockCheckWorktrees,
 	drainHints: vi.fn().mockReturnValue(""),
 	hasGitUncommittedChanges: mockHasGitUncommittedChanges,
@@ -41,6 +42,25 @@ vi.mock("../shepherd", () => ({
 
 vi.mock("../shepherd/rules-tool", () => ({
 	registerRulesEditorTool: vi.fn(),
+}));
+
+// 真实 agent-hooks/hint-injector 的依赖走子模块路径拦截
+vi.mock("../shepherd/rules", async (importOriginal) => ({
+	...((await importOriginal()) as object),
+	hasGitUncommittedChanges: mockHasGitUncommittedChanges,
+	hasGitUntracked: vi.fn().mockReturnValue(false),
+	isSubagent: vi.fn().mockReturnValue(false),
+	loadRules: mockLoadRules,
+}));
+vi.mock("../shepherd/ephemeral", async (importOriginal) => ({
+	...((await importOriginal()) as object),
+	hasWarnings: vi.fn().mockReturnValue(false),
+	notifySummary: vi.fn(),
+	pushWarning: vi.fn(),
+}));
+vi.mock("../shepherd/ephemeral-shared", async (importOriginal) => ({
+	...((await importOriginal()) as object),
+	drainHints: vi.fn().mockReturnValue(""),
 }));
 
 function makeMockPi() {

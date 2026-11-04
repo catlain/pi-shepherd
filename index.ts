@@ -15,6 +15,10 @@
  *   项目级: <cwd>/.pi/extensions/shepherd-rules-*.json（自动扫描，叠加加载）
  *
  * 修改规则文件后 /reload 即可生效，无需重启 pi。
+ *
+ * 本文件是装配壳：各 hook 族已拆分至 shepherd/ 下
+ * （hint-injector / agent-hooks / tool-hooks / message-end / compaction 等），
+ * 此处仅做配置读取与注册编排。
  */
 
 import { dirname } from "node:path";
@@ -25,19 +29,6 @@ import type {
 } from "@earendil-works/pi-coding-agent";
 import { setJudgeContext } from "./shepherd/llm-judge";
 
-/** pi payload 消息结构的最小类型 */
-interface PayloadMessage {
-	role: string;
-	content?: unknown;
-	[key: string]: unknown;
-}
-
-/** pi provider payload 的最小类型 */
-interface ProviderPayload {
-	messages?: PayloadMessage[];
-	[key: string]: unknown;
-}
-
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const RULES_DIR = __dirname;
 
@@ -45,35 +36,24 @@ import { getEffectiveConfig } from "@pi-atelier/shared-utils";
 import {
 	checkWorktrees,
 	DEFAULT_CONTEXT_RESTORE,
-	drainHints,
-	hasGitUncommittedChanges,
-	hasGitUntracked,
-	hasWarnings,
-	isSubagent,
-	loadRules,
-	notifySummary,
-	pushWarning,
+	registerCompactConfigCommand,
 	registerMessageEnd,
 	registerSessionCompact,
-	registerCompactConfigCommand,
 	registerToolCall,
 	registerToolResult,
-	resetMessageEndState,
-	type ContextRestoreConfig,
 	StateTracker,
+	type ContextRestoreConfig,
 	type ToolState,
 } from "./shepherd";
-import { isQuestionEnding, ruleMatches } from "./shepherd/rules";
-import type { BuiltinContext } from "./shepherd/conditions";
+// 直 import（不经 barrel）：agent-hooks/hint-injector 携模块级状态，
+// 绕过 mock registry 缓存使 resetModules 每用例拿到干净实例
+// （barrel 被 partial mock 时 actual 是首次 factory 的固定实例，
+// 其模块级状态（_aborted/_agentEndFired）跨用例泄漏）
+import { registerAgentHooks } from "./shepherd/agent-hooks";
+import { registerHintInjector } from "./shepherd/hint-injector";
 import { registerRulesEditorTool } from "./shepherd/rules-tool";
 
-/** 本地 hints 缓冲区（收集 pi.events.emit("ephemeral:hint") 的数据） */
-const _localHints: { text: string; short?: string }[] = [];
-
-/** 可变状态：跨 hook 共享 */
-let _aborted = false;
-let _wasDirty = false;
-const _agentEndFired = new Set<string>();
+/** 跨 hook 共享的工具状态 */
 const _toolState: ToolState = {
 	hasEdits: false,
 	tracker: new StateTracker(),
@@ -101,199 +81,22 @@ export default function shepherdExtension(pi: ExtensionAPI, ctx?: ExtensionConte
 		process.cwd(),
 	);
 
-	// ── 监听跨扩展 hints（通过 pi.events 绕过 jiti 多实例） ──
-	pi.events.on("ephemeral:hint", (data) => {
-		const { text, short } = data as { text: string; short?: string };
-		_localHints.push({ text, short });
-	});
-
-	// ── before_provider_request：注入临时提示 ──────────────────
-	pi.on("before_provider_request", async (event, ctx) => {
-		// shepherd 规则 hints
-		const shepherdText = drainHints();
-		if (shepherdText) {
-			_localHints.unshift({ text: shepherdText });
-		}
-
-		// 通知摘要：short 优先，fallback 到 notifySummary 截断
-		const shortParts = _localHints
-			.map((h) => h.short)
-			.filter(Boolean) as string[];
-		const longParts = _localHints
-			.map((h) => (h.short ? null : h.text))
-			.filter(Boolean) as string[];
-		const notifyText = [...shortParts, ...longParts].join("\n\n");
-
-		const allHints = _localHints
-			.splice(0)
-			.map((h) => h.text)
-			.join("\n\n");
-		let payload = event.payload as ProviderPayload;
-
-		if (allHints) {
-			const text = allHints;
-			payload = { ...payload };
-			payload.messages = [...(payload.messages ?? [])];
-			payload.messages.push({
-				role: "user",
-				content: [{ type: "text", text }],
-			});
-			ctx.ui.notify?.(notifySummary(notifyText), "warning");
-		}
-
-		return payload;
-	});
-
-	// ── session_start ──────────────────────────────────────────
+	// ── session_start：worktree 检查 ────────────────────────────
 	pi.on("session_start", async (_event, ctx) => {
 		checkWorktrees(ctx.ui);
 	});
 
-	// ── agent_start ────────────────────────────────────────────
-	pi.on("agent_start", async (_event, ctx) => {
-		_aborted = ctx.signal?.aborted ?? false;
-		_toolState.hasEdits = false;
-		_toolState.cachedTools = null;
-		resetMessageEndState();
-		if (ctx.signal && !ctx.signal.aborted) {
-			ctx.signal.addEventListener("abort", () => {
-				_aborted = true;
-			});
-		}
-		_wasDirty = hasGitUncommittedChanges();
-	});
-
-	pi.on("input", async (_event) => {
-		/* 用户输入新消息 — 允许 agent_end 规则再次触发 */
-		_agentEndFired.clear();
-	});
-
-	// ── agent_end ──────────────────────────────────────────────
-	pi.on("agent_end", async (event, _ctx) => {
-		if (isSubagent() || _aborted) return;
-		const rules = loadRules(RULES_DIR, {
-			projectRulesPattern: shepherdConfig.projectRulesPattern,
-		}).filter((r) => r.hook === "agent_end");
-		if (rules.length === 0) return;
-
-		const lastAssistant = [...event.messages]
-			.reverse()
-			.find((m) => m.role === "assistant");
-		const stopReason: string | undefined = (
-			lastAssistant as unknown as PayloadMessage | undefined
-		)?.stopReason as string | undefined;
-
-		// 提取最后一条 assistant 消息的文本内容（用于 not_question_ending 条件）
-		let lastAssistantText = "";
-		if (lastAssistant) {
-			const parts = (lastAssistant as unknown as PayloadMessage).content;
-			if (Array.isArray(parts)) {
-				lastAssistantText = parts
-					.filter((p: { type?: string }) => p.type === "text")
-					.map((p: { text?: string }) => p.text ?? "")
-					.join("");
-			} else if (typeof parts === "string") {
-				lastAssistantText = parts;
-			}
-		}
-		let pushed = false;
-
-		// 如果 AI 在问用户问题（等待回复），跳过所有 agent_end 提醒
-		const isQuestion = isQuestionEnding(lastAssistantText);
-
-		for (const rule of rules) {
-			const allowedReasons = rule.stopReason ?? ["stop"];
-			if (!allowedReasons.includes((stopReason ?? "") as never)) continue;
-			if (_agentEndFired.has(rule.comment)) continue;
-			if (isQuestion) continue; // AI 在问问题，跳过收尾提醒
-
-			// 统一条件匹配：通过 ruleMatches 检查 conditions（含 builtin）
-			const ctx: BuiltinContext = {
-				hasEdits: _toolState.hasEdits,
-				gitDirty: hasGitUncommittedChanges(),
-				gitUntracked: hasGitUntracked(),
-				lastAssistantText,
-			};
-			const shouldNotify = ruleMatches(rule, {}, ctx);
-			if (ctx.gitDirty) _wasDirty = true;
-
-			if (shouldNotify && rule.action === "notify") {
-				_agentEndFired.add(rule.comment);
-				pushWarning(rule.reason, rule.comment);
-				pushed = true;
-			}
-		}
-
-		// 收尾规则 pushWarning 后：sendMessage(triggerTurn:false) 入
-		// _pendingCustomMessages 队列，使 agent_before_settle 的
-		// canContinue（pendingCustomContext）为真，continue: true 合法。
-		// 提醒 turn 的驱动由 agent_before_settle 统一承担（见下方注册）：
-		// 旧链路 sendMessage(triggerTurn)+setTimeout 与 finishRun 异步链存在竞态
-		// （activeRun 未清理时 agent.prompt() throw，async rejection 静默失败）。
-		if (pushed) {
-			try {
-				Promise.resolve()
-					.then(() =>
-						pi.sendMessage(
-							{
-								customType: "shepherd-agent-end",
-								display: false,
-								content: "",
-							},
-								{ triggerTurn: false },
-							),
-					)
-					.catch(() => {
-						// 会话已替换等场景：静默降级，提醒降为下轮 drainHints 注入
-					});
-			} catch {
-				// 同步 throw 同降级
-			}
-		}
-	});
-
-	// ── agent_before_settle：统一驱动提醒 turn（官方零竞态通道）──────
-	// 官方语义："Fired before final settlement. May append entries and ensure one next provider request."
-	// 消息流：message_end（llmJudge 判定 + pushWarning）→ agent_end（收尾规则 pushWarning）
-	//       → 此处 continue: true → pi 官方机制驱动下一 provider request
-	//       → before_provider_request 的 drainHints 注入提醒 → AI 回应提醒。
-	// 相比旧 sendMessage(triggerTurn) 链路：零 setTimeout、零 agent.prompt() 竞态。
-	// 死循环防护：_messageEndFired/_agentEndFired 防重复兜底，标志消费后即清 → 收敛。
-	pi.on("agent_before_settle", async (_event, _ctx) => {
-		if (isSubagent() || _aborted) return {};
-		// hasWarnings 隐含 pending custom 消息已入队（message_end/agent_end
-		// 的 pushWarning 均伴随 sendMessage(triggerTurn:false)），
-		// canContinue 的 pendingCustomContext 条件成立，continue 合法。
-		if (hasWarnings()) {
-			return { continue: true };
-		}
-		return {};
-	});
-
-	// ── session_shutdown ───────────────────────────────────────
-	pi.on("session_shutdown", async (_event, ctx) => {
-		const rules = loadRules(RULES_DIR, {
-			projectRulesPattern: shepherdConfig.projectRulesPattern,
-		}).filter((r) => r.hook === "session_shutdown");
-		if (rules.length === 0) return;
-		for (const rule of rules) {
-			// 统一条件匹配
-			const builtinCtx: BuiltinContext = {
-				hasEdits: false,
-				gitDirty: hasGitUncommittedChanges(),
-				gitUntracked: hasGitUntracked(),
-			};
-			const shouldNotify = ruleMatches(rule, {}, builtinCtx);
-			if (shouldNotify && rule.action === "notify") {
-				ctx.ui?.notify?.(`⚠️ shepherd: ${rule.reason}`, "warning");
-			}
-		}
-	});
-
-	// ── tool_call + tool_result（提取到 tool-hooks.ts）────────
+	// ── 各 hook 族注册 ──────────────────────────────────────────
 	const _rulesOpts = {
 		projectRulesPattern: shepherdConfig.projectRulesPattern,
 	};
+
+	registerHintInjector(pi);
+	registerAgentHooks(pi, {
+		rulesDir: RULES_DIR,
+		rulesOpts: _rulesOpts,
+		toolState: _toolState,
+	});
 	registerToolCall(pi, _toolState, RULES_DIR, _rulesOpts);
 	registerToolResult(pi, _toolState, RULES_DIR, _rulesOpts);
 	registerMessageEnd(pi, _toolState, RULES_DIR, _rulesOpts);

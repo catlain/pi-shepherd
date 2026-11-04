@@ -30,7 +30,8 @@ const mockRegisterToolCall = vi.fn();
 const mockRegisterToolResult = vi.fn();
 const mockStateTracker = vi.fn(() => ({}));
 
-vi.mock("../shepherd", () => ({
+vi.mock("../shepherd", async (importOriginal) => ({
+	...((await importOriginal()) as object),
 	checkWorktrees: mockCheckWorktrees,
 	drainHints: mockDrainHints,
 	hasGitUncommittedChanges: mockHasGitUncommittedChanges,
@@ -51,6 +52,25 @@ vi.mock("../shepherd", () => ({
 
 vi.mock("../shepherd/rules-tool", () => ({
 	registerRulesEditorTool: vi.fn(),
+}));
+
+// 真实 agent-hooks/hint-injector 的依赖走子模块路径拦截
+vi.mock("../shepherd/rules", async (importOriginal) => ({
+	...((await importOriginal()) as object),
+	hasGitUncommittedChanges: mockHasGitUncommittedChanges,
+	hasGitUntracked: vi.fn().mockReturnValue(false),
+	isSubagent: mockIsSubagent,
+	loadRules: mockLoadRules,
+}));
+vi.mock("../shepherd/ephemeral", async (importOriginal) => ({
+	...((await importOriginal()) as object),
+	hasWarnings: mockHasWarnings,
+	notifySummary: mockNotifySummary,
+	pushWarning: mockPushWarning,
+}));
+vi.mock("../shepherd/ephemeral-shared", async (importOriginal) => ({
+	...((await importOriginal()) as object),
+	drainHints: mockDrainHints,
 }));
 
 // ── Fixture ──

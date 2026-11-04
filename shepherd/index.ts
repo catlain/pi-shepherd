@@ -4,6 +4,7 @@
 
 export { hasWarnings, notifySummary, pushWarning } from "./ephemeral";
 export { registerSessionCompact } from "./compaction";
+export { registerAgentHooks } from "./agent-hooks";
 export {
 	buildRestoreDecision,
 	DEFAULT_CONTEXT_RESTORE,
@@ -23,6 +24,7 @@ export {
 	peekLabels,
 	pushHint,
 } from "./ephemeral-shared";
+export { registerHintInjector } from "./hint-injector";
 export { checkLineCount } from "./line-count";
 export {
 	extractAssistantText,

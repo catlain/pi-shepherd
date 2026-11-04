@@ -20,7 +20,9 @@ const mockIsSubagent = vi.fn().mockReturnValue(false);
 const mockLoadRules = vi.fn().mockReturnValue([]);
 const mockPushWarning = vi.fn();
 
-vi.mock("../shepherd", () => ({
+vi.mock("../shepherd", async (importOriginal) => ({
+	// 拆分后 registerAgentHooks/registerHintInjector 走真实实现（见下子模块 mock 拦依赖）
+	...((await importOriginal()) as object),
 	checkWorktrees: vi.fn(),
 	drainHints: vi.fn().mockReturnValue(""),
 	hasGitUncommittedChanges: vi.fn().mockReturnValue(false),
@@ -44,6 +46,27 @@ vi.mock("../shepherd", () => ({
 
 vi.mock("../shepherd/rules-tool", () => ({
 	registerRulesEditorTool: vi.fn(),
+}));
+
+// 真实 agent-hooks/hint-injector 的依赖走子模块路径拦截
+vi.mock("../shepherd/rules", async (importOriginal) => ({
+	...((await importOriginal()) as object),
+	hasGitUncommittedChanges: vi.fn().mockReturnValue(false),
+	hasGitUntracked: vi.fn().mockReturnValue(false),
+	isSubagent: mockIsSubagent,
+	loadRules: mockLoadRules,
+}));
+vi.mock("../shepherd/ephemeral", async (importOriginal) => ({
+	...((await importOriginal()) as object),
+	hasWarnings: mockHasWarnings,
+	notifySummary: vi
+		.fn()
+		.mockImplementation((text: string) => (text ? `📋 ${text}` : "")),
+	pushWarning: mockPushWarning,
+}));
+vi.mock("../shepherd/ephemeral-shared", async (importOriginal) => ({
+	...((await importOriginal()) as object),
+	drainHints: vi.fn().mockReturnValue(""),
 }));
 
 function makeMockPi() {
