@@ -463,7 +463,8 @@
 		],
 		"action": "notify",
 		"message": "⚠️ code-graph 返回空结果。如果是通过 setup_codegraph 索引的外部目录，请用路径 _codegraph_links/<name> 而不是裸名。例如: code_graph_module_overview(path='_codegraph_links/pi-intercom')",
-		"reason": "AI 常误用裸名调用 module_overview（如 path='pi-intercom'），但软链接目录在索引中的路径前缀是 _codegraph_links/"
+		"reason": "AI 常误用裸名调用 module_overview（如 path='pi-intercom'），但软链接目录在索引中的路径前缀是 _codegraph_links/",
+		"pattern": "\\b0 active \\+ 0 inactive\\b"
 	},
 	{
 		"action": "notify",
