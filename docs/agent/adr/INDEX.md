@@ -12,3 +12,4 @@
 | ADR-0006 | hook×action 支持矩阵以导出常量为单一来源，校验清单从矩阵派生 | active | uncategorized | 2026-11-05 |
 | ADR-0007 | 组合校验挂在归一化后的 hook 上，校验模型与运行时归一化同构 | active | uncategorized | 2026-11-05 |
 | ADR-0008 | update 分层校验扩展到组合维度——触及才严、未触及降级 | active | uncategorized | 2026-11-05 |
+| ADR-0009 | 扩展诊断输出一律落盘禁止裸 console——同坑二踩（TUI 输入框被破坏）升级为架构约束 | active | uncategorized | 2026-11-05 |
