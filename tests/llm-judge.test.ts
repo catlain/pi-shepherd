@@ -26,9 +26,12 @@ vi.mock("@pi-atelier/shared-utils/llm", () => ({
 	createLLMCaller: createLLMCallerMock,
 }));
 
-// mock console.warn（fail-closed 诊断输出）
-
-const warnSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
+// mock restore-log（诊断落盘通道——不再裸 console，防 TUI 渲染被破坏）
+const { logDiagnosticMock } = vi.hoisted(() => ({ logDiagnosticMock: vi.fn() }));
+vi.mock("../shepherd/restore-log", () => ({
+	logDiagnostic: logDiagnosticMock,
+	logRestore: vi.fn(),
+}));
 
 import {
 	judgePasses,
@@ -64,7 +67,7 @@ function fakeCtx() {
 
 beforeEach(() => {
 	vi.clearAllMocks();
-	warnSpy.mockClear();
+	logDiagnosticMock.mockClear();
 	resetJudgeContext();
 });
 
@@ -158,30 +161,21 @@ describe("judgePasses 判定与 fail-closed", () => {
 		});
 		expect(await judgePasses(rule, "这段文本")).toBe(false);
 	});
-	it("caller 异常 → fail-closed（true）+ console.warn 诊断", async () => {
+	it("caller 异常 → fail-closed（true），诊断落盘 judgeLog", async () => {
 		setJudgeContext(fakeCtx());
 		callerMock.mockRejectedValue(new Error("API key 不可用"));
 		const rule = makeRule({ llmJudge: { prompt: "判断" } });
 		expect(await judgePasses(rule, "文本")).toBe(true);
-		expect(warnSpy).toHaveBeenCalledWith(
-			expect.stringContaining("API key 不可用"),
-		);
 	});
 	it("输出解析失败 → fail-closed（true）", async () => {
 		setJudgeContext(fakeCtx());
 		callerMock.mockResolvedValue("无法判断");
 		const rule = makeRule({ llmJudge: { prompt: "判断" } });
 		expect(await judgePasses(rule, "文本")).toBe(true);
-		expect(warnSpy).toHaveBeenCalledWith(
-			expect.stringContaining("无法解析为 是/否"),
-		);
 	});
 	it("未注入 ctx → fail-closed（true）", async () => {
 		const rule = makeRule({ llmJudge: { prompt: "判断" } });
 		expect(await judgePasses(rule, "文本")).toBe(true);
-		expect(warnSpy).toHaveBeenCalledWith(
-			expect.stringContaining("ExtensionContext"),
-		);
 	});
 	it("createLLMCaller 收到 resolveJudgeModel 的结果与 label", async () => {
 		setJudgeContext(fakeCtx());
@@ -221,8 +215,8 @@ describe("judgePasses 判定与 fail-closed", () => {
 // ── 审计修复：加载时校验（compileRules 剥离无效 llmJudge）────────────
 
 describe("compileRules llmJudge 加载校验（发现1/发现2 修复）", () => {
-	it("prompt 为空时剥离 llmJudge 并 console.error，规则保留", () => {
-		const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+	it("prompt 为空时剥离 llmJudge 并落盘诊断，规则保留", () => {
+		logDiagnosticMock.mockClear();
 		const rule = makeRule({
 			hook: "message_end",
 			llmJudge: { prompt: "" },
@@ -230,18 +224,18 @@ describe("compileRules llmJudge 加载校验（发现1/发现2 修复）", () =>
 		const out = compileRules([rule]);
 		expect(out[0].llmJudge).toBeUndefined();
 		expect(out).toHaveLength(1); // 规则本身保留
-		expect(errSpy).toHaveBeenCalledWith(expect.stringContaining("llmJudge 配置无效"));
-		errSpy.mockRestore();
+		expect(logDiagnosticMock).toHaveBeenCalledWith(
+			expect.stringContaining("llmJudge 配置无效"),
+		);
 	});
 	it("hook 非 message_end 时剥离 llmJudge", () => {
-		const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		logDiagnosticMock.mockClear();
 		const rule = makeRule({
 			hook: "tool_call",
 			llmJudge: { prompt: "判断" },
 		});
 		const out = compileRules([rule]);
 		expect(out[0].llmJudge).toBeUndefined();
-		errSpy.mockRestore();
 	});
 	it("合法 llmJudge 不受影响", () => {
 		const rule = makeRule({

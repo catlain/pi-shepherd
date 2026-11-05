@@ -3,6 +3,7 @@
  */
 
 import type { ConditionBuiltin } from "./conditions";
+import { logDiagnostic } from "./restore-log";
 import type { StateCondition } from "./state-tracker";
 
 /** 当前是否在子代理环境中 */
@@ -129,7 +130,7 @@ export function warnUnsupportedAction(hook: string, rule: Rule): void {
 	const key = `${hook}|${action}|${rule.comment}`;
 	if (_warnedCombos.has(key)) return;
 	_warnedCombos.add(key);
-	console.error(
+	logDiagnostic(
 		`[shepherd] 规则 "${rule.comment ?? rule.pattern ?? "(未命名)"}" 组合无效: hook=${hook} 不消费 action=${action}，规则静默失效——请用 shepherd_rules 工具修复`,
 	);
 }

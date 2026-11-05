@@ -7,6 +7,15 @@ import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+
+// mock restore-log（诊断落盘通道——不再裸 console，防 TUI 渲染被破坏）
+const { logDiagnosticMock } = vi.hoisted(() => ({
+	logDiagnosticMock: vi.fn<(line: string) => void>(),
+}));
+vi.mock("../shepherd/restore-log", () => ({
+	logDiagnostic: logDiagnosticMock,
+	logRestore: vi.fn(),
+}));
 import { addRule, updateRule, validateRule } from "../shepherd/rules-editor";
 import {
 	VALID_HOOKS,
@@ -218,7 +227,7 @@ describe("updateRule 组合分层", () => {
 
 describe("compileRules 运行时警告", () => {
 	it("无效组合输出警告且不阻塞其余规则编译", () => {
-		const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		logDiagnosticMock.mockClear();
 		const rules: Rule[] = [
 			{ ...baseRule, comment: "bad", hook: "tool_call", action: "steer", enabled: true },
 			{ ...baseRule, comment: "good", hook: "tool_call", action: "notify", enabled: true },
@@ -226,7 +235,7 @@ describe("compileRules 运行时警告", () => {
 		const compiled = compileRules(rules);
 		expect(compiled).toHaveLength(2);
 		expect(compiled.every((r) => r._compiled instanceof RegExp)).toBe(true);
-		const calls = errSpy.mock.calls.map((c) => String(c[0]));
+		const calls = logDiagnosticMock.mock.calls.map((c) => String(c[0]));
 		expect(
 			calls.some((c) => c.includes('"bad"') && c.includes("组合无效")),
 		).toBe(true);
@@ -234,32 +243,32 @@ describe("compileRules 运行时警告", () => {
 	});
 
 	it("hook 缺省的 steer 规则（归一化 tool_call 后）同样被警告", () => {
-		const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		logDiagnosticMock.mockClear();
 		compileRules([
 			{ ...baseRule, comment: "nohook", action: "steer", enabled: true },
 		]);
-		const calls = errSpy.mock.calls.map((c) => String(c[0]));
+		const calls = logDiagnosticMock.mock.calls.map((c) => String(c[0]));
 		expect(calls.some((c) => c.includes("hook=tool_call"))).toBe(true);
 	});
 
 	it("合法组合零警告", () => {
-		const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		logDiagnosticMock.mockClear();
 		compileRules([
 			{ ...baseRule, comment: "ok", hook: "message_end", action: "steer", enabled: true },
 		]);
 		expect(
-			errSpy.mock.calls.some((c) => String(c[0]).includes("组合无效")),
+			logDiagnosticMock.mock.calls.some((c) => String(c[0]).includes("组合无效")),
 		).toBe(false);
 	});
 
 	it("同一规则重复编译只警告一次（Set 去重防刷屏）", () => {
-		const errSpy = vi.spyOn(console, "error").mockImplementation(() => {});
+		logDiagnosticMock.mockClear();
 		const rules: Rule[] = [
 			{ ...baseRule, comment: "dup", hook: "tool_call", action: "steer", enabled: true },
 		];
 		compileRules(rules);
 		compileRules(JSON.parse(JSON.stringify(rules)));
-		const comboWarnings = errSpy.mock.calls
+		const comboWarnings = logDiagnosticMock.mock.calls
 			.map((c) => String(c[0]))
 			.filter((c) => c.includes("组合无效"));
 		expect(comboWarnings).toHaveLength(1);

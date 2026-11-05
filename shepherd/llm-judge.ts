@@ -98,10 +98,7 @@ export async function judgePasses(
 	const t0 = Date.now();
 	const inputPreview = judgeText.slice(0, 80).replace(/\s+/g, " ");
 	if (!_extCtx) {
-		console.warn(
-			`[shepherd] llmJudge 未注入 ExtensionContext，规则「${rule.comment}」按正则命中处理`,
-		);
-		judgeLog(`[NO_CTX] 「${rule.comment}」 input="${inputPreview}"`);
+		judgeLog(`[NO_CTX] 「${rule.comment}」 未注入 ExtensionContext，按正则命中处理 input="${inputPreview}"`);
 		return true;
 	}
 
@@ -116,9 +113,6 @@ export async function judgePasses(
 		const out = await caller(JUDGE_SYSTEM_PROMPT, user, controller.signal);
 		const answer = parseYesNo(out);
 		if (answer === null) {
-			console.warn(
-			`[shepherd] llmJudge 输出无法解析为 是/否（规则「${rule.comment}」按正则命中处理），原始输出: ${out.slice(0, 120)}`,
-			);
 			judgeLog(
 				`[PARSE_FAIL] 「${rule.comment}」 raw="${out.slice(0, 100).replace(/\s+/g, " ")}" input="${inputPreview}"`,
 			);
@@ -131,9 +125,6 @@ export async function judgePasses(
 		return cfg.invert ? !isYes : isYes;
 	} catch (e: unknown) {
 		const msg = e instanceof Error ? e.message : String(e);
-		console.warn(
-			`[shepherd] llmJudge 判断失败（规则「${rule.comment}」按正则命中处理）: ${msg}`,
-		);
 		judgeLog(`[CALL_FAIL] 「${rule.comment}」 err="${msg.slice(0, 150)}" input="${inputPreview}"`);
 		return true;
 	} finally {

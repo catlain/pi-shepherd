@@ -40,6 +40,7 @@ export {
 	isGitDirtyOrUntracked,
 	isInWorktree,
 } from "./git";
+import { logDiagnostic } from "./restore-log";
 
 // ── 规则加载/编译/匹配 ────────────────────────────────────────
 
@@ -102,7 +103,7 @@ export function compileRules(rules: import("./rules-types").Rule[]): import("./r
 				problems.push(`llmJudge 仅支持 message_end hook，当前 hook=${rule.hook}`);
 			}
 			if (problems.length > 0) {
-				console.error(`[shepherd] 规则 "${rule.comment ?? rule.pattern ?? "(未命名)"}" llmJudge 配置无效: ${problems.join("；")}，已剥离 llmJudge（降级为纯正则）`);
+				logDiagnostic(`[shepherd] 规则 "${rule.comment ?? rule.pattern ?? "(未命名)"}" llmJudge 配置无效: ${problems.join("；")}，已剥离 llmJudge（降级为纯正则）`);
 				delete rule.llmJudge;
 			}
 		}
@@ -175,7 +176,7 @@ export function loadRules(
 	// 格式校验失败时推入 shepherd 提示缓冲区
 	if (errors.length > 0) {
 		const msg = errors.join("；");
-		console.error(`[shepherd] 规则文件格式错误: ${msg}`);
+		logDiagnostic(`[shepherd] 规则文件格式错误: ${msg}`);
 		pushRuleError(msg);
 	}
 
