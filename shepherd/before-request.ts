@@ -45,10 +45,13 @@ const CACHE_LIMIT = 200;
 // ── 判定缓存（会话级）──────────────────────────────────────────
 
 const _judgeCache = new Map<string, boolean>();
+/** 已注入 key（同 judgeText+comment 本会话只注入/触发一次——防续跑循环重复注入） */
+const _firedKeys = new Set<string>();
 
 /** 清空判定缓存（session_start 时由 index.ts 调用） */
 export function clearJudgeCache(): void {
 	_judgeCache.clear();
+	_firedKeys.clear();
 }
 
 // ── hook 注册 ─────────────────────────────────────────────────
@@ -124,6 +127,16 @@ export function registerBeforeRequestRules(
 					_judgeCache.set(key, pass);
 				}
 				if (!pass) continue;
+			if (_firedKeys.has(key)) continue; // 已注入过：跳过（防续跑循环重复注入）
+			_firedKeys.add(key);
+			}
+			// 无 llmJudge 的纯正则规则也需防重（同文本重复触发）
+			else {
+				const plainKey = createHash("sha1")
+				.update(judgeText + "\x00" + rule.comment)
+				.digest("hex");
+				if (_firedKeys.has(plainKey)) continue;
+				_firedKeys.add(plainKey);
 			}
 
 			// 命中 → 执行 action

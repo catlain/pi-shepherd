@@ -141,4 +141,41 @@ describe("判定缓存与合并注入", () => {
 		expect((mockedSendMessage.mock.calls[0][0] as any).content).toContain("R-s1");
 		expect((mockedSendMessage.mock.calls[0][0] as any).content).toContain("R-s2");
 	});
+
+	// ── 防重注入（2026-11-06 pi -p 续跑循环事故防线） ──
+
+	it("同文本二次触发（同 judgeText+comment）→ 只注入一次（防续跑循环）", async () => {
+		mockedLoadRules.mockReturnValue([
+			await compileRule({
+				comment: "once",
+				hook: "before_provider_request",
+				pattern: "回测",
+				action: "steer",
+				reason: "R-once",
+			}),
+		]);
+		const pi = makePi();
+		registerBeforeRequestRules(pi, stateStub);
+		await fireHandler(pi, [userMsg]);
+		await fireHandler(pi, [userMsg]); // 续跑轮：同 judgeText
+		expect(mockedSendMessage).toHaveBeenCalledTimes(1);
+		expect(mockedPushWarning).toHaveBeenCalledTimes(1);
+	});
+
+	it("无 llmJudge 的纯正则规则同样防重（同文本二次触发只触发一次）", async () => {
+		mockedLoadRules.mockReturnValue([
+			await compileRule({
+				comment: "plain",
+				hook: "before_provider_request",
+				pattern: "回测",
+				action: "notify",
+				reason: "R-plain",
+			}),
+		]);
+		const pi = makePi();
+		registerBeforeRequestRules(pi, stateStub);
+		await fireHandler(pi, [userMsg]);
+		await fireHandler(pi, [userMsg]);
+		expect(mockedPushWarning).toHaveBeenCalledTimes(1);
+	});
 });

@@ -43,6 +43,14 @@ const toolResultUser = {
 	],
 };
 
+// shepherd 注入消息（pi 会加 "⚠️ shepherd:" 前缀——实测于 2026-11-06 续跑循环事故）
+const shepherdInjected = {
+	role: "user",
+	content: [
+		{ type: "text", text: "⚠️ shepherd: ⚠ [验证探针] before_provider_request 链路触发成功" },
+	],
+};
+
 describe("extractLastUserText", () => {
 	it("尾部 user 含 text → 直接返回", () => {
 		expect(extractLastUserText([realUserText])).toBe(
@@ -75,6 +83,17 @@ describe("extractLastUserText", () => {
 		expect(extractLastUserText(null)).toBeNull();
 		expect(extractLastUserText(undefined)).toBeNull();
 		expect(extractLastUserText([])).toBeNull();
+	});
+
+	// ── shepherd 注入消息免疫（防续跑循环，2026-11-06 pi -p 实测事故） ──
+
+	it("尾部是 shepherd 注入消息 → 跳过继续往前找真实用户输入", () => {
+		const r = extractLastUserText([realUserText, shepherdInjected]);
+		expect(r).toBe("Enter explore mode. Think deeply.");
+	});
+
+	it("只有 shepherd 注入消息 → null（提醒不作为判定输入）", () => {
+		expect(extractLastUserText([shepherdInjected])).toBeNull();
 	});
 
 	it("超 4000 字符截断", () => {

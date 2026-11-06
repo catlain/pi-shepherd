@@ -33,10 +33,17 @@ function extractTextBlocks(
 		.join("\n");
 }
 
+/** shepherd 注入消息的前缀标记——lastUser 提取时跳过（防提醒文本自我判定循环） */
+export const SHEPHERD_PREFIX = "⚠️ shepherd:";
+
+function isShepherdInjected(text: string): boolean {
+	return text.startsWith(SHEPHERD_PREFIX);
+}
+
 /**
  * lastUser：从尾部往前第一条含 text block 的 user 消息。
- * 工具结果的续请求（尾部 user 消息仅含 toolResult block 无 text）会被跳过继续往前，
- * 直到找到真正的用户输入文本；找不到（全 toolResult）返回 null（该规则本轮跳过）。
+ * 跳过：①仅含 toolResult block 的续请求 user 消息；② shepherd 注入的提醒消息（防自我循环）。
+ * 找不到返回 null（该规则本轮跳过）。
  */
 export function extractLastUserText(
 	messages: PayloadMessage[] | undefined | null,
@@ -46,7 +53,10 @@ export function extractLastUserText(
 		const m = messages[i];
 		if ((m as any)?.role !== "user") continue;
 		const t = extractTextBlocks(m);
-		if (t) return t.slice(0, JUDGE_TEXT_MAX);
+		if (t) {
+			if (isShepherdInjected(t)) continue; // shepherd 注入消息不算用户输入
+			return t.slice(0, JUDGE_TEXT_MAX);
+		}
 		// toolResult-only 的 user 消息：跳过继续往前找
 	}
 	return null;
