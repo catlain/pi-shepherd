@@ -24,7 +24,7 @@ const BUILTIN_HOOK_SUPPORT: Record<string, string[]> = {
 		"agent_end",
 		"session_shutdown",
 	],
-	not_question_ending: ["agent_end", "session_shutdown"],
+	not_question_ending: ["agent_end"],
 	has_read: [
 		"tool_call",
 		"tool_result",

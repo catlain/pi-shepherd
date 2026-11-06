@@ -25,8 +25,10 @@ import {
 	extractLastAssistantText,
 	extractLastUserText,
 	type PayloadMessage,
+	SHEPHERD_PREFIX,
 } from "./before-request-extract";
 import { pushWarning } from "./ephemeral";
+import { buildBuiltinContext } from "./conditions";
 import { judgePasses, setJudgeContext } from "./llm-judge";
 import {
 	isSubagent,
@@ -104,7 +106,7 @@ export function registerBeforeRequestRules(
 				const ok = ruleMatches(
 					rule,
 					{ text: judgeText },
-					{ readPaths: state.tracker.getReadPaths() },
+					buildBuiltinContext(state),
 					"",
 				);
 				if (!ok) continue;
@@ -158,7 +160,7 @@ export function registerBeforeRequestRules(
 						{
 							customType: "shepherd-before-request",
 							display: false,
-							content: steerReasons.join("\n\n"),
+							content: SHEPHERD_PREFIX + "\n" + steerReasons.join("\n\n"),
 						},
 						{ triggerTurn: false },
 					),
