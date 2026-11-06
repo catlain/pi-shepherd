@@ -119,8 +119,9 @@ export function registerBeforeRequestRules(
 
 			// llmJudge 判定（缓存命中跳过 LLM 调用；fail-closed 在 judgePasses 内部）
 			if (rule.llmJudge) {
+				// key 纳入 prompt：prompt 变更后旧判定结果自然失效（否则改 prompt 不改 comment 会被旧缓存黏住）
 				const key = createHash("sha1")
-					.update(judgeText + "\x00" + rule.comment)
+					.update(judgeText + "\x00" + rule.comment + "\x00" + rule.llmJudge.prompt)
 					.digest("hex");
 				let pass = _judgeCache.get(key);
 				if (pass === undefined) {
