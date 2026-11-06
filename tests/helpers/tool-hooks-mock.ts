@@ -36,6 +36,8 @@ export function createMockToolState(
 		getStats: vi.fn(() => ({ count: 0, chars: 0, errors: 0 })),
 		matches: vi.fn(() => false),
 		markTriggered: vi.fn(),
+		addReadPath: vi.fn(),
+		getReadPaths: vi.fn(() => [] as string[]),
 	};
 	return {
 		hasEdits: false,

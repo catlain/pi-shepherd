@@ -26,6 +26,8 @@ export class StateTracker {
 	private toolCounts = new Map<string, number>();
 	private toolChars = new Map<string, number>();
 	private consecutiveErrors = 0;
+	/** 会话内已成功 read 的文件路径集合（has_read 谓词数据源；只增不减，会话生命周期） */
+	private readPaths = new Set<string>();
 	/** 规则级触发状态：key = comment（规则唯一标识），value = { triggered, firedCount } */
 	private ruleStates = new Map<
 		string,
@@ -40,6 +42,16 @@ export class StateTracker {
 			(this.toolChars.get(toolName) ?? 0) + resultChars,
 		);
 		this.consecutiveErrors = isError ? this.consecutiveErrors + 1 : 0;
+	}
+
+	/** 记录一次成功读取的文件路径（tool_result：toolName === "read" 且非 error） */
+	addReadPath(path: string): void {
+		if (path) this.readPaths.add(path);
+	}
+
+	/** 会话内已成功 read 的路径快照（has_read 谓词用） */
+	getReadPaths(): readonly string[] {
+		return [...this.readPaths];
 	}
 
 	/** 判断规则的状态条件是否满足 */

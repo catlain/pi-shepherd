@@ -1,13 +1,17 @@
 import { hasGitUntracked, isGitDirty } from "./git";
 
-/** 内置条件类型：不依赖正则，直接检查环境状态 */
-export type ConditionBuiltin =
-	| "git_dirty" // git 有已跟踪文件的未提交改动（M/A/D/R）
-	| "git_untracked" // git 有未跟踪文件（??）
-	| "git_uncommitted" // 旧 check 字段迁移兼容：dirty || untracked
-	| "has_edits" // 本轮调用过 edit/write
-	| "not_question_ending" // AI 最后一条消息不以问句结尾（用于抑制"等待回复"场景的 agent_end 提醒）
-	| "always"; // 始终匹配
+/** 内置条件类型：不依赖正则，直接检查环境状态。
+ * 单一来源：合法枚举常量在此，类型、运行时校验（rules-validate）、工具描述文案均从此派生。 */
+export const VALID_CONDITION_BUILTINS = [
+	"git_dirty", // git 有已跟踪文件的未提交改动（M/A/D/R）
+	"git_untracked", // git 有未跟踪文件（??）
+	"git_uncommitted", // 旧 check 字段迁移兼容：dirty || untracked
+	"has_edits", // 本轮调用过 edit/write
+	"not_question_ending", // AI 最后一条消息不以问句结尾（用于抑制“等待回复”场景的 agent_end 提醒）
+	"has_read", // 会话内已成功 read 过匹配 condition.pattern（路径正则）的文件
+	"always", // 始终匹配
+] as const;
+export type ConditionBuiltin = (typeof VALID_CONDITION_BUILTINS)[number];
 
 /** 内置条件匹配上下文 */
 export interface BuiltinContext {
@@ -15,6 +19,14 @@ export interface BuiltinContext {
 	gitDirty?: boolean;
 	gitUntracked?: boolean;
 	lastAssistantText?: string;
+	/** 会话内已成功 read 的文件路径集合（has_read 谓词数据源，由 StateTracker 供能） */
+	readPaths?: readonly string[];
+}
+
+/** builtin 条件的逐条件附加上下文（per-condition 参数，如 has_read 的 pattern） */
+export interface BuiltinConditionParams {
+	pattern?: string;
+	_compiled?: RegExp;
 }
 
 /**
@@ -71,10 +83,12 @@ export function isQuestionEnding(text: string): boolean {
 	return false;
 }
 
-/** 判断单个内置条件是否满足 */
+/** 判断单个内置条件是否满足
+ * @param cond 逐条件参数（has_read 的 pattern 预编译正则等）；不需要参数的 builtin 可不传 */
 export function matchBuiltinCondition(
 	builtin: ConditionBuiltin,
 	ctx: BuiltinContext,
+	cond?: BuiltinConditionParams,
 ): boolean {
 	switch (builtin) {
 		case "always":
@@ -94,5 +108,11 @@ export function matchBuiltinCondition(
 		}
 		case "not_question_ending":
 			return !isQuestionEnding(ctx.lastAssistantText ?? "");
+		case "has_read": {
+			// pattern（预编译于 cond._compiled）匹配任一已读路径 → 通过；无 pattern 或无已读记录 → 不通过
+			const re = cond?._compiled;
+			if (!re) return false;
+			return (ctx.readPaths ?? []).some((p) => re.test(p));
+		}
 	}
 }

@@ -3,6 +3,7 @@
  */
 
 import { HOOK_ACTION_SUPPORT, normalizeHook, VALID_CONDITION_FIELDS } from "./rules";
+import { VALID_CONDITION_BUILTINS } from "./conditions";
 
 // 合法值清单由 HOOK_ACTION_SUPPORT 矩阵派生（D1 单一来源：矩阵是运行时消费分支的唯一描述，
 // 校验器不再维护独立清单，杜绝「校验通过但运行时无消费分支」的双清单漂移）
@@ -112,6 +113,23 @@ export function validateRule(
 			) {
 				errors.push(
 					`conditions[${i}].field 值无效: "${cond.field}"，合法值: ${VALID_CONDITION_FIELDS.join(", ")}`,
+				);
+			}
+			// builtin 枚举校验（单一来源：VALID_CONDITION_BUILTINS）
+			if (
+				cond.builtin &&
+				!(VALID_CONDITION_BUILTINS as readonly string[]).includes(
+					cond.builtin as string,
+				)
+			) {
+				errors.push(
+					`conditions[${i}].builtin 值无效: "${cond.builtin}"，合法值: ${VALID_CONDITION_BUILTINS.join(", ")}`,
+				);
+			}
+			// has_read 谓词的 pattern 必填（路径正则，用于匹配会话内已读路径）
+			if (cond.builtin === "has_read" && !cond.pattern) {
+				errors.push(
+					`conditions[${i}].builtin "has_read" 必须提供 pattern（路径正则，如 "factor-optimizer"）`,
 				);
 			}
 			if (cond.pattern) {

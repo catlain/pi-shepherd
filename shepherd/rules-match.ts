@@ -122,9 +122,9 @@ function matchCondition(
 	targets: Record<string, string>,
 	ctx?: BuiltinContext,
 ): boolean {
-	// builtin 条件：直接检查环境状态
+	// builtin 条件：直接检查环境状态（cond 作为逐条件参数传入，如 has_read 的 pattern）
 	if (cond.builtin) {
-		const result = matchBuiltinCondition(cond.builtin, ctx ?? {});
+		const result = matchBuiltinCondition(cond.builtin, ctx ?? {}, cond);
 		return cond.negate ? !result : result;
 	}
 	// 正则条件

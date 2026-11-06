@@ -69,7 +69,15 @@ export function registerToolCall(
 		for (const rule of rules) {
 			if (isSubagent() && rule.subagent === false) continue;
 			if (!toolsAvailable(rule, pi, state)) continue;
-			if (!ruleMatches(rule, targets, undefined, event.toolName!)) continue;
+			if (
+				!ruleMatches(
+					rule,
+					targets,
+					{ readPaths: state.tracker.getReadPaths() },
+					event.toolName!,
+				)
+			)
+				continue;
 
 			if (rule.action === "block") {
 				return { block: true, reason: `⛔ shepherd: ${rule.reason}` };
@@ -116,6 +124,13 @@ export function registerToolResult(
 		const resultText = extractResultText(event);
 		state.tracker.update(event.toolName, resultText.length, !!event.isError);
 
+		// 读取跟踪：成功的 read 记入 readPaths（has_read 谓词数据源；失败读取不计入）
+		if (event.toolName === "read" && !event.isError) {
+			const readPath = (event.input as any)?.path;
+			if (typeof readPath === "string" && readPath)
+				state.tracker.addReadPath(readPath);
+		}
+
 		const allRules = loadRules(rulesDir, rulesOptions);
 		const rules = allRules.filter((r) => r.hook === "tool_result");
 
@@ -134,7 +149,15 @@ export function registerToolResult(
 			if (rule.conditions || rule.pattern) {
 				const targets = getMatchTargets(event.toolName!, event, "tool_result");
 				if (!targets || Object.keys(targets).length === 0) continue;
-				if (!ruleMatches(rule, targets, undefined, event.toolName!)) continue;
+				if (
+					!ruleMatches(
+						rule,
+						targets,
+						{ readPaths: state.tracker.getReadPaths() },
+						event.toolName!,
+					)
+				)
+					continue;
 			}
 
 			// 状态条件匹配
