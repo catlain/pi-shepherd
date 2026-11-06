@@ -2,8 +2,8 @@
  * Shepherd 规则校验逻辑
  */
 
-import { HOOK_ACTION_SUPPORT, normalizeHook, VALID_CONDITION_FIELDS } from "./rules";
-import { VALID_CONDITION_BUILTINS } from "./conditions";
+import { HOOK_ACTION_SUPPORT, normalizeHook } from "./rules";
+import { validateConditions } from "./rules-validate-conditions";
 
 // 合法值清单由 HOOK_ACTION_SUPPORT 矩阵派生（D1 单一来源：矩阵是运行时消费分支的唯一描述，
 // 校验器不再维护独立清单，杜绝「校验通过但运行时无消费分支」的双清单漂移）
@@ -82,7 +82,7 @@ export function validateRule(
 			msg +=
 				"。action 是规则匹配后的执行动作，无法用来「关闭」规则。" +
 				"想临时关闭某条已存在的规则请用 update(index=N, changes={enabled:false})（保留规则，日后改 enabled:true 恢复）；彻底删除用 delete(index=N)。" +
-				"操作前先 list 找到目标规则的 index。";
+				"或者运行 shepherd_rules(action=\"list\") 查看全部规则，找到想关闭的那条。";
 		}
 		errors.push(msg);
 	}
@@ -91,10 +91,10 @@ export function validateRule(
 			`hook 值 "${rule.hook}" 不合法，可选: ${VALID_HOOKS.join(", ")}`,
 		);
 	}
-	// hook × action 组合校验：仅完整模式（partial 的 update changes 缺 hook 字段时
-	// 按 tool_call 判会误伤合法目标——组合由 updateRule 合并后完整校验把关）
-	if (!options?.partial) {
-		errors.push(...validateHookActionCombo(rule));
+	// hook × action 组合校验（与运行时消费分支同源；partial 模式跳过——updateRule 合并后完整校验把关）
+	if (!options?.partial) errors.push(...validateHookActionCombo(rule));
+	if (rule.pattern !== undefined && typeof rule.pattern !== "string") {
+		errors.push("pattern 必须是字符串（正则表达式）");
 	}
 	if (rule.pattern) {
 		try {
@@ -104,43 +104,9 @@ export function validateRule(
 			errors.push(`pattern 正则编译失败: ${msg}`);
 		}
 	}
+	const hook = normalizeHook(rule as { hook?: string });
 	if (Array.isArray(rule.conditions)) {
-		for (let i = 0; i < rule.conditions.length; i++) {
-			const cond = rule.conditions[i] as Record<string, unknown>;
-			if (
-				cond.field &&
-				!(VALID_CONDITION_FIELDS as readonly string[]).includes(cond.field as string)
-			) {
-				errors.push(
-					`conditions[${i}].field 值无效: "${cond.field}"，合法值: ${VALID_CONDITION_FIELDS.join(", ")}`,
-				);
-			}
-			// builtin 枚举校验（单一来源：VALID_CONDITION_BUILTINS）
-			if (
-				cond.builtin &&
-				!(VALID_CONDITION_BUILTINS as readonly string[]).includes(
-					cond.builtin as string,
-				)
-			) {
-				errors.push(
-					`conditions[${i}].builtin 值无效: "${cond.builtin}"，合法值: ${VALID_CONDITION_BUILTINS.join(", ")}`,
-				);
-			}
-			// has_read 谓词的 pattern 必填（路径正则，用于匹配会话内已读路径）
-			if (cond.builtin === "has_read" && !cond.pattern) {
-				errors.push(
-					`conditions[${i}].builtin "has_read" 必须提供 pattern（路径正则，如 "factor-optimizer"）`,
-				);
-			}
-			if (cond.pattern) {
-				try {
-					new RegExp(cond.pattern as string, (cond.flags as string) || "");
-				} catch (e: unknown) {
-					const msg = e instanceof Error ? e.message : String(e);
-					errors.push(`conditions[${i}].pattern 正则编译失败: ${msg}`);
-				}
-			}
-		}
+		validateConditions(rule.conditions, hook, errors);
 	}
 
 	// llmJudge 校验：prompt 必填非空串，model 可选串，invert 可选布尔
@@ -166,16 +132,30 @@ export function validateRule(
 			if (judge.invert !== undefined && typeof judge.invert !== "boolean") {
 				errors.push("llmJudge.invert 可选：布尔（true 时答“否”才触发）");
 			}
-			// hook 组合校验：llmJudge 仅 message_end 支持，其他 hook 上配置会静默不生效
+			// hook 组合校验：llmJudge 仅 {message_end, before_provider_request} 支持，其他 hook 上配置会静默不生效
 			// partial 模式（update changes 无 hook 字段）跳过：merged 完整校验会把关
 			if (rule.hook !== undefined) {
-				const hook = rule.hook as string;
-				if (hook !== "message_end") {
+				const judgeHook = rule.hook as string;
+				if (judgeHook !== "message_end" && judgeHook !== "before_provider_request") {
 					errors.push(
-						`llmJudge 仅支持 message_end hook，当前 hook=${hook}（判断不会生效）`,
-				);
+						`llmJudge 仅支持 message_end / before_provider_request hook，当前 hook=${judgeHook}（判断不会生效）`,
+					);
 				}
 			}
+		}
+	}
+
+	// judgeSource 校验：枚举 + hook 组合（仅 before_provider_request 生效）
+	if (rule.judgeSource !== undefined) {
+		const src = rule.judgeSource as unknown;
+		if (src !== "lastUser" && src !== "lastAssistant") {
+			errors.push(
+				`judgeSource 值无效: "${String(src)}"，合法值: lastUser, lastAssistant`,
+			);
+		} else if (rule.hook !== undefined && rule.hook !== "before_provider_request") {
+			errors.push(
+					`judgeSource 仅在 before_provider_request hook 下生效，当前 hook=${rule.hook}（运行时会忽略）`,
+			);
 		}
 	}
 

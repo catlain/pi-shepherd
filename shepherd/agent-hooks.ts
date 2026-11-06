@@ -21,6 +21,7 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { hasWarnings, pushWarning } from "./ephemeral";
 import {
+	buildBuiltinContext,
 	type BuiltinContext,
 	hasGitUncommittedChanges,
 	hasGitUntracked,
@@ -115,13 +116,12 @@ export function registerAgentHooks(pi: ExtensionAPI, deps: AgentHooksDeps) {
 			if (isQuestion) continue; // AI 在问问题，跳过收尾提醒
 
 			// 统一条件匹配：通过 ruleMatches 检查 conditions（含 builtin）
-			const ctx: BuiltinContext = {
-				hasEdits: toolState.hasEdits,
+			// git_* / lastAssistantText 为场景特定字段，经工厂 extra 注入
+			const ctx: BuiltinContext = buildBuiltinContext(toolState, {
 				gitDirty: hasGitUncommittedChanges(),
 				gitUntracked: hasGitUntracked(),
 				lastAssistantText,
-				readPaths: toolState.tracker.getReadPaths(),
-			};
+			});
 			const shouldNotify = ruleMatches(rule, {}, ctx);
 			if (ctx.gitDirty) _wasDirty = true;
 
@@ -183,12 +183,10 @@ export function registerAgentHooks(pi: ExtensionAPI, deps: AgentHooksDeps) {
 		if (rules.length === 0) return;
 		for (const rule of rules) {
 			// 统一条件匹配
-			const builtinCtx: BuiltinContext = {
-				hasEdits: false,
+			const builtinCtx: BuiltinContext = buildBuiltinContext(toolState, {
 				gitDirty: hasGitUncommittedChanges(),
 				gitUntracked: hasGitUntracked(),
-				readPaths: toolState.tracker.getReadPaths(),
-			};
+			});
 			const shouldNotify = ruleMatches(rule, {}, builtinCtx);
 			if (shouldNotify && rule.action === "notify") {
 				ctx.ui?.notify?.(`⚠️ shepherd: ${rule.reason}`, "warning");

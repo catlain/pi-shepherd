@@ -23,6 +23,31 @@ export interface BuiltinContext {
 	readPaths?: readonly string[];
 }
 
+/** toolState 中工厂可提取的字段（避免 tool-hooks 循环 import，用结构子集） */
+export interface ToolStateLike {
+	hasEdits?: boolean;
+	tracker?: { getReadPaths?(): readonly string[] };
+}
+
+/**
+ * BuiltinContext 统一组装工厂（单一来源）：
+ * - 从 toolState 提取 hasEdits / readPaths（所有 hook 场景可用）
+ * - extra 承载场景特定字段（agent 系的 git_*、lastAssistantText）
+ *
+ * 所有 ruleMatches 调用点 SHALL 走本工厂——散装组装会导致字段覆盖漂移
+ * （历史实证：has_read 在 agent_end 恒 false、has_edits 在 tool 场景恒 false）。
+ */
+export function buildBuiltinContext(
+	toolState?: ToolStateLike,
+	extra?: Partial<BuiltinContext>,
+): BuiltinContext {
+	return {
+		hasEdits: toolState?.hasEdits ?? false,
+		readPaths: toolState?.tracker?.getReadPaths?.() ?? [],
+		...extra,
+	};
+}
+
 /** builtin 条件的逐条件附加上下文（per-condition 参数，如 has_read 的 pattern） */
 export interface BuiltinConditionParams {
 	pattern?: string;

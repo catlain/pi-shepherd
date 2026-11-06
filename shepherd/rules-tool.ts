@@ -59,7 +59,7 @@ export function registerRulesEditorTool(
 				rule: {
 					type: "object",
 					description:
-						"add 时传入的完整规则对象（必须含 comment 和 reason）。可选 llmJudge 字段（{ prompt, model?, invert? }）：正则初筛通过后调 LLM 语义精判（是/否，判断“否”则不触发），适用于高误判正则的降噪；判断失败按正则命中处理（fail-closed）。conditions 支持内置谓词 builtin：git_dirty/git_untracked/git_uncommitted/has_edits/not_question_ending/has_read/always；其中 has_read 需配 pattern（路径正则）：会话内已成功 read 过匹配路径则条件通过，配 negate:true 表达“未读过”（如提醒读技能后静音：命令特征条件 + {builtin:'has_read',pattern:'factor-optimizer',negate:true}）。",
+						"add 时传入的完整规则对象（必须含 comment 和 reason）。可选 llmJudge 字段（{ prompt, model?, invert? }）：正则初筛通过后调 LLM 语义精判（是/否，判断“否”则不触发），仅支持 message_end / before_provider_request hook，适用于高误判正则的降噪；判断失败按正则命中处理（fail-closed）。可选 judgeSource（仅 before_provider_request 生效，缺省 lastUser）：lastUser=判尾部用户消息（“用户是否在要求X”），lastAssistant=判尾部 AI 叙述（“AI 是否宣布了X意图”）。conditions 支持内置谓词 builtin：git_dirty/git_untracked/git_uncommitted/has_edits/not_question_ending/has_read/always；其中 has_read 需配 pattern（路径正则）：会话内已成功 read 过匹配路径则条件通过，配 negate:true 表达“未读过”（如提醒读技能后静音：命令特征条件 + {builtin:'has_read',pattern:'factor-optimizer',negate:true}）。",
 				},
 				index: {
 					type: "number",

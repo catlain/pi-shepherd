@@ -57,8 +57,8 @@ export interface Rule {
 		| "tool_call"
 		| "tool_result"
 		| "agent_end"
-		| "session_shutdown"
-		| "message_end"
+		| "session_shutdown"		| "message_end"
+		| "before_provider_request"
 		| "session_compact"; // 默认 "tool_call"
 	tool?: string; // 默认 "bash"，支持 "|" 分隔多值匹配（如 "edit|write"）
 	// 单条件模式（向后兼容）：pattern 匹配 command（bash）或 path（edit/write）
@@ -87,6 +87,11 @@ export interface Rule {
 	conditionLogic?: "and" | "or";
 	// LLM 二级判定：正则/状态条件全过后追加语义精判（AND 语义，判断“否”则不触发）
 	llmJudge?: LLMJudgeConfig;
+	// llmJudge 判定输入源（仅 before_provider_request 生效，缺省 lastUser）：
+	// lastUser = 尾部往前最近一条 user 消息的 text blocks（用户消息判定）；
+	// lastAssistant = 尾部往前最近 assistant 消息的 text blocks（AI 叙述判定）。
+	// message_end 下无意义（判定输入固定为整回合 assistant 文本），配了会 warn 并忽略。
+	judgeSource?: "lastUser" | "lastAssistant";
 	// 运行时：已触发标记（防重复）
 	_triggered?: boolean;
 	// 编译后的正则（运行时填充，单条件模式）
@@ -109,6 +114,8 @@ export const HOOK_ACTION_SUPPORT: Readonly<Record<string, readonly string[]>> = 
 	agent_end: ["notify"],
 	// agent-hooks.ts session_shutdown：仅 notify（ctx.ui.notify）
 	session_shutdown: ["notify"],
+	// before-request.ts：steer（pushWarning + sendMessage 入历史）/ notify（仅 pushWarning）
+	before_provider_request: ["steer", "notify"],
 	// compaction.ts：仅 steer
 	session_compact: ["steer"],
 };

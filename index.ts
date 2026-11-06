@@ -41,11 +41,12 @@ import {
 	type ContextRestoreConfig,
 	type ToolState,
 } from "./shepherd";
-// 直 import（不经 barrel）：agent-hooks/hint-injector 携模块级状态，
+// 直 import（不经 barrel）：agent-hooks/hint-injector/before-request 携模块级状态，
 // 绕过 mock registry 缓存使 resetModules 每用例拿到干净实例
 // （barrel 被 partial mock 时 actual 是首次 factory 的固定实例，
-// 其模块级状态（_aborted/_agentEndFired）跨用例泄漏）
+// 其模块级状态（_aborted/_agentEndFired/_judgeCache）跨用例泄漏）
 import { registerAgentHooks } from "./shepherd/agent-hooks";
+import { registerBeforeRequestRules, clearJudgeCache } from "./shepherd/before-request";
 import { registerHintInjector } from "./shepherd/hint-injector";
 import { registerRulesEditorTool } from "./shepherd/rules-tool";
 
@@ -72,9 +73,10 @@ export default function shepherdExtension(pi: ExtensionAPI) {
 		process.cwd(),
 	);
 
-	// ── session_start：worktree 检查 ────────────────────────────
+	// ── session_start：worktree 检查 + 判定缓存清空 ─────────────
 	pi.on("session_start", async (_event, ctx) => {
 		checkWorktrees(ctx.ui);
+		clearJudgeCache(); // before_request 判定缓存：会话级生命周期，新会话重新判定
 	});
 
 	// ── 各 hook 族注册 ──────────────────────────────────────────
@@ -91,6 +93,7 @@ export default function shepherdExtension(pi: ExtensionAPI) {
 	registerToolCall(pi, _toolState, RULES_DIR, _rulesOpts);
 	registerToolResult(pi, _toolState, RULES_DIR, _rulesOpts);
 	registerMessageEnd(pi, _toolState, RULES_DIR, _rulesOpts);
+	registerBeforeRequestRules(pi, _toolState, RULES_DIR, _rulesOpts);
 	registerSessionCompact(
 		pi,
 		_toolState,

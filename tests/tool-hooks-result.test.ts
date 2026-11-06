@@ -26,6 +26,10 @@ const {
 }));
 
 vi.mock("../shepherd/rules.js", () => ({
+	buildBuiltinContext: (state?: { hasEdits?: boolean; tracker?: { getReadPaths?(): readonly string[] } }) => ({
+		hasEdits: state?.hasEdits ?? false,
+		readPaths: state?.tracker?.getReadPaths?.() ?? [],
+	}),
 	loadRules: mockedLoadRules,
 	getMatchTargets: mockedGetMatchTargets,
 	ruleMatches: mockedRuleMatches,

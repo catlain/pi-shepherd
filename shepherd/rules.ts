@@ -30,8 +30,8 @@ export type {
 // 门面 re-export：匹配逻辑（rules-match）
 export { getMatchTargets, isRtkAvailable, ruleMatches, toolMatches } from "./rules-match";
 // 条件匹配从 conditions.ts re-export
-export { isQuestionEnding, matchBuiltinCondition } from "./conditions";
-export type { BuiltinContext, ConditionBuiltin } from "./conditions";
+export { buildBuiltinContext, isQuestionEnding, matchBuiltinCondition } from "./conditions";
+export type { BuiltinContext, ConditionBuiltin, ToolStateLike } from "./conditions";
 // git 相关函数从 git.ts re-export，保持向后兼容
 export {
 	hasGitUncommittedChanges,
@@ -96,19 +96,28 @@ export function compileRules(rules: import("./rules-types").Rule[]): import("./r
 		rule.hook = normalizeHook(rule) as import("./rules-types").Rule["hook"];
 		if (!rule.tool) rule.tool = "bash";
 		if (!rule.action) rule.action = "block";
-		// llmJudge 加载时校验：prompt 非空 + 仅 message_end 支持；无效则剥离该字段（降级为纯正则行为）
+		// llmJudge 加载时校验：prompt 非空 + 仅 {message_end, before_provider_request} 支持；无效则剥离该字段（降级为纯正则行为）
 		if (rule.llmJudge) {
 			const problems: string[] = [];
 			if (typeof rule.llmJudge.prompt !== "string" || rule.llmJudge.prompt.trim() === "") {
 				problems.push("llmJudge.prompt 缺失或为空");
 			}
-			if (rule.hook !== "message_end") {
-				problems.push(`llmJudge 仅支持 message_end hook，当前 hook=${rule.hook}`);
+			if (rule.hook !== "message_end" && rule.hook !== "before_provider_request") {
+				problems.push(
+					`llmJudge 仅支持 message_end / before_provider_request hook，当前 hook=${rule.hook}`,
+				);
 			}
 			if (problems.length > 0) {
 				logDiagnostic(`[shepherd] 规则 "${rule.comment ?? rule.pattern ?? "(未命名)"}" llmJudge 配置无效: ${problems.join("；")}，已剥离 llmJudge（降级为纯正则）`);
 				delete rule.llmJudge;
 			}
+		}
+		// judgeSource 仅 before_provider_request 有意义：其他 hook 下 warn 并忽略（防误解配置）
+		if (rule.judgeSource && rule.hook !== "before_provider_request") {
+			logDiagnostic(
+				`[shepherd] 规则 "${rule.comment ?? "(未命名)"}" judgeSource 仅在 before_provider_request hook 下生效，当前 hook=${rule.hook}，已忽略`,
+			);
+			delete rule.judgeSource;
 		}
 		// hook×action 组合兜底警告（归一化后单点检查，覆盖全部 hook 处理器）
 		warnUnsupportedAction(rule.hook!, rule);

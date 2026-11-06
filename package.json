@@ -1,6 +1,6 @@
 {
 	"name": "pi-shepherd",
-	"version": "0.4.6",
+	"version": "0.5.0",
 	"description": "Rules engine with context guardrails (line-count, compaction reminders, skill restore) for pi-coding-agent",
 	"main": "index.ts",
 	"scripts": {

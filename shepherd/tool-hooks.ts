@@ -8,6 +8,7 @@ import { pushWarning } from "./ephemeral";
 import { extractResultText } from "./tool-event-types";
 import { checkLineCount } from "./line-count";
 import {
+	buildBuiltinContext,
 	getMatchTargets,
 	isRtkAvailable,
 	isSubagent,
@@ -153,7 +154,7 @@ export function registerToolResult(
 					!ruleMatches(
 						rule,
 						targets,
-						{ readPaths: state.tracker.getReadPaths() },
+						buildBuiltinContext(state),
 						event.toolName!,
 					)
 				)

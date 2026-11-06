@@ -9,6 +9,7 @@ import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { judgePasses, setJudgeContext } from "./llm-judge";
 import { pushWarning } from "./ephemeral";
 import {
+	buildBuiltinContext,
 	isSubagent,
 	type LoadRulesOptions,
 	loadRules,
@@ -95,7 +96,7 @@ export function registerMessageEnd(
 
 			// 条件匹配
 			if (rule.conditions && rule.conditions.length > 0) {
-				if (!ruleMatches(rule, targets, undefined, "")) continue;
+				if (!ruleMatches(rule, targets, buildBuiltinContext(state), "")) continue;
 			} else if (rule.pattern) {
 				// 单条件模式：pattern 匹配 text
 				const re = rule._compiled ?? new RegExp(rule.pattern, rule.flags || "");
