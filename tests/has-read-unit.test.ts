@@ -5,6 +5,7 @@
 
 import { describe, expect, it } from "vitest";
 import { matchBuiltinCondition } from "../shepherd/conditions";
+import { compileRules } from "../shepherd/rules.js";
 import { StateTracker } from "../shepherd/state-tracker";
 import { validateRule } from "../shepherd/rules-validate";
 
@@ -122,5 +123,44 @@ describe("validateRule — has_read 校验", () => {
 			],
 		} as any);
 		expect(res.errors).toEqual([]);
+	});
+});
+
+
+// compileRules 空正则防护（smell 发现2）：has_read 无 pattern 跳过编译，
+// 避免 /(?:)/ 恒匹配导致"读过任意文件 → 通过"语义反转
+describe("compileRules 空正则防护", () => {
+	it("has_read 无 pattern → _compiled 保持 undefined，求值不通过", () => {
+		const compiled = compileRules([
+			{
+				comment: "t",
+				reason: "r",
+				hook: "tool_call",
+				action: "notify",
+				enabled: true,
+				conditions: [
+				{ builtin: "has_read" as const, negate: true },
+				{ field: "command" as const, pattern: "analyze_factors" },
+				],
+			},
+		] as any);
+		const cond = compiled[0].conditions?.[0] as any;
+		expect(cond._compiled).toBeUndefined();
+		// 求值：无 _compiled → has_read false（而非空正则恒 true）
+		expect(
+			matchBuiltinCondition("has_read", { readPaths: ["/a/b"] }, cond),
+		).toBe(false);
+	});
+
+	it("带 pattern 的普通条件仍正常预编译", () => {
+		const compiled = compileRules([
+			{
+				comment: "t",
+				hook: "tool_call",
+				action: "block",
+				pattern: "danger",
+			},
+		] as any);
+		expect((compiled[0] as any)._compiled).toBeInstanceOf(RegExp);
 	});
 });

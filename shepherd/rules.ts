@@ -78,6 +78,9 @@ export function compileRules(rules: import("./rules-types").Rule[]): import("./r
 		// 多条件模式：编译每个 condition
 		if (rule.conditions && rule.conditions.length > 0) {
 			for (const cond of rule.conditions) {
+				// has_read 无 pattern 时跳过编译（保留 undefined）：空正则恒匹配会让
+				// "无 pattern → 不通过"语义反转为"读过任意文件 → 通过"（smell 发现2）
+				if (cond.builtin === "has_read" && !cond.pattern) continue;
 					cond._compiled = new RegExp(cond.pattern ?? "", cond.flags || "");
 			}
 		} else if (rule.pattern) {

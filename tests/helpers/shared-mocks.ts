@@ -31,7 +31,6 @@ function createMocks() {
 		registerSessionCompact: vi.fn(),
 		registerToolCall: vi.fn(),
 		registerToolResult: vi.fn(),
-		StateTracker: vi.fn(() => ({})),
 	};
 }
 
@@ -64,7 +63,6 @@ export function barrelFactory(actual: Record<string, unknown>) {
 		registerToolCall: mocks.registerToolCall,
 		registerToolResult: mocks.registerToolResult,
 		resetMessageEndState: vi.fn(),
-		StateTracker: mocks.StateTracker,
 	};
 }
 

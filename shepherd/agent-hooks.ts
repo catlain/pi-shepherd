@@ -120,6 +120,7 @@ export function registerAgentHooks(pi: ExtensionAPI, deps: AgentHooksDeps) {
 				gitDirty: hasGitUncommittedChanges(),
 				gitUntracked: hasGitUntracked(),
 				lastAssistantText,
+				readPaths: toolState.tracker.getReadPaths(),
 			};
 			const shouldNotify = ruleMatches(rule, {}, ctx);
 			if (ctx.gitDirty) _wasDirty = true;
@@ -186,6 +187,7 @@ export function registerAgentHooks(pi: ExtensionAPI, deps: AgentHooksDeps) {
 				hasEdits: false,
 				gitDirty: hasGitUncommittedChanges(),
 				gitUntracked: hasGitUntracked(),
+				readPaths: toolState.tracker.getReadPaths(),
 			};
 			const shouldNotify = ruleMatches(rule, {}, builtinCtx);
 			if (shouldNotify && rule.action === "notify") {
