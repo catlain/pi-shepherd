@@ -12,10 +12,21 @@ import type { ToolEvent } from "./tool-event-types";
 import { extractResultText } from "./tool-event-types";
 
 /** 从事件中提取匹配目标（多字段）
- * @param phase 调用阶段："tool_call" 时 git commit 会被短路（避免 commit message 误触发 block 规则），
- *              "tool_result" 时不短路（允许 git commit 后的 steer/notify 规则触发）
+ * @param phase 调用阶段："tool_call" 时 git commit 的 message 会被脱敏（避免 commit message 误触发 block 规则），
+ *              命令结构本身保留匹配（2026-11-20 修复：原短路整个丢弃 command，导致 commit-no-pathspec 等
+ *              五条 git-guard 规则自诞生起从未生效——probe commit 夹带事故实证）。
+ *              "tool_result" 时不脱敏（允许 git commit 后的 steer/notify 规则触发）
  *              "tool_result" 时额外注入 result 字段（工具输出文本）
  */
+
+/** 脱敏 git commit 命令的 message 文本（-m/--message 的参数值替换为 <msg>）。
+ * 保留命令结构（git/flags/pathspec）参与规则匹配，剥离 message 内容防误触发。 */
+export function stripCommitMessage(command: string): string {
+	// -m "..." / -m '...' / -m bare-word / --message=... / --message ...
+	return command
+		.replace(/(-m|--message)(=)("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|\S+)/g, "$1=<msg>")
+		.replace(/(-m|--message)(\s+)("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|\S+)/g, "$1$2<msg>");
+}
 export function getMatchTargets(
 	tool: string,
 	event: ToolEvent,
@@ -25,13 +36,14 @@ export function getMatchTargets(
 	const result = phase === "tool_result" ? extractResultText(event) : "";
 
 	if (tool === "bash") {
-		const command = (event.input as any)?.command || "";
-		// git commit 的 message 可能包含 sed -i / echo >> 等关键词，跳过匹配
+		const rawCommand = (event.input as any)?.command || "";
+		// git commit 的 message 可能包含 sed -i / echo >> 等关键词——脱敏 message 后保留 command 匹配
 		// 注意：命令可能是 "cd xxx && git commit ..." 格式
-		// 但仅在 tool_call 阶段短路——tool_result 阶段需要匹配 git commit 后的 steer 规则
-		if (phase === "tool_call" && /(^|&&|;)\s*git\s+commit\b/.test(command)) {
-			return { result } as Record<string, string>;
-		}
+		// 仅在 tool_call 阶段脱敏——tool_result 阶段需要匹配 git commit 后的 steer 规则
+		const command =
+			phase === "tool_call" && /(^|&&|;)\s*git\s+commit\b/.test(rawCommand)
+				? stripCommitMessage(rawCommand)
+				: rawCommand;
 		return {
 			command,
 			path: "",

@@ -121,7 +121,7 @@ describe("getMatchTargets result 字段", () => {
 		expect(targets.result).toBe('{"status":"ok"}');
 	});
 
-	it("git commit 短路返回也包含 result 字段", () => {
+	it("git commit 脱敏后 command 保留（message 替换为 <msg>）", () => {
 		const targets = getMatchTargets(
 			"bash",
 			makeResultEvent(
@@ -131,7 +131,8 @@ describe("getMatchTargets result 字段", () => {
 			),
 			"tool_call",
 		);
-		// git commit 在 tool_call 阶段短路返回空对象，但 result 字段应存在
+		// 2026-11-20 修复：不再丢弃 command，脱敏 message 后保留命令结构供 git-guard 规则匹配
+		expect(targets.command).toBe("git commit -m <msg>");
 		expect(targets.result).toBe("");
 	});
 

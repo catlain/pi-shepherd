@@ -46,13 +46,13 @@ describe("settings 规则 getMatchTargets 字段映射", () => {
 		expect(targets.command).toBe("");
 	});
 
-	it("bash git commit 在 tool_call 阶段返回仅 result 字段", () => {
+	it("bash git commit 在 tool_call 阶段返回脱敏 command", () => {
 		const targets = getMatchTargets(
 			"bash",
 			makeEvent("bash", { command: "git commit -m 'fix'" }),
 			"tool_call",
 		);
-		expect(Object.keys(targets)).toEqual(["result"]);
+		expect(targets.command).toBe("git commit -m <msg>");
 		expect(targets.result).toBe("");
 	});
 
