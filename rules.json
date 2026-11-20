@@ -20,7 +20,7 @@
 				"flags": ""
 			}
 		],
-		"reason": "编辑了 Python 文件，必须：1) 运行 ruff check <file> 做格式检查；2) 验证测试——迭代场景用 fast 档 `uv run python scripts/run_test_gate.py --fast`（按 diff 只跑受影响子项目，分钟级反馈）；change 收尾/宣称「全量测试通过」SHALL 跑全量 `uv run python scripts/run_test_gate.py`（fast 凭证 .test-gate-fast-state.json 不属于全量绿证据）。",
+		"reason": "编辑了 Python 文件，必须：1) 运行 ruff check <file> 做格式检查；2) 验证测试——`uv run python scripts/run_test_gate.py`（单档全量；无代码改动时锁前零成本退出；fast 档已退役 retire-test-gate-fast-tier 2026-11-19，勿再引用 --fast）。宣称「全量测试通过」SHALL 有 .test-gate-state.json 凭证佐证（INV-74）。",
 		"enabled": true
 	},
 	{
