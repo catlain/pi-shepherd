@@ -9,7 +9,7 @@ const casesFile = process.argv[2] ?? ".pi/tmp/llmjudge-cases.json";
 const promptOverride = process.argv[3];
 const modelArg = process.argv[4]; // 可选：provider/model（如 zai/glm-4.7），缺省 zai/glm-5.3
 const spec = JSON.parse(readFileSync(casesFile, "utf8"));
-const judgePrompt = promptOverride ?? spec.prompt_under_test;
+const judgePrompt = promptOverride || spec.prompt_under_test; // || 空串回退文件版（?? 不吃空串，2026-12-20 传参事故）
 
 // 与 pi-shepherd/shepherd/llm-judge.ts 的 JUDGE_SYSTEM_PROMPT/拼装完全一致——
 // 矩阵必须复刻线上环境，包装不同则矩阵结论对线上无效
@@ -23,9 +23,22 @@ function parseYesNo(out) {
 }
 
 async function main() {
-	const [mp, mi] = (modelArg ?? "zai/glm-5.3").split("/");
-	const model = compat.getModel(mp, mi);
-	const apiKey = process.env.ZAI_API_KEY;
+	const defModel = (() => { // 缺省复刻线上会话默认（settings defaultProvider/defaultModel）
+		try { const s = JSON.parse(readFileSync("C:/Users/Administrator/.pi/agent/settings.json", "utf8")); return `${s.defaultProvider}/${s.defaultModel}`; } catch { return "zai-coding-cn/glm-5.4"; }
+	})();
+	const [mp, mi] = (modelArg ?? defModel).split("/"); // 5.4 由 models.json 追加，下方合并复刻线上
+	let model;
+	try { model = compat.getModel(mp, mi); } catch { /* 内置 catalog 无此 id 时走 models.json 合并 */ }
+	if (!model) {
+		const custom = JSON.parse(readFileSync("C:/Users/Administrator/.pi/agent/models.json", "utf8")).providers?.[mp]?.models?.find((m) => m.id === mi);
+		if (!custom) throw new Error(`model ${mp}/${mi} 不在内置 catalog 也不在 models.json`);
+		const skeleton = compat.getModel(mp, "glm-5.3"); // 同 provider 内置骨架（api/baseUrl 语义）
+		model = { ...skeleton, ...custom };
+	}
+	const auth = JSON.parse(readFileSync("C:/Users/Administrator/.pi/agent/auth.json", "utf8"));
+	const apiKey = auth[mp]?.key
+		?? (mp === "zai" ? process.env.ZAI_API_KEY : process.env.ZAI_CODING_CN_API_KEY);
+	if (!apiKey) throw new Error(`无 ${mp} key（auth.json 或 env）`);
 	let pass = 0, fail = 0;
 	console.log(`prompt（${promptOverride ? "覆盖版" : "基线"}）：${judgePrompt.slice(0, 40)}…\n`);
 	for (const c of spec.cases) {

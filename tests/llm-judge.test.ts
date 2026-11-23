@@ -1,32 +1,25 @@
 /**
- * llm-judge 单元测试
- *
- * 验证：
- * - parseYesNo：是/否解析（容忍装饰、首行无答案返回 null）
- * - resolveJudgeModel：三层回退（rule.llmJudge.model → settings → undefined）
- * - judgePasses：判定逻辑 + fail-closed 语义（异常/解析失败/无 ctx 一律 true）
+ * llm-judge 消费层单元测试（createJudge 骨架化重构后）：invert 包装 +
+ * fail-closed + judge 实例参数透传。骨架行为由 shared-utils 侧测试守护。
  */
 
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-// ── mock：shared-utils barrel（getEffectiveConfig）──
+// ── mock：shared-utils/judge（createJudge → 假实例）──
 
-const { getEffectiveConfigMock } = vi.hoisted(() => ({ getEffectiveConfigMock: vi.fn() }));
-vi.mock("@pi-atelier/shared-utils", () => ({
-	getEffectiveConfig: (...args: unknown[]) => getEffectiveConfigMock(...args),
-}));
-
-// ── mock：shared-utils/llm（createLLMCaller）──
-
-const { createLLMCallerMock, callerMock } = vi.hoisted(() => {
-	const callerMock = vi.fn();
-	return { callerMock, createLLMCallerMock: vi.fn(() => callerMock) };
+const { judgeInstanceMock, createJudgeMock } = vi.hoisted(() => {
+	const judgeInstanceMock = {
+		setContext: vi.fn(),
+		resetContext: vi.fn(),
+		judge: vi.fn(),
+	};
+	return { judgeInstanceMock, createJudgeMock: vi.fn(() => judgeInstanceMock) };
 });
-vi.mock("@pi-atelier/shared-utils/llm", () => ({
-	createLLMCaller: createLLMCallerMock,
+vi.mock("@pi-atelier/shared-utils/judge", () => ({
+	createJudge: createJudgeMock,
 }));
 
-// mock restore-log（诊断落盘通道——不再裸 console，防 TUI 渲染被破坏）
+// mock restore-log（诊断落盘通道）
 const { logDiagnosticMock } = vi.hoisted(() => ({ logDiagnosticMock: vi.fn() }));
 vi.mock("../shepherd/restore-log", () => ({
 	logDiagnostic: logDiagnosticMock,
@@ -37,7 +30,6 @@ import {
 	judgePasses,
 	parseYesNo,
 	resetJudgeContext,
-	resolveJudgeModel,
 	setJudgeContext,
 } from "../shepherd/llm-judge";
 import { compileRules } from "../shepherd/rules";
@@ -55,20 +47,8 @@ function makeRule(overrides: Record<string, unknown> = {}) {
 	} as never;
 }
 
-function fakeCtx() {
-	return {
-		model: { provider: "p", id: "session-model" },
-		modelRegistry: {
-			find: vi.fn(),
-			getApiKeyAndHeaders: vi.fn(),
-		},
-	} as never;
-}
-
 beforeEach(() => {
 	vi.clearAllMocks();
-	logDiagnosticMock.mockClear();
-	resetJudgeContext();
 });
 
 afterEach(() => {
@@ -107,26 +87,17 @@ describe("parseYesNo", () => {
 	});
 });
 
-// ── resolveJudgeModel ──
+// ── ctx 透传 ──
 
-describe("resolveJudgeModel 三层回退", () => {
-	it("规则级 model 优先", () => {
-		const rule = makeRule({
-			llmJudge: { prompt: "p", model: "google/gemini-2.5-flash" },
-		});
-		expect(resolveJudgeModel(rule)).toBe("google/gemini-2.5-flash");
+describe("ctx 注入透传到实例", () => {
+	it("setJudgeContext 调实例 setContext", () => {
+		const ctx = { model: {} } as never;
+		setJudgeContext(ctx);
+		expect(judgeInstanceMock.setContext).toHaveBeenCalledWith(ctx);
 	});
-	it("无规则级 → settings shepherd.judgeModel", () => {
-		getEffectiveConfigMock.mockReturnValue({
-			config: { judgeModel: "zai/glm-5.2" },
-		});
-		const rule = makeRule({ llmJudge: { prompt: "p" } });
-		expect(resolveJudgeModel(rule)).toBe("zai/glm-5.2");
-	});
-	it("两级都无 → undefined（交 createLLMCaller 回退 ctx.model）", () => {
-		getEffectiveConfigMock.mockReturnValue({ config: { judgeModel: "" } });
-		const rule = makeRule({ llmJudge: { prompt: "p" } });
-		expect(resolveJudgeModel(rule)).toBe(undefined);
+	it("resetJudgeContext 调实例 resetContext", () => {
+		resetJudgeContext();
+		expect(judgeInstanceMock.resetContext).toHaveBeenCalled();
 	});
 });
 
@@ -134,81 +105,59 @@ describe("resolveJudgeModel 三层回退", () => {
 
 describe("judgePasses 判定与 fail-closed", () => {
 	it("答 是 → 触发（true）", async () => {
-		setJudgeContext(fakeCtx());
-		callerMock.mockResolvedValue("是");
+		judgeInstanceMock.judge.mockResolvedValue("是");
 		const rule = makeRule({ llmJudge: { prompt: "判断" } });
 		expect(await judgePasses(rule, "这段文本")).toBe(true);
 	});
 	it("答 否 → 不触发（false）", async () => {
-		setJudgeContext(fakeCtx());
-		callerMock.mockResolvedValue("否");
+		judgeInstanceMock.judge.mockResolvedValue("否");
 		const rule = makeRule({ llmJudge: { prompt: "判断" } });
 		expect(await judgePasses(rule, "这段文本")).toBe(false);
 	});
 	it("invert=true：答 否 → 触发", async () => {
-		setJudgeContext(fakeCtx());
-		callerMock.mockResolvedValue("否");
+		judgeInstanceMock.judge.mockResolvedValue("否");
 		const rule = makeRule({
 			llmJudge: { prompt: "判断", invert: true },
 		});
 		expect(await judgePasses(rule, "这段文本")).toBe(true);
 	});
 	it("invert=true：答 是 → 不触发", async () => {
-		setJudgeContext(fakeCtx());
-		callerMock.mockResolvedValue("是");
+		judgeInstanceMock.judge.mockResolvedValue("是");
 		const rule = makeRule({
 			llmJudge: { prompt: "判断", invert: true },
 		});
 		expect(await judgePasses(rule, "这段文本")).toBe(false);
 	});
-	it("caller 异常 → fail-closed（true），诊断落盘 judgeLog", async () => {
-		setJudgeContext(fakeCtx());
-		callerMock.mockRejectedValue(new Error("API key 不可用"));
+	it("judge 返回 null（无 ctx/超时/解析失败）→ fail-closed（true）", async () => {
+		judgeInstanceMock.judge.mockResolvedValue(null);
 		const rule = makeRule({ llmJudge: { prompt: "判断" } });
 		expect(await judgePasses(rule, "文本")).toBe(true);
 	});
-	it("输出解析失败 → fail-closed（true）", async () => {
-		setJudgeContext(fakeCtx());
-		callerMock.mockResolvedValue("无法判断");
-		const rule = makeRule({ llmJudge: { prompt: "判断" } });
+	it("无 llmJudge 配置 → 直接 true（不调实例）", async () => {
+		const rule = makeRule({});
 		expect(await judgePasses(rule, "文本")).toBe(true);
+		expect(judgeInstanceMock.judge).not.toHaveBeenCalled();
 	});
-	it("未注入 ctx → fail-closed（true）", async () => {
-		const rule = makeRule({ llmJudge: { prompt: "判断" } });
-		expect(await judgePasses(rule, "文本")).toBe(true);
-	});
-	it("createLLMCaller 收到 resolveJudgeModel 的结果与 label", async () => {
-		setJudgeContext(fakeCtx());
-		getEffectiveConfigMock.mockReturnValue({
-			config: { judgeModel: "zai/glm-5.2" },
+	it("参数透传：question=cfg.prompt / text / contextLabel=comment / model=cfg.model", async () => {
+		judgeInstanceMock.judge.mockResolvedValue("是");
+		const rule = makeRule({
+			llmJudge: { prompt: "是否为猜测？", model: "zai/glm-5.2" },
 		});
-		callerMock.mockResolvedValue("是");
+		await judgePasses(rule, "这段可能是猜测", 5000);
+		expect(judgeInstanceMock.judge).toHaveBeenCalledWith({
+			question: "是否为猜测？",
+			text: "这段可能是猜测",
+			contextLabel: "测试规则",
+			model: "zai/glm-5.2",
+			timeoutMs: 5000,
+		});
+	});
+	it("timeoutMs 缺省不透传 undefined 之外的字段形态（默认由骨架 15000 承担）", async () => {
+		judgeInstanceMock.judge.mockResolvedValue("是");
 		const rule = makeRule({ llmJudge: { prompt: "判断" } });
 		await judgePasses(rule, "文本");
-		expect(createLLMCallerMock).toHaveBeenCalledWith(
-			expect.anything(),
-			"zai/glm-5.2",
-			{ label: "[shepherd]" },
-		);
-	});
-	it("prompt 与待判断文本拼进 user 消息", async () => {
-		setJudgeContext(fakeCtx());
-		callerMock.mockResolvedValue("是");
-		const rule = makeRule({ llmJudge: { prompt: "是否为猜测？" } });
-		await judgePasses(rule, "这段可能是猜测");
-		const user = callerMock.mock.calls[0]?.[1] as string;
-		expect(user).toContain("是否为猜测？");
-		expect(user).toContain("这段可能是猜测");
-	});
-	it("待判断文本用分隔符包裹并截断（反注入 + 防 token 爆炸）", async () => {
-		setJudgeContext(fakeCtx());
-		callerMock.mockResolvedValue("是");
-		const rule = makeRule({ llmJudge: { prompt: "判断" } });
-		await judgePasses(rule, "x".repeat(20000));
-		const user = callerMock.mock.calls[0]?.[1] as string;
-		expect(user).toContain("<<<BEGIN_TEXT>>>");
-		expect(user).toContain("<<<END_TEXT>>>");
-		expect(user.length).toBeLessThan(9000); // 8000 截断 + 包装开销
+		const arg = judgeInstanceMock.judge.mock.calls[0][0] as Record<string, unknown>;
+		expect(arg.timeoutMs).toBe(15000);
 	});
 });
 
