@@ -12,6 +12,9 @@
  * tokens 写 shepherd.contextRestore（自家 section）；trigger 写 pi 内置
  * compaction.modelOverrides（宿主 section，change compact-config-unified D5
  * 代理写判例）。均为浅合并语义——嵌套对象读当前完整配置→合并→整体写回。
+ *
+ * 生效时机：tokens（shepherd 自有配置）随扩展重载生效（/new 重建扩展 ctx 即重读）；
+ * trigger（pi 内核 SettingsManager 是 services 单例，/new 不重读）需 /reload 或重启进程。
  */
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
@@ -135,7 +138,7 @@ function handleTrigger(args: string[], ctx: unknown, notify: Notify): void {
 		const r = removeTriggerOverride(model);
 		notify(
 			r.changed
-				? `✅ 已删除 ${r.modelKey} 触发点 override，回默认（reserveTokens=${PI_DEFAULT_RESERVE_TOKENS}，接近满窗口触发；新会话生效）`
+				? `✅ 已删除 ${r.modelKey} 触发点 override，回默认（reserveTokens=${PI_DEFAULT_RESERVE_TOKENS}，接近满窗口触发；/reload 或重启 pi 后生效）`
 				: `${r.modelKey} 无 override，已是默认行为`,
 			"info",
 		);
@@ -148,7 +151,7 @@ function handleTrigger(args: string[], ctx: unknown, notify: Notify): void {
 	const conv = applyTriggerSet(model, Number(raw));
 	if (conv.ok) {
 		notify(
-			`✅ ${conv.modelKey} 触发点 = ${conv.triggerTokens} tokens（reserveTokens=${conv.reserveTokens}，窗口 ${model.contextWindow}；新会话生效）`,
+			`✅ ${conv.modelKey} 触发点 = ${conv.triggerTokens} tokens（reserveTokens=${conv.reserveTokens}，窗口 ${model.contextWindow}；/reload 或重启 pi 后生效）`,
 			"info",
 		);
 	} else {

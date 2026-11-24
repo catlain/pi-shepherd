@@ -137,7 +137,7 @@ describe("trigger 子命令", () => {
 		);
 		expect(notifies[0].msg).toContain("触发点 = 200000 tokens");
 		expect(notifies[0].msg).toContain("reserveTokens=800000");
-		expect(notifies[0].msg).toContain("新会话生效");
+		expect(notifies[0].msg).toContain("/reload 或重启 pi 后生效");
 	});
 
 	it("trigger 区间外拒绝不写盘", async () => {
