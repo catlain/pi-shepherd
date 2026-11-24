@@ -9,14 +9,14 @@
 		"enabled": true
 	},
 	{
-		"comment": "[Python] 编辑后必须格式检查 + 跑测试",
+		"comment": "[Python] 编辑后必须格式检查 + 跑测试（已排除 .pi/tmp 临时脚本——即写即删无需检查）",
 		"hook": "tool_result",
 		"tool": "edit",
 		"action": "notify",
 		"conditions": [
 			{
 				"field": "path",
-				"pattern": "\\.py$",
+				"pattern": "^(?!.*[.]pi[/\\\\]tmp).*\\.py$",
 				"flags": ""
 			}
 		],

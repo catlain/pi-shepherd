@@ -6,6 +6,7 @@
  * 2) 记忆文件阈值：200 行
  * 3) 非检查扩展名跳过
  * 4) 文件不存在不抛异常
+ * 5) .pi/tmp 临时脚本豁免（代码文件与记忆文件检查均跳过）
  */
 
 import * as fs from "node:fs";
@@ -56,6 +57,34 @@ describe("checkLineCount", () => {
 	});
 
 	// ── 代码文件行数检查 ────────────────────────────────────
+
+	// ── 临时脚本豁免（.pi/tmp）────────────────────────────
+
+	it(".pi/tmp 下的临时脚本超过 200 行不触发警告", () => {
+		const filePath = createTempFile(".pi/tmp/probe.py", 250);
+		const result = checkAndDrain(filePath);
+		expect(result).toBeNull();
+	});
+
+	it(".pi/tmp 下的临时脚本超过 500 行也不触发 BAN", () => {
+		const filePath = createTempFile(".pi/tmp/huge.ts", 600);
+		const result = checkAndDrain(filePath);
+		expect(result).toBeNull();
+	});
+
+	it(".pi/tmp 下的记忆文件同样跳过检查", () => {
+		const filePath = createTempFile(".pi/tmp/memory/topic.md", 250);
+		const result = checkAndDrain(filePath);
+		expect(result).toBeNull();
+	});
+
+	it("tmp 不是 .pi/tmp 路径段时仍然检查（如 x.pi/tmp、tmp-probe）", () => {
+		const tricky = createTempFile("x.pi/tmp/large.py", 350);
+		expect(checkAndDrain(tricky)).toContain("🔴");
+
+		const sibling = createTempFile("tmp-probe/large.py", 350);
+		expect(checkAndDrain(sibling)).toContain("🔴");
+	});
 
 	it("200 行以下不触发警告", () => {
 		const filePath = createTempFile("small.ts", 50);

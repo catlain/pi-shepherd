@@ -1,6 +1,7 @@
 /**
  * 文件行数检查
  * edit/write 后自动检测文件行数，超阈值时注入 ephemeral 提醒
+ * .pi/tmp/ 下的一次性脚本豁免（即写即删，不纳入检查）
  */
 
 import * as fs from "node:fs";
@@ -26,7 +27,15 @@ function isMemoryFile(filePath: string): boolean {
 	return /\/memory\//.test(normalized);
 }
 
+/** 判断路径是否为临时脚本：.pi/tmp/ 路径段下的文件（相对/绝对路径、正反斜杠均识别） */
+function isTempScript(filePath: string): boolean {
+	const normalized = filePath.replace(/\\/g, "/");
+	return /(?:^|\/)\.pi\/tmp\//.test(normalized);
+}
+
 export function checkLineCount(filePath: string): void {
+	// 临时脚本豁免：.pi/tmp/ 下的一次性脚本即写即删，不纳入行数检查（与 rules.json 中 [Python]/[code-graph] 规则的豁免口径一致）
+	if (isTempScript(filePath)) return;
 	const ext = path.extname(filePath);
 
 	// 记忆文件检查
