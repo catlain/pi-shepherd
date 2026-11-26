@@ -14,7 +14,8 @@
  * 代理写判例）。均为浅合并语义——嵌套对象读当前完整配置→合并→整体写回。
  *
  * 生效时机：tokens（shepherd 自有配置）随扩展重载生效（/new 重建扩展 ctx 即重读）；
- * trigger（pi 内核 SettingsManager 是 services 单例，/new 不重读）需 /reload 或重启进程。
+ * trigger 只写磁盘——pi 内核压缩检查读的是进程启动时的内存快照（SettingsManager 为
+ * services 单例，/new 不重读），每个已打开的会话都需各自 /reload 或重启才生效。
  */
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
@@ -65,6 +66,10 @@ const USAGE = `用法：/compact-config [tokens <N|on|off> | trigger <N>]
   trigger N         设当前模型自动压缩触发点（tokens，达到即压缩）
   trigger           删当前模型触发点，回默认（接近满窗口触发）`;
 
+/** trigger 写盘后的生效说明：pi 内核读进程启动时的内存快照，每个会话各一份，写盘不自动生效 */
+const TRIGGER_TAKE_EFFECT_NOTE =
+	"已写入磁盘，尚未生效：每个已打开的会话都需各自执行 /reload（仅新启动的 pi 进程会自动读取）";
+
 type Notify = (msg: string, level: "info" | "warning") => void;
 
 /** 从命令 ctx 提取 trigger 所需的模型形状（无模型返回 undefined） */
@@ -86,7 +91,7 @@ function showView(ctx: unknown, notify: Notify): void {
 	const model = modelFromCtx(ctx);
 	if (model) triggerBlock = describeTrigger(model, readCompactionSection());
 	notify(
-		`contextRestore 配置：enabled=${c.enabled} maxTokens=${c.maxTokens}\n自动压缩触发点（compaction，按模型）：\n${triggerBlock}\n\n${USAGE}`,
+		`contextRestore 配置：enabled=${c.enabled} maxTokens=${c.maxTokens}\n自动压缩触发点（compaction，按模型；磁盘值——未 /reload 的会话仍按启动时的旧值触发）：\n${triggerBlock}\n\n${USAGE}`,
 		"info",
 	);
 }
@@ -138,7 +143,7 @@ function handleTrigger(args: string[], ctx: unknown, notify: Notify): void {
 		const r = removeTriggerOverride(model);
 		notify(
 			r.changed
-				? `✅ 已删除 ${r.modelKey} 触发点 override，回默认（reserveTokens=${PI_DEFAULT_RESERVE_TOKENS}，接近满窗口触发；/reload 或重启 pi 后生效）`
+				? `✅ 已删除 ${r.modelKey} 触发点 override，回默认（reserveTokens=${PI_DEFAULT_RESERVE_TOKENS}，接近满窗口触发）。${TRIGGER_TAKE_EFFECT_NOTE}`
 				: `${r.modelKey} 无 override，已是默认行为`,
 			"info",
 		);
@@ -151,7 +156,7 @@ function handleTrigger(args: string[], ctx: unknown, notify: Notify): void {
 	const conv = applyTriggerSet(model, Number(raw));
 	if (conv.ok) {
 		notify(
-			`✅ ${conv.modelKey} 触发点 = ${conv.triggerTokens} tokens（reserveTokens=${conv.reserveTokens}，窗口 ${model.contextWindow}；/reload 或重启 pi 后生效）`,
+			`✅ ${conv.modelKey} 触发点 = ${conv.triggerTokens} tokens（reserveTokens=${conv.reserveTokens}，窗口 ${model.contextWindow}）。${TRIGGER_TAKE_EFFECT_NOTE}`,
 			"info",
 		);
 	} else {
