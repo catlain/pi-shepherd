@@ -196,7 +196,7 @@
 		"action": "notify",
 		"pattern": ".",
 		"flags": "s",
-		"reason": "推荐用 code-graph 替代 grep 搜代码——理解 AST 语义，按符号名、调用链、引用关系精准定位。选工具：①模糊搜索 → semantic_code_search；②精确符号 → get_ast_node；③引用 → find_references；④调用链 → get_call_graph；⑤模块结构 → module_overview。grep 仅适合字面量（TODO、配置值），搜字面量则忽略此提醒。\n\n**涉及字段血缘/数据链路类任务？** → 使用 field-lineage 技能。\n\n**code-graph 故障排查：**\n- **搜不到东西？** → 可能是目标目录没索引。用 `mcp__code_graph__project_map()` 查看当前索引范围，不在范围内就调 `setup_codegraph({ directory: \"目标目录绝对路径\" })` 一键建索引（创建软链接+增量索引，即时可搜）。npm `@earendil-works` 包目录 ≡ `_codegraph_links/dist/`，已索引。\n- **路径报错 `must be relative`？** → path 参数必须用相对路径（相对于 CWD），不能用绝对路径。\n- **刚改了代码搜不到？** → 索引可能过期，调 `setup_codegraph({ directory: \"项目路径\" })` 重建索引（已索引目录重复调用有效，增量更新）。\n- **确实没有结果** → 忽略以上提醒，可能是符号确实不存在。",
+		"reason": "推荐用 code-graph 替代 grep 搜代码——理解 AST 语义，按符号名、调用链、引用关系精准定位。选工具：①模糊搜索 → semantic_code_search；②精确符号 → get_ast_node；③引用 → find_references；④调用链 → get_call_graph；⑤模块结构 → module_overview。grep 仅适合字面量（TODO、配置值），搜字面量则忽略此提醒。\n\n**涉及字段血缘/数据链路类任务？** → 使用 field-lineage 技能。\n\n**code-graph 故障排查：**\n- **路径报错 `must be relative`？** → path 参数必须用相对路径（相对于 CWD），不能用绝对路径。npm `@earendil-works` 包目录 ≡ `_codegraph_links/dist/`，已索引。\n- **刚改了代码搜不到？** → 索引由常驻进程自动更新，稍后重搜。不要为此调 `setup_codegraph`：它会建软链，并与常驻进程抢写索引库。\n- **目标目录确实不在索引范围？**（先用 `mcp__code_graph__project_map()` 确认）→ **先向用户确认，用户同意后才调 `setup_codegraph`**。以下情况不建索引，直接 grep：已知文件里找已知内容；目标是有自己索引的另一个项目（如 `D:\\Project\\Quant`）；目标规模大或含数据目录（`results/`、`logs/`、成片配置 JSON）。\n- **确实没有结果** → 忽略以上提醒，可能是符号确实不存在。",
 		"requiresTools": [
 			"mcp__code_graph__semantic_code_search"
 		],
@@ -209,11 +209,11 @@
 		"action": "notify",
 		"pattern": "\\b(grep|rg)\\b.*\\.(py|rs|ts|js|toml)(?=[\\s'\"|)]|$)",
 		"flags": "",
-		"reason": "💡 bash grep 搜代码文件不如用 pi 内置 grep 工具或 code-graph MCP 工具——code-graph 理解 AST 语义，能精准匹配符号名和调用关系。选工具：①模糊搜索 → semantic_code_search；②精确符号 → get_ast_node；③引用追踪 → find_references；④调用链 → get_call_graph。如果搜的是字面量字符串（TODO、配置值）则忽略。\n\n**code-graph 故障排查：**\n- **搜不到东西？** → 可能是目标目录没索引。用 `mcp__code_graph__project_map()` 查看当前索引范围，不在范围内就调 `setup_codegraph({ directory: \"目标目录绝对路径\" })` 一键建索引。\n- **路径报错？** → path 参数必须用相对路径（相对于 CWD），不能用绝对路径。\n- **刚改了代码搜不到？** → 调 `setup_codegraph({ directory: \"项目路径\" })` 重建索引。\n- **npm 包目录已索引**：`AppData/Roaming/npm/node_modules/@earendil-works/pi-coding-agent`（含 dist 源码与 .d.ts）≡ 索引路径 `_codegraph_links/dist/`——code-graph 查询用该路径，勿因绝对路径形态误判\"不在索引\"。",
+		"reason": "💡 bash grep 搜代码文件不如用 pi 内置 grep 工具或 code-graph MCP 工具——code-graph 理解 AST 语义，能精准匹配符号名和调用关系。选工具：①模糊搜索 → semantic_code_search；②精确符号 → get_ast_node；③引用追踪 → find_references；④调用链 → get_call_graph。如果搜的是字面量字符串（TODO、配置值）则忽略。\n\n**code-graph 故障排查：**\n- **路径报错？** → path 参数必须用相对路径（相对于 CWD），不能用绝对路径。\n- **刚改了代码搜不到？** → 索引由常驻进程自动更新，稍后重搜。不要为此调 `setup_codegraph`：它会建软链，并与常驻进程抢写索引库。\n- **目标目录确实不在索引范围？**（先用 `mcp__code_graph__project_map()` 确认）→ **先向用户确认，用户同意后才调 `setup_codegraph`**。以下情况不建索引，直接 grep：已知文件里找已知内容；目标是有自己索引的另一个项目（如 `D:\\Project\\Quant`）；目标规模大或含数据目录（`results/`、`logs/`、成片配置 JSON）。\n- **npm 包目录已索引**：`AppData/Roaming/npm/node_modules/@earendil-works/pi-coding-agent`（含 dist 源码与 .d.ts）≡ 索引路径 `_codegraph_links/dist/`——code-graph 查询用该路径，勿因绝对路径形态误判\"不在索引\"。",
 		"enabled": true
 	},
 	{
-		"comment": "[code-graph] 工具报索引错误时提醒重建索引",
+		"comment": "[code-graph] grep 搜代码文件时推荐 code-graph；建索引须先问用户（2026-11-26 Quant 被误链入 catlain 索引事故后改写）",
 		"hook": "tool_result",
 		"tool": "grep",
 		"action": "notify",
@@ -223,7 +223,7 @@
 				"pattern": "\\.(ts|js|py|rs)$"
 			}
 		],
-		"reason": "💡 搜代码文件推荐用 code-graph。如果 code-graph 搜不到，排查步骤：\n1. `mcp__code_graph__project_map()` 查看当前索引了哪些目录\n2. 不在范围内 → `setup_codegraph({ directory: \"目标目录绝对路径\" })` 建索引（npm `@earendil-works` 包目录 ≡ `_codegraph_links/dist/`，已索引）\n3. 路径报错 → 用相对路径，不用绝对路径\n4. 刚改过代码 → `setup_codegraph({ directory: \"项目路径\" })` 重建索引\n用法：semantic_code_search（模糊搜索）、get_ast_node（精确符号）、get_call_graph（调用链）、module_overview（模块结构）。",
+		"reason": "💡 搜代码文件推荐用 code-graph。code-graph 搜不到时：\n1. `mcp__code_graph__project_map()` 查看当前索引了哪些目录\n2. 目标不在范围内 → **先向用户确认，用户同意后才调 `setup_codegraph({ directory: \"目标目录绝对路径\" })`**。不建索引的情况：已知文件/已知符号直接 `read`/`grep`；目标是有自己索引的其他项目（如 `D:\\Project\\Quant`）；目标规模大或含数据目录（`results/`、`logs/`、成片配置 JSON）——这些直接 grep\n3. 路径报错 → 用相对路径，不用绝对路径\n4. 刚改过代码 → 索引由常驻进程自动更新，稍后重搜；不要调 `setup_codegraph`（它会建软链，并与常驻进程抢写索引库）\n用法：semantic_code_search（模糊搜索）、get_ast_node（精确符号）、get_call_graph（调用链）、module_overview（模块结构）。",
 		"enabled": true
 	},
 	{
@@ -517,21 +517,5 @@
 		"hook": "tool_call",
 		"reason": "禁止 bash grep -r 递归搜索，已升级为 block（用户 2026-01 要求）。原因：① 不感知 .gitignore——`grep -rn xxx .` 会搜遍 node_modules/dist/.git，输出爆炸且被截断（2000行/50KB）；② 输出非结构化，长行截断 500 字符。请改用：\n① **pi 内置 grep 工具**（首选）——自动 respects .gitignore、结构化结果（file:line）、glob 参数过滤文件（如 *.ts）、ignoreCase/context/limit 精确控制；\n② **搜代码符号/语义** → code-graph：semantic_code_search（模糊）、get_ast_node（精确符号）、find_references（引用）、get_call_graph（调用链）——`mcp__code_graph__project_map()` 可查索引范围；npm `@earendil-works` 包目录（含 dist 与 .d.ts）≡ 索引路径 `_codegraph_links/dist/`，已索引，勿误判\"不在索引\"；\n③ rg 也可（尊重 .gitignore），但不如 pi 内置 grep 结构化。\n纯字面量搜索（TODO、配置值）用 pi 内置 grep 工具完全够用。",
 		"tool": "bash"
-	},
-	{
-		"action": "steer",
-		"comment": "[code-graph] 编辑代码文件后提醒更新索引（已排除 .pi/tmp 临时脚本——即写即删无需索引）",
-		"conditions": [
-			{
-				"field": "path",
-				"pattern": "^(?!.*[.]pi[/\\\\]tmp).*\\.(ts|js|py|rs)$"
-			}
-		],
-		"enabled": true,
-		"hook": "tool_result",
-		"reason": "📝 编辑了代码文件，code-graph 索引可能已过期（新增/重命名/删除的符号不会被搜到）。如果接下来需要用 code-graph 搜索，先调 `setup_codegraph({ directory: \"项目路径\" })` 重建索引。如果只是编辑不再搜索，则忽略。",
-		"requireSuccess": true,
-		"subagent": false,
-		"tool": "edit|write"
 	}
 ]
