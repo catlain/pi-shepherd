@@ -23,12 +23,12 @@ export const mockGetEffectiveConfig = vi.fn().mockReturnValue({
 	sources: {},
 });
 
+type SharedUtilsModule = typeof import("@pi-atelier/shared-utils");
+
 vi.mock("@pi-atelier/shared-utils", async (importOriginal) => ({
 	// 纯函数透传真实实现（protected-docs 谓词等，语义保真不造假），
 	// 仅覆盖需测试定制的 hints/config 相关导出
-	...(await importOriginal<
-		typeof import("@pi-atelier/shared-utils")
-	>()),
+	...(await importOriginal<SharedUtilsModule>()),
 	getEffectiveConfig: mockGetEffectiveConfig,
 	pushHint: mockPushHint,
 	drainHints: mockDrainHints,
@@ -41,10 +41,10 @@ vi.mock("@pi-atelier/shared-utils", async (importOriginal) => ({
 export const mockLoadRules = vi.fn().mockReturnValue([]);
 export const mockIsSubagent = vi.fn().mockReturnValue(false);
 
+type RulesModule = typeof import("../../shepherd/rules");
+
 vi.mock("../../shepherd/rules", async () => {
-	const actual = await vi.importActual<typeof import("../../shepherd/rules")>(
-		"../../shepherd/rules",
-	);
+	const actual = await vi.importActual<RulesModule>("../../shepherd/rules");
 	return {
 		...actual,
 		loadRules: (...args: unknown[]) => mockLoadRules(...args),

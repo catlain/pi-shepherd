@@ -15,8 +15,10 @@ import {
 	userMsg,
 } from "./helpers/before-request-mocks";
 
+type RulesModule = typeof import("../shepherd/rules.js");
+
 vi.mock("../shepherd/rules.js", async (importOriginal) => {
-	const actual = await importOriginal<typeof import("../shepherd/rules.js")>();
+	const actual = await importOriginal<RulesModule>();
 	return {
 		...actual,
 		loadRules: mockedLoadRules,
