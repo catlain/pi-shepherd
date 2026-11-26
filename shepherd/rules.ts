@@ -11,7 +11,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import type { ConditionBuiltin } from "./conditions";
 import { pushRuleError } from "./ephemeral";
-import { normalizeHook, warnUnsupportedAction } from "./rules-types";
+import { normalizeHook, warnUnsupportedAction, type Rule } from "./rules-types";
 // 门面 re-export：类型与常量（rules-types）
 export {
 	CODE_EXT_RE,
@@ -48,7 +48,7 @@ import { logDiagnostic } from "./restore-log";
 
 /** 从单个文件加载规则（不编译），处理文件不存在和 JSON 解析错误 */
 export function loadRulesFromFile(filePath: string): {
-	rules: import("./rules-types").Rule[];
+	rules: Rule[];
 	error?: string;
 } {
 	try {
@@ -71,7 +71,7 @@ export function loadRulesFromFile(filePath: string): {
 }
 
 /** 编译规则：正则编译 + 默认值填充 */
-export function compileRules(rules: import("./rules-types").Rule[]): import("./rules-types").Rule[] {
+export function compileRules(rules: Rule[]): Rule[] {
 	// 过滤禁用规则
 	const active = rules.filter((r) => r.enabled !== false);
 	for (const rule of active) {
@@ -93,7 +93,7 @@ export function compileRules(rules: import("./rules-types").Rule[]): import("./r
 			rule.conditions = [{ builtin: builtinName as ConditionBuiltin }];
 		}
 		// 填充默认值（hook 经 normalizeHook 归一化，与校验器同源）
-		rule.hook = normalizeHook(rule) as import("./rules-types").Rule["hook"];
+		rule.hook = normalizeHook(rule) as Rule["hook"];
 		if (!rule.tool) rule.tool = "bash";
 		if (!rule.action) rule.action = "block";
 		// llmJudge 加载时校验：prompt 非空 + 仅 {message_end, before_provider_request} 支持；无效则剥离该字段（降级为纯正则行为）
@@ -133,7 +133,7 @@ export interface LoadRulesOptions {
 
 /** loadRules 缓存：基于文件 mtime 的自动失效 */
 let _cacheKey = "";
-let _cacheValue: import("./rules-types").Rule[] = [];
+let _cacheValue: Rule[] = [];
 
 function buildCacheKey(rulesDir?: string): string {
 	const parts: string[] = [];
@@ -163,11 +163,11 @@ export function invalidateRulesCache(): void {
 export function loadRules(
 	rulesDir?: string,
 	options?: LoadRulesOptions,
-): import("./rules-types").Rule[] {
+): Rule[] {
 	const key = buildCacheKey(rulesDir);
 	if (key === _cacheKey) return _cacheValue;
 
-	const allRules: import("./rules-types").Rule[] = [];
+	const allRules: Rule[] = [];
 	const errors: string[] = [];
 
 	// 1. 全局规则：rules.json
